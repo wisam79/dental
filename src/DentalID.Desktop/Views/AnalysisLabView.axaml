@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
              xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              xmlns:local="using:DentalID.Desktop.Views"
              xmlns:controls="using:DentalID.Desktop.Controls"
              x:Class="DentalID.Desktop.Views.AnalysisLabView"
@@ -10,15 +11,54 @@
 
     <UserControl.Styles>
         <!-- Custom Styles specific to Lab -->
-        <Style Selector="TabItem">
+        <Style Selector="TabControl.report-tabs TabItem">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-            <Setter Property="Margin" Value="0,0,16,0"/>
-            <Setter Property="Padding" Value="4,8"/>
+            <Setter Property="Margin" Value="0,0,14,0"/>
+            <Setter Property="Padding" Value="6,10"/>
         </Style>
-        <Style Selector="TabItem:selected">
-             <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Style Selector="TabControl.report-tabs TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <Style Selector="Border.report-section">
+            <Setter Property="Background" Value="{DynamicResource SurfaceFloatingBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <Style Selector="Border.metric-tile">
+            <Setter Property="Background" Value="#12000000"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="10,8"/>
+        </Style>
+
+        <Style Selector="TextBlock.metric-value">
+            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="LineHeight" Value="36"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBlock.metric-label">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="LineHeight" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBlock.metric-status">
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="LineHeight" Value="28"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
     </UserControl.Styles>
 
@@ -55,7 +95,7 @@
 
                 <!-- Right: Analysis Actions -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                     <Button Command="{Binding BrowseImageCommand}" Classes="outline" CornerRadius="4" Padding="12,6">
+                    <Button Command="{Binding BrowseImageCommand}" Classes="outline" CornerRadius="4" Padding="12,6" IsEnabled="{Binding !IsAnalyzing}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14"/>
                             <TextBlock Text="{Binding [Lab_BrowseImage], Source={x:Static svc:Loc.Instance}}" FontSize="11" FontWeight="SemiBold"/>
@@ -63,8 +103,14 @@
                     </Button>
                     <Button Command="{Binding RunAnalysisCommand}" Classes="primary" CornerRadius="4" Padding="16,6">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14"/>
-                            <TextBlock Text="{Binding [Lab_RunAnalysis], Source={x:Static svc:Loc.Instance}}" FontSize="11" FontWeight="Bold"/>
+                            <PathIcon Data="{StaticResource IconAnalysis}" Width="14" Height="14" IsVisible="{Binding !IsAnalyzing}"/>
+                            <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" IsVisible="{Binding IsAnalyzing}" RenderTransformOrigin="50%,50%">
+                                <PathIcon.RenderTransform>
+                                    <RotateTransform Angle="{Binding AnalysisSpinnerAngle}"/>
+                                </PathIcon.RenderTransform>
+                            </PathIcon>
+                            <TextBlock Text="{Binding [Lab_RunAnalysis], Source={x:Static svc:Loc.Instance}}" FontSize="11" FontWeight="Bold" IsVisible="{Binding !IsAnalyzing}"/>
+                            <TextBlock Text="{Binding [Lab_Analyzing], Source={x:Static svc:Loc.Instance}}" FontSize="11" FontWeight="Bold" IsVisible="{Binding IsAnalyzing}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -72,14 +118,14 @@
         </Border>
 
         <!-- MAIN LAYOUT -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, 350">
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, 390">
             
              <!-- 2. LEFT STRIP: TOOLS (Floating Palette Style) -->
              <Grid Grid.Column="0" Width="60" Background="{DynamicResource SurfaceBgBrush}">
                  <Border Background="{DynamicResource SurfaceElevatedBrush}" Margin="8,16" CornerRadius="8" VerticalAlignment="Top" BoxShadow="0 4 8 0 #40000000">
                      <StackPanel Spacing="4" Margin="0,8">
                          <Button Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Enhance_Reset], Source={x:Static svc:Loc.Instance}}" Click="OnResetZoom" CornerRadius="6">
-                             <PathIcon Data="{StaticResource IconArrowLeft}" Width="16" Height="16"/>
+                             <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16"/>
                          </Button>
                          
                          <Border Height="1" Background="{DynamicResource BorderSubtleBrush}" Margin="8,4" Opacity="0.5"/>
@@ -110,25 +156,25 @@
                           <Button Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}" CornerRadius="6">
                              <PathIcon Data="{StaticResource IconSettings}" Width="16" Height="16"/>
                              <Button.Flyout>
-                                 <Flyout Placement="Right" ShowMode="TransientWithDismissOnPointerMoveAway">
+                                 <Flyout Placement="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlyoutPlacementConverter.Instance}, ConverterParameter=End}" ShowMode="TransientWithDismissOnPointerMoveAway">
                                      <Border Classes="card" Padding="16" Width="220">
                                          <StackPanel Spacing="12">
                                              <TextBlock Text="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                                              
                                              <StackPanel Spacing="4">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconSun}" Width="12" Height="12" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconSun}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Enhance_Bright], Source={x:Static svc:Loc.Instance}}" FontSize="11"/>
-                                                     <TextBlock Text="{Binding WindowCenter, StringFormat='{}{0:F2}'}" HorizontalAlignment="Right" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <TextBlock Text="{Binding WindowCenter, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                  </DockPanel>
                                                  <Slider Value="{Binding WindowCenter}" Minimum="0" Maximum="1" Classes="modern"/>
                                              </StackPanel>
                                              
                                              <StackPanel Spacing="4">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconEye}" Width="12" Height="12" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconEye}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Enhance_Contrast], Source={x:Static svc:Loc.Instance}}" FontSize="11"/>
-                                                     <TextBlock Text="{Binding WindowWidth, StringFormat='{}{0:F2}'}" HorizontalAlignment="Right" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <TextBlock Text="{Binding WindowWidth, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                  </DockPanel>
                                                  <Slider Value="{Binding WindowWidth}" Minimum="0.5" Maximum="2" Classes="modern"/>
                                              </StackPanel>
@@ -147,7 +193,7 @@
              <Grid Grid.Column="1" Background="#050505" ClipToBounds="True">
                  <!-- Technical Background Grid -->
                  <Grid Opacity="0.1">
-                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
                          <Path.RenderTransform>
                             <ScaleTransform ScaleX="20" ScaleY="20"/>
                         </Path.RenderTransform>
@@ -175,7 +221,7 @@
                          PointerReleased="OnPanEnd">
                        <controls:DentalAnalysisControl Name="AnalysisControl"
                            Source="{Binding LoadedImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                           Teeth="{Binding RawTeeth}"
+                           Teeth="{Binding DetectedTeeth}"
                            Pathologies="{Binding DetectedPathologies}"
                            ShowTeeth="{Binding ShowTeethOverlay}"
                            ShowPathologies="{Binding ShowPathosOverlay}"
@@ -183,13 +229,13 @@
                    </Grid>
                   
                   <!-- Overlay Info (Metadata) -->
-                  <Border VerticalAlignment="Top" HorizontalAlignment="Left" Margin="20" Background="#90000000" CornerRadius="4" Padding="12,8" IsVisible="{Binding IsImageLoaded}" BorderBrush="#30FFFFFF" BorderThickness="1">
+                  <Border VerticalAlignment="Top" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" Margin="20" Background="#90000000" CornerRadius="4" Padding="12,8" IsVisible="{Binding IsImageLoaded}" BorderBrush="#30FFFFFF" BorderThickness="1">
                       <StackPanel Spacing="4">
                           <StackPanel Orientation="Horizontal" Spacing="8">
                               <PathIcon Data="{StaticResource IconFile}" Width="12" Height="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                               <TextBlock Text="{Binding ImageFileName}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
                           </StackPanel>
-                          <TextBlock Text="{Binding [Lab_ImageInfo], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}" Margin="20,0,0,0"/>
+                          <TextBlock Text="{Binding [Lab_ImageInfo], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"/>
                       </StackPanel>
                   </Border>
 
@@ -211,11 +257,31 @@
                   <Border IsVisible="{Binding IsAnalyzing}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#80000000">
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
                           <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1">
-                              <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                  <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                              <StackPanel Spacing="16" HorizontalAlignment="Center" MinWidth="320">
+                                  <Border Width="58" Height="58" CornerRadius="29" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" Background="#130078D4">
+                                      <PathIcon Data="{StaticResource IconRefresh}" Width="24" Height="24" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                                          <PathIcon.RenderTransform>
+                                              <RotateTransform Angle="{Binding AnalysisSpinnerAngle}"/>
+                                          </PathIcon.RenderTransform>
+                                      </PathIcon>
+                                  </Border>
                                   <StackPanel HorizontalAlignment="Center" Spacing="4">
                                       <TextBlock Text="{Binding [Lab_Analyzing], Source={x:Static svc:Loc.Instance}}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                      <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Center"/>
+                                      <TextBlock Text="{Binding AnalysisPhase}" Foreground="{DynamicResource AccentSecondaryBrush}" FontSize="12" HorizontalAlignment="Center"/>
+                                  </StackPanel>
+                                  <StackPanel Spacing="6" Width="280">
+                                      <ProgressBar Value="{Binding AnalysisVisualProgress}" Minimum="0" Maximum="100" Height="5" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                      <Grid ColumnDefinitions="*,Auto">
+                                          <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                          <TextBlock Grid.Column="1" Text="{Binding AnalysisVisualProgress, StringFormat='{}{0:0}%'}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11"/>
+                                      </Grid>
+                                      <Border CornerRadius="8" Padding="8,4" Background="#16000000" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                          <TextBlock HorizontalAlignment="Center" FontFamily="{DynamicResource FontMono}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                              <Run Text="{Binding [Lab_Elapsed], Source={x:Static svc:Loc.Instance}}"/>
+                                              <Run Text=": "/>
+                                              <Run Text="{Binding AnalysisElapsed}"/>
+                                          </TextBlock>
+                                      </Border>
                                   </StackPanel>
                               </StackPanel>
                           </Border>
@@ -262,99 +328,131 @@
              </Grid>
 
              <!-- 4. RIGHT PANEL: RESULTS & REPORT -->
-             <Border Grid.Column="2" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1,0,0,0">
-                 <Grid RowDefinitions="Auto, *, Auto">
-                     <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                         <DockPanel>
-                             <Button DockPanel.Dock="Right" Classes="ghost" Padding="4">
+             <Border Grid.Column="2"
+                     Background="{DynamicResource SurfaceElevatedBrush}"
+                     BorderBrush="{DynamicResource BorderSubtleBrush}"
+                     BorderThickness="1,0,0,0">
+                 <Grid RowDefinitions="Auto,*,Auto">
+                     <Border Grid.Row="0"
+                             Padding="16,14"
+                             Background="{DynamicResource SurfaceFloatingBrush}"
+                             BorderBrush="{DynamicResource BorderSubtleBrush}"
+                             BorderThickness="0,0,0,1">
+                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                 <PathIcon Data="{StaticResource IconAnalysis}"
+                                           Width="16"
+                                           Height="16"
+                                           Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                                 <TextBlock Text="{Binding [Lab_Report_Title], Source={x:Static svc:Loc.Instance}}"
+                                            Classes="h3"
+                                            FontSize="18"
+                                            FontWeight="Bold"/>
+                             </StackPanel>
+                             <Button Grid.Column="1" Classes="ghost" Padding="6">
                                  <PathIcon Data="{StaticResource IconDotsHorizontal}" Width="16" Height="16"/>
                              </Button>
-                             <TextBlock Text="{Binding [Lab_Report_Title], Source={x:Static svc:Loc.Instance}}" Classes="h3"/>
-                         </DockPanel>
+                         </Grid>
                      </Border>
                      
-                      <TabControl Grid.Row="1" Margin="0" Padding="0">
+                      <TabControl Grid.Row="1" Margin="0" Padding="0" Classes="report-tabs">
                          <TabItem Header="{Binding [Lab_Tab_Summary], Source={x:Static svc:Loc.Instance}}" FontSize="12">
-                              <ScrollViewer Padding="16">
-                                 <StackPanel Spacing="16">
+                              <ScrollViewer Padding="14" VerticalScrollBarVisibility="Auto">
+                                 <StackPanel Spacing="14">
                                      <!-- Bio Profile Card -->
-                                     <Border Classes="card" Background="{DynamicResource SurfaceFloatingBrush}" Padding="0">
+                                     <Border Classes="card report-section" Padding="0">
                                          <StackPanel>
-                                             <Border Background="{DynamicResource SurfaceBgBrush}" Padding="12,8" CornerRadius="6 6 0 0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                                             <Border Background="{DynamicResource SurfaceBgBrush}" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" Margin="0,0,8,0" Foreground="{DynamicResource AccentSecondaryBrush}"/>
-                                                     <TextBlock Text="{Binding [Lab_Bio_Profile], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold"/>
+                                                     <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                                                     <TextBlock Text="{Binding [Lab_Bio_Profile], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" FontSize="12"/>
                                                  </DockPanel>
                                              </Border>
-                                             <Grid RowDefinitions="Auto, Auto" ColumnDefinitions="*, 1, *" Margin="16">
-                                                 <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                                     <TextBlock Text="{Binding EstimatedAge, FallbackValue='--'}" FontSize="28" FontWeight="Light" HorizontalAlignment="Center"/>
-                                                     <TextBlock Text="{Binding [Lab_EstAge], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
-                                                 </StackPanel>
-                                                 
-                                                 <Border Grid.Column="1" Background="{DynamicResource BorderSubtleBrush}"/>
-                                                 
-                                                 <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                                     <TextBlock Text="{Binding EstimatedGender, FallbackValue='--'}" FontSize="28" FontWeight="Light" HorizontalAlignment="Center"/>
-                                                     <TextBlock Text="{Binding [Lab_Gender], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
-                                                 </StackPanel>
+                                             <Grid ColumnDefinitions="*,10,*" Margin="12">
+                                                 <Border Grid.Column="0" Classes="metric-tile">
+                                                     <StackPanel Spacing="2">
+                                                         <TextBlock Text="{Binding EstimatedAge, FallbackValue='--'}" Classes="metric-value"/>
+                                                         <TextBlock Text="{Binding [Lab_EstAge], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
+                                                     </StackPanel>
+                                                 </Border>
+                                                 <Border Grid.Column="2" Classes="metric-tile">
+                                                     <StackPanel Spacing="2">
+                                                         <TextBlock Text="{Binding EstimatedGender, FallbackValue='--'}"
+                                                                    Classes="metric-value"
+                                                                    FontSize="26"
+                                                                    LineHeight="32"
+                                                                    MaxWidth="140"
+                                                                    TextWrapping="Wrap"/>
+                                                         <TextBlock Text="{Binding [Lab_Gender], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
+                                                     </StackPanel>
+                                                 </Border>
                                              </Grid>
                                          </StackPanel>
                                      </Border>
                                      
                                       <!-- Stats -->
-                                     <Grid ColumnDefinitions="*, 10, *">
-                                         <Border Grid.Column="0" Classes="card" Background="{DynamicResource SurfaceFloatingBrush}" Padding="12">
-                                             <StackPanel Spacing="4">
-                                                 <PathIcon Data="{StaticResource IconTooth}" Width="16" Height="16" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Left"/>
-                                                 <TextBlock Text="{Binding TeethDetectedCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                 <TextBlock Text="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                     <Grid ColumnDefinitions="*,10,*">
+                                         <Border Grid.Column="0" Classes="card report-section" Padding="12" MinHeight="108">
+                                             <StackPanel Spacing="4" VerticalAlignment="Center">
+                                                 <PathIcon Data="{StaticResource IconTooth}" Width="16" Height="16" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <TextBlock Text="{Binding TeethDetectedCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <TextBlock Text="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
-                                         <Border Grid.Column="2" Classes="card" Background="{DynamicResource SurfaceFloatingBrush}" Padding="12">
-                                             <StackPanel Spacing="4">
-                                                 <PathIcon Data="{StaticResource IconWarning}" Width="16" Height="16" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Left"/>
-                                                 <TextBlock Text="{Binding PathologiesCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                 <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                         <Border Grid.Column="2" Classes="card report-section" Padding="12" MinHeight="108">
+                                             <StackPanel Spacing="4" VerticalAlignment="Center">
+                                                 <PathIcon Data="{StaticResource IconWarning}" Width="16" Height="16" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <TextBlock Text="{Binding PathologiesCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
                                      </Grid>
  
                                      <!-- Digital Fingerprint Card -->
-                                     <Border Classes="card" Background="{DynamicResource SurfaceFloatingBrush}" Padding="0" IsVisible="{Binding IsAnalysisComplete}">
+                                     <Border Classes="card report-section" Padding="0" IsVisible="{Binding IsAnalysisComplete}">
                                          <StackPanel>
-                                             <Border Background="#1800D4FF" Padding="12,8" CornerRadius="6 6 0 0" BorderBrush="#4000D4FF" BorderThickness="0,0,0,1">
+                                             <Border Background="#160078D4" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="#400078D4" BorderThickness="0,0,0,1">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Margin="0,0,8,0" Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                                                     <TextBlock Text="{Binding [Lab_Fingerprint_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                                                     <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                     <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                                     <TextBlock Text="{Binding [Lab_Fingerprint_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="12"/>
+                                                     <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Center">
                                                          <TextBlock Text="ID" FontSize="9" FontWeight="Bold" Foreground="White"/>
                                                      </Border>
                                                  </DockPanel>
                                              </Border>
-                                             <StackPanel Margin="12" Spacing="8">
+                                             <StackPanel Margin="12" Spacing="10">
                                                  <!-- Dental Code -->
-                                                 <StackPanel Spacing="2">
-                                                     <TextBlock Text="{Binding [Lab_Fingerprint_Code], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                                     <Border Background="{DynamicResource SurfaceBgBrush}" CornerRadius="4" Padding="8,6" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                                                         <TextBlock Text="{Binding FingerprintCode, FallbackValue='--'}" 
-                                                                    FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" 
-                                                                    Foreground="{DynamicResource TextPrimaryBrush}" MaxHeight="48"/>
+                                                 <StackPanel Spacing="4">
+                                                     <TextBlock Text="{Binding [Lab_Fingerprint_Code], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold"/>
+                                                     <Border Background="{DynamicResource SurfaceBgBrush}" CornerRadius="6" Padding="8,6" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                                         <ScrollViewer MaxHeight="70" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                             <TextBlock Text="{Binding FingerprintCode, FallbackValue='--'}" 
+                                                                        FontFamily="{DynamicResource FontMono}"
+                                                                        FontSize="11"
+                                                                        FlowDirection="LeftToRight"
+                                                                        TextWrapping="Wrap"
+                                                                        LineHeight="18"
+                                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                         </ScrollViewer>
                                                      </Border>
                                                  </StackPanel>
                                                  <!-- Uniqueness + Vector Status -->
-                                                 <Grid ColumnDefinitions="*, 1, *">
+                                                 <Grid ColumnDefinitions="*,1,*">
                                                      <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="2">
-                                                         <TextBlock Text="{Binding UniquenessScore, FallbackValue='0'}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                                                         <TextBlock Text="{Binding [Lab_Fingerprint_Uniqueness], Source={x:Static svc:Loc.Instance}}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                                         <TextBlock Text="{Binding UniquenessScore, StringFormat='{}{0:F1}', FallbackValue='0'}"
+                                                                    Classes="metric-value"
+                                                                    FontSize="34"
+                                                                    LineHeight="38"
+                                                                    Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                                         <TextBlock Text="{Binding [Lab_Fingerprint_Uniqueness], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
                                                      </StackPanel>
                                                      <Border Grid.Column="1" Background="{DynamicResource BorderSubtleBrush}" Margin="0,4"/>
                                                      <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="2">
-                                                         <TextBlock Text="✓" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" 
+                                                         <TextBlock Text="✓" Classes="metric-status"
                                                                     IsVisible="{Binding HasFeatureVector}" Foreground="{DynamicResource AccentGreenBrush}"/>
-                                                         <TextBlock Text="✗" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" 
+                                                         <TextBlock Text="✗" Classes="metric-status"
                                                                     IsVisible="{Binding !HasFeatureVector}" Foreground="{DynamicResource ErrorBrush}"/>
-                                                         <TextBlock Text="{Binding [Lab_Fingerprint_Vector], Source={x:Static svc:Loc.Instance}}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                                         <TextBlock Text="{Binding [Lab_Fingerprint_Vector], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
                                                      </StackPanel>
                                                  </Grid>
                                              </StackPanel>
@@ -365,7 +463,7 @@
                                      <StackPanel Spacing="10">
                                          <DockPanel>
                                              <TextBlock Text="{Binding [Lab_AI_Findings], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" VerticalAlignment="Center"/>
-                                             <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                                             <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='8,0,0,0'}" VerticalAlignment="Center">
                                                  <TextBlock Text="AI" FontSize="9" FontWeight="Bold" Foreground="White"/>
                                              </Border>
                                          </DockPanel>
@@ -410,7 +508,7 @@
                                          <DataTemplate>
                                              <Border Classes="card" Padding="12" Margin="0,4" BorderBrush="#40D83B01" BorderThickness="1" Background="#10D83B01">
                                                  <Grid ColumnDefinitions="Auto, *">
-                                                     <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource WarningBrush}" Margin="0,2,12,0" VerticalAlignment="Top" Width="16" Height="16"/>
+                                                     <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource WarningBrush}" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,2,12,0'}" VerticalAlignment="Top" Width="16" Height="16"/>
                                                      <StackPanel Grid.Column="1" Spacing="4">
                                                          <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
                                                          <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12"/>
@@ -426,7 +524,7 @@
                      
                      <!-- Secure Action Footer -->
                      <Border Grid.Row="2" Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="16">
-                         <Button Command="{Binding SaveToSubjectCommand}" Classes="primary" HorizontalAlignment="Stretch">
+                         <Button Command="{Binding SaveToSubjectCommand}" Classes="primary" HorizontalAlignment="Stretch" Padding="16,12" CornerRadius="8">
                              <StackPanel Orientation="Horizontal" Spacing="10">
                                  <PathIcon Data="{StaticResource IconCheckCircle}" Width="16" Height="16"/>
                                  <TextBlock Text="{Binding [Lab_Action_Save], Source={x:Static svc:Loc.Instance}}" FontWeight="SemiBold"/>
@@ -482,7 +580,7 @@
                         <Grid ColumnDefinitions="*, 16, *">
                             <StackPanel Grid.Column="0" Spacing="8">
                                 <TextBlock Text="{Binding [Lab_Save_Gender], Source={x:Static svc:Loc.Instance}}" Classes="label"/>
-                                <ComboBox SelectedIndex="0" SelectedItem="{Binding NewSubjectGender}" HorizontalAlignment="Stretch" Classes="modern">
+                                <ComboBox SelectedIndex="{Binding NewSubjectGenderIndex, Mode=TwoWay}" HorizontalAlignment="Stretch" Classes="modern">
                                     <ComboBoxItem Content="{Binding [Lab_Save_Gender_Male], Source={x:Static svc:Loc.Instance}}"/>
                                     <ComboBoxItem Content="{Binding [Lab_Save_Gender_Female], Source={x:Static svc:Loc.Instance}}"/>
                                     <ComboBoxItem Content="{Binding [Lab_Save_Gender_Unknown], Source={x:Static svc:Loc.Instance}}"/>

@@ -177,6 +177,11 @@ public class Loc : ILocalizationService, INotifyPropertyChanged
             ["Lab_NoImage"] = "Load a dental X-ray image",
             ["Lab_Formats"] = "Supports PNG, JPG, BMP, TIFF, DICOM",
             ["Lab_Analyzing"] = "Analyzing...",
+            ["Lab_Elapsed"] = "Elapsed",
+            ["Lab_Phase_Prepare"] = "Preparing image tensor",
+            ["Lab_Phase_Detect"] = "Running ONNX detection",
+            ["Lab_Phase_Fusing"] = "Fusing detections",
+            ["Lab_Phase_Finalize"] = "Finalizing forensic report",
             ["Lab_Results"] = "Analysis Results",
             ["Lab_TeethCount"] = "Teeth",
             ["Lab_PathologiesCount"] = "Pathologies",
@@ -305,6 +310,8 @@ public class Loc : ILocalizationService, INotifyPropertyChanged
             ["Msg_MissingInfoTitle"] = "Missing Information",
             ["Msg_MissingInfoBody"] = "Please enter the Patient Name or select an existing subject.",
             ["Msg_LinkSuccess"] = "Evidence & Fingerprint linked to: {0}",
+            ["Msg_SaveFailedTitle"] = "Save Failed",
+            ["Msg_SaveFailedBody"] = "Could not save analysis to subject. Check required fields and try again.",
         };
 
         // ── Arabic strings ──
@@ -387,6 +394,11 @@ public class Loc : ILocalizationService, INotifyPropertyChanged
             ["Lab_NoImage"] = "حمل صورة أشعة سينية سنية",
             ["Lab_Formats"] = "يدعم PNG, JPG, BMP, TIFF, DICOM",
             ["Lab_Analyzing"] = "جاري التحليل...",
+            ["Lab_Elapsed"] = "الوقت المنقضي",
+            ["Lab_Phase_Prepare"] = "تهيئة الصورة",
+            ["Lab_Phase_Detect"] = "تشغيل نماذج ONNX",
+            ["Lab_Phase_Fusing"] = "دمج نتائج الكشف",
+            ["Lab_Phase_Finalize"] = "إنهاء التقرير الجنائي",
             ["Lab_Results"] = "نتائج التحليل",
             ["Lab_TeethCount"] = "أسنان",
             ["Lab_PathologiesCount"] = "أمراض",
@@ -513,7 +525,9 @@ public class Loc : ILocalizationService, INotifyPropertyChanged
             ["Msg_NoEvidenceBody"] = "يرجى تحميل وتحليل صورة أولاً.",
             ["Msg_MissingInfoTitle"] = "معلومات ناقصة",
             ["Msg_MissingInfoBody"] = "يرجى إدخال اسم المريض أو اختيار موضوع موجود.",
-            ["Msg_LinkSuccess"] = "تم ربط الدليل والبصمة بـ: {0}"
+            ["Msg_LinkSuccess"] = "تم ربط الدليل والبصمة بـ: {0}",
+            ["Msg_SaveFailedTitle"] = "فشل الحفظ",
+            ["Msg_SaveFailedBody"] = "تعذر حفظ التحليل وربطه بالملف. تحقق من البيانات ثم أعد المحاولة."
         };
     }
 }

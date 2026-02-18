@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using DentalID.Desktop.Messages;
+using DentalID.Desktop.Models;
 using DentalID.Core.Entities;
 using DentalID.Core.Enums;
 using DentalID.Core.Interfaces;
@@ -80,8 +81,17 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     // Dialog Inputs
     [ObservableProperty] private string _newSubjectName = "";
     [ObservableProperty] private string _newSubjectGender = "Unknown";
+    [ObservableProperty] private int _newSubjectGenderIndex = 2;
     [ObservableProperty] private string _newSubjectNationalId = "";
     [ObservableProperty] private DateTime? _newSubjectDob;
+
+    partial void OnNewSubjectGenderChanged(string value) => NewSubjectGenderIndex = ToGenderIndex(value);
+    partial void OnNewSubjectGenderIndexChanged(int value) => NewSubjectGender = value switch
+    {
+        0 => "Male",
+        1 => "Female",
+        _ => "Unknown"
+    };
 
     // ── Results ──
     public ObservableCollection<DetectedTooth> DetectedTeeth { get; } = new();
@@ -107,19 +117,28 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string _searchQuery = "";
     [ObservableProperty] private bool _showTeethOverlay = true;
-    [ObservableProperty] private bool _showPathosOverlay = true;
+    [ObservableProperty] private bool _showPathosOverlay = false;
     [ObservableProperty] private double _windowCenter = 128;
     [ObservableProperty] private double _windowWidth = 256;
+    [ObservableProperty] private double _analysisVisualProgress;
+    [ObservableProperty] private string _analysisElapsed = "00:00";
+    [ObservableProperty] private string _analysisPhase = "";
+    [ObservableProperty] private double _analysisSpinnerAngle;
     
     public ObservableCollection<DetectedTooth> RawTeeth { get; } = new();
     public ILocalizationService LocalizationService => _localizationService;
     [ObservableProperty] private float _sensitivity = 0.5f;
+    private DispatcherTimer? _analysisFeedbackTimer;
+    private DateTime _analysisStartedAtUtc;
+    private int _analysisTick;
 
     [RelayCommand]
     private void CancelSave()
     {
         IsSaveDialogOpen = false;
         NewSubjectName = "";
+        NewSubjectGender = "Unknown";
+        NewSubjectGenderIndex = 2;
         NewSubjectNationalId = "";
         NewSubjectDob = null;
         SelectedSubject = null;
@@ -248,16 +267,23 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
         CurrentState = AnalysisState.Analyzing;
         StatusMessage = _localizationService["Lab_Analyzing"];
+        StartAnalysisFeedback();
 
         await SafeExecuteAsync(async () =>
         {
             if (LoadedImagePath == null) return;
+            var imagePath = LoadedImagePath;
+            var sensitivity = Sensitivity;
+            StatusMessage = _localizationService["Lab_Analyzing"];
 
-            var result = await _forensicService.AnalyzeImageAsync(LoadedImagePath, Sensitivity);
+            // Move heavy ONNX work off the UI thread to keep the desktop shell responsive.
+            var result = await Task.Run(() => _forensicService.AnalyzeImageAsync(imagePath, sensitivity));
 
             if (result.IsSuccess)
             {
-                await UpdateUIResults(result);
+                AnalysisVisualProgress = 100;
+                AnalysisPhase = _localizationService["Msg_AnalysisComplete"];
+                UpdateUIResults(result);
                 _currentAnalysisResult = result;
                 CurrentState = AnalysisState.Review;
                 StatusMessage = _localizationService["Msg_AnalysisComplete"];
@@ -270,6 +296,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
             else
             {
                 var errorMsg = result.Error ?? "Unknown failure during analysis";
+                AnalysisPhase = _localizationService["Lab_Phase_Finalize"];
                 ErrorMessage = errorMsg;
                 CurrentState = AnalysisState.Error;
                 StatusMessage = string.Format(_localizationService["Msg_AnalysisFailed"] ?? "Analysis failed: {0}", errorMsg);
@@ -285,6 +312,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
              ErrorMessage = "An unexpected error occurred.";
              StatusMessage = "Analysis interrupted.";
         }
+
+        StopAnalysisFeedback();
     }
 
     [RelayCommand]
@@ -292,7 +321,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     {
         if (_currentAnalysisResult == null || LoadedImagePath == null)
         {
-             _toastService.Show("Warning", "No analysis to save.", ToastType.Warning);
+             _toastService.Show(_localizationService["Msg_NoEvidenceTitle"], _localizationService["Msg_NoEvidenceBody"], ToastType.Warning);
              return;
         }
         _ = LoadRecentSubjectsAsync(); // Refresh list
@@ -304,7 +333,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     {
         if (_currentAnalysisResult == null || string.IsNullOrWhiteSpace(LoadedImagePath))
         {
-            _toastService.Show("Validation Error", "No completed analysis available to save.", ToastType.Warning);
+            _toastService.Show(_localizationService["Msg_NoEvidenceTitle"], _localizationService["Msg_NoEvidenceBody"], ToastType.Warning);
             return;
         }
 
@@ -316,14 +345,15 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         {
             if (string.IsNullOrWhiteSpace(NewSubjectName))
             {
-                _toastService.Show("Validation Error", "Please select or create a subject.", ToastType.Warning);
+                _toastService.Show(_localizationService["Msg_MissingInfoTitle"], _localizationService["Msg_MissingInfoBody"], ToastType.Warning);
                 return;
             }
              targetSubject = new Subject
             {
+                SubjectId = $"SUB-{Guid.NewGuid():N}",
                 FullName = NewSubjectName,
                 NationalId = NewSubjectNationalId,
-                Gender = NewSubjectGender,
+                Gender = ToGenderCode(NewSubjectGenderIndex),
                 DateOfBirth = NewSubjectDob,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -332,6 +362,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
         var previousState = CurrentState;
         CurrentState = AnalysisState.Saving;
+        var savedSubjectCode = targetSubject.SubjectId;
+        var saveSucceeded = false;
 
         await SafeExecuteAsync(async () =>
         {
@@ -339,6 +371,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
             {
                 var created = await _subjectRepo.AddAsync(targetSubject);
                 targetSubject = created;
+                savedSubjectCode = created.SubjectId;
             }
 
             // Save Image Analysis
@@ -354,13 +387,35 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
              // Log
              _logger.LogInformation($"Saved analysis for subject {targetSubject.FullName}");
+             saveSucceeded = true;
              
              IsSaveDialogOpen = false;
              
-        }, successMessage: string.Format(_localizationService["Msg_LinkSuccess"] ?? "Evidence linked to {0}", targetSubject?.FullName ?? "subject"));
+        },
+        errorMessage: _localizationService["Msg_SaveFailedBody"] ?? "Failed to save evidence record.",
+        successMessage: string.Format(_localizationService["Msg_LinkSuccess"] ?? "Evidence linked to {0}", targetSubject?.FullName ?? "subject"),
+        errorTitle: _localizationService["Msg_SaveFailedTitle"] ?? "Save Failed");
 
         if (CurrentState == AnalysisState.Saving)
             CurrentState = previousState;
+
+        if (saveSucceeded)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var subjectsVm = _navigationService.NavigateTo<SubjectsViewModel>();
+                if (subjectsVm == null)
+                {
+                    _logger.LogWarning("[NAV] Save succeeded but navigation to SubjectsViewModel returned null.");
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(savedSubjectCode))
+                {
+                    _ = subjectsVm.FocusSubjectByCodeAsync(savedSubjectCode);
+                }
+            });
+        }
     }
 
     [RelayCommand]
@@ -378,7 +433,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
     /* AI Chat Removed */
 
-    private async Task UpdateUIResults(AnalysisResult result)
+    private void UpdateUIResults(AnalysisResult result)
     {
         ClearResults();
         
@@ -398,6 +453,9 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         foreach (var t in result.Teeth)
         {
             DetectedTeeth.Add(t);
+        }
+        foreach (var t in result.RawTeeth)
+        {
             RawTeeth.Add(t);
         }
         foreach (var p in result.Pathologies) DetectedPathologies.Add(p);
@@ -410,6 +468,64 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
         // 5. Update Odontogram
         Odontogram.Update(result);
+    }
+
+    private void StartAnalysisFeedback()
+    {
+        _analysisFeedbackTimer?.Stop();
+        _analysisFeedbackTimer = null;
+
+        _analysisStartedAtUtc = DateTime.UtcNow;
+        _analysisTick = 0;
+        AnalysisVisualProgress = 6;
+        AnalysisElapsed = "00:00";
+        AnalysisPhase = _localizationService["Lab_Phase_Prepare"];
+        AnalysisSpinnerAngle = 0;
+
+        _analysisFeedbackTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(180)
+        };
+
+        _analysisFeedbackTimer.Tick += OnAnalysisFeedbackTick;
+        _analysisFeedbackTimer.Start();
+    }
+
+    private void StopAnalysisFeedback()
+    {
+        if (_analysisFeedbackTimer != null)
+        {
+            _analysisFeedbackTimer.Stop();
+            _analysisFeedbackTimer.Tick -= OnAnalysisFeedbackTick;
+            _analysisFeedbackTimer = null;
+        }
+
+        if (CurrentState != AnalysisState.Review && CurrentState != AnalysisState.Saving)
+        {
+            AnalysisVisualProgress = 0;
+        }
+    }
+
+    private void OnAnalysisFeedbackTick(object? sender, EventArgs e)
+    {
+        _analysisTick++;
+        AnalysisSpinnerAngle = (AnalysisSpinnerAngle + 14) % 360;
+
+        var elapsed = DateTime.UtcNow - _analysisStartedAtUtc;
+        AnalysisElapsed = elapsed.ToString(@"mm\:ss");
+
+        if (AnalysisVisualProgress < 92)
+        {
+            AnalysisVisualProgress = Math.Min(92, AnalysisVisualProgress + 0.7);
+        }
+
+        AnalysisPhase = _analysisTick switch
+        {
+            < 12 => _localizationService["Lab_Phase_Prepare"],
+            < 26 => _localizationService["Lab_Phase_Detect"],
+            < 40 => _localizationService["Lab_Phase_Fusing"],
+            _ => _localizationService["Lab_Phase_Finalize"]
+        };
     }
 
     private void ClearResults()
@@ -433,13 +549,21 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        StopAnalysisFeedback();
         _currentBitmap?.Dispose();
     }
-}
 
-public class AiMessage
-{
-    public string Role { get; set; } = "System";
-    public string Content { get; set; } = "";
-    public DateTime Timestamp { get; set; }
+    private static int ToGenderIndex(string? rawGender) => Subject.NormalizeGenderCode(rawGender) switch
+    {
+        "Male" => 0,
+        "Female" => 1,
+        _ => 2
+    };
+
+    private static string ToGenderCode(int index) => index switch
+    {
+        0 => "Male",
+        1 => "Female",
+        _ => "Unknown"
+    };
 }

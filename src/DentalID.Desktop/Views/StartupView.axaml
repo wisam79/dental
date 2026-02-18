@@ -47,29 +47,33 @@
                         Spacing="0">
 
                 <!-- Logo mark -->
-                <Border Width="88" Height="88"
-                        CornerRadius="22"
-                        Margin="0,0,0,28"
-                        HorizontalAlignment="Center">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                            <GradientStop Color="#200078D4" Offset="0"/>
-                            <GradientStop Color="#100078D4" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <Border.BorderBrush>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                            <GradientStop Color="#600078D4" Offset="0"/>
-                            <GradientStop Color="#200078D4" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.BorderBrush>
-                    <Border.BorderThickness>1</Border.BorderThickness>
-                    <PathIcon Data="{StaticResource IconFingerprint}"
-                              Width="44" Height="44"
-                              Foreground="{DynamicResource AccentPrimaryBrush}"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"/>
-                </Border>
+                <Grid Margin="0,0,0,28" HorizontalAlignment="Center">
+                    <Border Width="102" Height="102" CornerRadius="30" Background="#080078D4"/>
+                    <Border Width="88" Height="88"
+                            CornerRadius="22"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Color="#200078D4" Offset="0"/>
+                                <GradientStop Color="#100078D4" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Color="#600078D4" Offset="0"/>
+                                <GradientStop Color="#200078D4" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <Border.BorderThickness>1</Border.BorderThickness>
+                        <Image Source="/Assets/Brand/dental.png"
+                               Width="50"
+                               Height="50"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Stretch="Uniform"/>
+                    </Border>
+                </Grid>
 
                 <!-- App name -->
                 <TextBlock Text="DENTAL ID"
@@ -138,6 +142,48 @@
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
+                    </Grid>
+
+                    <!-- Startup stage chips -->
+                    <Grid ColumnDefinitions="*,8,*,8,*" Margin="0,8,0,0">
+                        <Border Grid.Column="0"
+                                CornerRadius="8"
+                                Padding="8,4"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Background="#12000000"
+                                Opacity="{Binding IntegrityOpacity}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                <PathIcon Data="{StaticResource IconCheckCircle}" Width="10" Height="10" Foreground="{DynamicResource SuccessBrush}"/>
+                                <TextBlock Text="Integrity" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2"
+                                CornerRadius="8"
+                                Padding="8,4"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Background="#12000000"
+                                Opacity="{Binding DatabaseOpacity}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                <PathIcon Data="{StaticResource IconDatabase}" Width="10" Height="10" Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                                <TextBlock Text="Database" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="4"
+                                CornerRadius="8"
+                                Padding="8,4"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Background="#12000000"
+                                Opacity="{Binding AiOpacity}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                <PathIcon Data="{StaticResource IconAnalysis}" Width="10" Height="10" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                <TextBlock Text="AI Engine" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </StackPanel>
 

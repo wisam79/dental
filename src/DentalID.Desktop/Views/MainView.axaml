@@ -3,16 +3,47 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
              x:Class="DentalID.Desktop.Views.MainView"
              x:DataType="vm:MainWindowViewModel">
 
-    <Grid RowDefinitions="Auto, *, Auto" Background="{DynamicResource SurfaceDeepBrush}">
+    <Grid RowDefinitions="Auto, *, Auto" Background="#101216">
+        <!-- Ambient background layers -->
+        <Canvas IsHitTestVisible="False" ClipToBounds="True">
+            <Ellipse Width="560" Height="560" Canvas.Left="-180" Canvas.Top="-220" Opacity="0.18">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="70%" RadiusY="70%">
+                        <GradientStop Offset="0.0" Color="#5A0078D4"/>
+                        <GradientStop Offset="1.0" Color="#000078D4"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Ellipse Width="520" Height="520" Canvas.Right="-220" Canvas.Bottom="-220" Opacity="0.12">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="70%" RadiusY="70%">
+                        <GradientStop Offset="0.0" Color="#4A60CDFF"/>
+                        <GradientStop Offset="1.0" Color="#0060CDFF"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Canvas>
+
         <!-- TOP COMMAND BAR (Floating Style) -->
-        <Grid Grid.Row="0" Height="50" Background="Transparent" Margin="0,0,0,0">
+        <Border Grid.Row="0"
+                Margin="14,12,14,8"
+                Height="54"
+                Background="#CC1B2028"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="12">
             <Grid ColumnDefinitions="Auto, *, Auto">
                 <!-- Branding -->
-                <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center" Spacing="12">
+                <StackPanel Orientation="Horizontal"
+                             Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"
+                             VerticalAlignment="Center"
+                             Spacing="12">
                      <TextBlock Text="DENTAL ID" FontWeight="Bold" FontSize="16" LetterSpacing="2" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="{DynamicResource FontSans}"/>
                      <Border Height="16" Width="1" Background="{DynamicResource BorderSubtleBrush}"/>
                      <TextBlock Text="FORENSIC SUITE" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Opacity="0.7" FontFamily="{DynamicResource FontSans}"/>
@@ -20,19 +51,22 @@
 
                 <!-- Breadcrumbs / Status -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Border Background="#10FFFFFF" CornerRadius="4" Padding="12,4" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                    <Border Background="#18FFFFFF" CornerRadius="6" Padding="12,5" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                             <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                              <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                             <TextBlock Text="DENTAL ID" Classes="mono" Foreground="{DynamicResource TextDisabledBrush}" FontSize="12"/>
-                            <PathIcon Data="{StaticResource IconArrowRight}" Width="10" Height="10" Foreground="{DynamicResource TextDisabledBrush}"/>
+                            <PathIcon Data="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Next}" Width="10" Height="10" Foreground="{DynamicResource TextDisabledBrush}"/>
                             <TextBlock Text="{Binding CurrentPageTitle}" FontWeight="SemiBold" Foreground="{DynamicResource AccentSecondaryBrush}" FontSize="12"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
 
                 <!-- Window Controls & Profile -->
-                <!-- Margin Right 140 to avoid overlapping Native Caption Buttons -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,140,0" Spacing="16" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,20,0'}"
+                            Spacing="16"
+                            VerticalAlignment="Center">
                     <Button Classes="ghost" ToolTip.Tip="{DynamicResource Str_GlobalSearch}" Padding="8">
                         <PathIcon Data="{StaticResource IconSearch}" Width="16" Height="16"/>
                     </Button>
@@ -52,25 +86,34 @@
                     </StackPanel>
                 </StackPanel>
             </Grid>
-        </Grid>
+        </Border>
 
         <!-- MAIN LAYOUT -->
-        <Grid Grid.Row="1" ColumnDefinitions="80, *">
-            
+        <Grid Grid.Row="1" ColumnDefinitions="92, *" Margin="14,0,14,10">
+             
             <!-- SIDEBAR (Navigation Rail - Left) -->
-            <Border Grid.Column="0" Margin="0,10,10,10" CornerRadius="0 12 12 0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,1,1" ClipToBounds="True">
+            <Border Grid.Column="0"
+                    Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}"
+                    CornerRadius="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredCornerRadiusConverter.Instance}, ConverterParameter='0,12,12,0'}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,1,1,1'}"
+                    ClipToBounds="True">
                 <Border.Background>
-                    <SolidColorBrush Color="#0E0E10" Opacity="0.95"/>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#F012161D" Offset="0"/>
+                        <GradientStop Color="#F00B0E13" Offset="1"/>
+                    </LinearGradientBrush>
                 </Border.Background>
                 <Grid RowDefinitions="Auto, *, Auto">
                     
                     <!-- Branding Mark (Top) -->
                     <Border Height="60" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                        <PathIcon Data="{StaticResource IconFingerprint}" Width="24" Height="24" Foreground="{DynamicResource AccentPrimaryBrush}" Opacity="0.8">
-                             <PathIcon.Effect>
-                            <!-- <DropShadowEffect Color="{StaticResource AccentPrimaryColor}" BlurRadius="10" Opacity="0.3"/> -->
-                            </PathIcon.Effect>
-                        </PathIcon>
+                        <Image Source="/Assets/Brand/dental.png"
+                               Width="30"
+                               Height="30"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Stretch="Uniform"/>
                     </Border>
 
                     <!-- Navigation Items -->
@@ -100,7 +143,7 @@
                                     </Style>
                                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
                                         <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-                                        <Setter Property="BoxShadow" Value="0 4 12 0 #400078D4"/> <!-- Blue Glow -->
+                                        <Setter Property="BoxShadow" Value="0 8 18 0 #320078D4"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected PathIcon">
                                         <Setter Property="Foreground" Value="White"/>
@@ -154,7 +197,7 @@
                     
                     <!-- Sidebar Footer (System Status) -->
                     <StackPanel Grid.Row="2" Margin="0,0,0,20" HorizontalAlignment="Center">
-                        <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" ToolTip.Tip="System Online">
+                        <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" ToolTip.Tip="{DynamicResource Str_SystemOnline}">
                             <Border.Effect>
                                 <BlurEffect Radius="4"/>
                             </Border.Effect>
@@ -165,37 +208,52 @@
 
             <!-- CONTENT AREA (Right) -->
             <Grid Grid.Column="1">
-                <!-- Subtle Background Glow -->
-                <Border Background="{DynamicResource PageBgBrush}" CornerRadius="16 0 0 0" ClipToBounds="True">
+                <Border Background="{DynamicResource PageBgBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="16"
+                        ClipToBounds="True">
                      <Grid>
                         <!-- Digital Grid Pattern -->
-                        <Grid Opacity="0.03" IsVisible="{Binding IsFocusMode, Converter={x:Static BoolConverters.Not}}">
+                        <Grid Opacity="0.02" IsVisible="{Binding IsFocusMode, Converter={x:Static BoolConverters.Not}}">
                             <Path Data="M0,0 L20,20 M20,0 L0,20" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1" Stretch="Fill"/>
                          </Grid>
-                        
+                         
                          <!-- Main Content -->
-                         <ContentControl Content="{Binding CurrentView}" Margin="0"/>
+                         <ContentControl Content="{Binding CurrentView}" Margin="8"/>
                      </Grid>
                 </Border>
             </Grid>
         </Grid>
 
         <!-- STATUS BAR -->
-        <Border Grid.Row="2" Background="{DynamicResource SurfaceDeepBrush}" Height="32">
-            <Grid ColumnDefinitions="Auto, *, Auto" Margin="24,0">
+        <Border Grid.Row="2"
+                Margin="14,0,14,10"
+                Height="34"
+                Background="#C9151A20"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="10">
+            <Grid ColumnDefinitions="Auto, *, Auto" Margin="16,0">
                 <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                     <PathIcon Data="{StaticResource IconCheckCircle}" Width="12" Height="12" Foreground="{DynamicResource SuccessBrush}"/>
-                    <TextBlock Text="Secure Connection: Encrypted" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBlock Text="{DynamicResource Str_Status_SecureConnection}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="AI ENGINE:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDisabledBrush}"/>
-                        <TextBlock Text="ONNX Runtime" FontSize="10" Foreground="{DynamicResource AccentTertiaryBrush}"/>
+                        <TextBlock Text="{DynamicResource Str_Status_AiEngine}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <TextBlock Text="{DynamicResource Str_Status_AiRuntime}" FontSize="10" Foreground="{DynamicResource AccentTertiaryBrush}"/>
                      </StackPanel>
                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="STATUS:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDisabledBrush}"/>
-                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Width="60" Height="2" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                        <TextBlock Text="{DynamicResource Str_Status_Label}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDisabledBrush}"/>
+                        <ProgressBar IsIndeterminate="True"
+                                     IsVisible="{Binding IsBusy}"
+                                     Width="60"
+                                     Height="2"
+                                     VerticalAlignment="Center"
+                                     Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}"
+                                     Foreground="{DynamicResource AccentPrimaryBrush}"/>
                         <TextBlock Text="{Binding BusyMessage}" FontSize="10" Foreground="{DynamicResource SuccessBrush}"/>
                      </StackPanel>
                 </StackPanel>
