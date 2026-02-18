@@ -1,0 +1,170 @@
+using System.Linq.Expressions;
+using DentalID.Core.Entities;
+using DentalID.Core.Interfaces;
+using DentalID.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace DentalID.Infrastructure.Repositories;
+
+/// <summary>
+/// Generic repository implementation
+/// </summary>
+/// <typeparam name="T">Entity type</typeparam>
+public class GenericRepository<T> : IRepository<T> where T : BaseEntity
+{
+    protected readonly AppDbContext _context;
+    protected readonly DbSet<T> _dbSet;
+
+    public GenericRepository(AppDbContext context)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _dbSet = _context.Set<T>();
+    }
+
+    #region Get Methods
+
+    public virtual async Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FindAsync([id], cancellationToken);
+    }
+
+    public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object>>[] includes)
+    {
+        IQueryable<T> query = _dbSet;
+        
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
+
+        return await query.FirstOrDefaultAsync(x => x.Id == id);
+    }
+
+    public virtual async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.ToListAsync(cancellationToken);
+    }
+
+    public virtual async Task<List<T>> GetAllAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.Where(predicate).ToListAsync(cancellationToken);
+    }
+
+    public virtual async Task<List<T>> GetAllAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+    {
+        IQueryable<T> query = _dbSet.Where(predicate);
+        
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
+
+        return await query.ToListAsync();
+    }
+
+    public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(predicate, cancellationToken);
+    }
+
+    public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+    {
+        IQueryable<T> query = _dbSet.Where(predicate);
+        
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
+
+        return await query.FirstOrDefaultAsync();
+    }
+
+    #endregion
+
+    #region Query Methods
+
+    public virtual async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.AnyAsync(predicate, cancellationToken);
+    }
+
+    public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.CountAsync(predicate, cancellationToken);
+    }
+
+    #endregion
+
+    #region Add Methods
+
+    public virtual async Task AddAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        await _dbSet.AddAsync(entity, cancellationToken);
+        // Bug #25 fix: actually persist to DB — without this, data is silently lost
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
+        await _dbSet.AddRangeAsync(entities, cancellationToken);
+    }
+
+    #endregion
+
+    #region Update Methods
+
+    public virtual void Update(T entity)
+    {
+        _dbSet.Update(entity);
+    }
+
+    public virtual void UpdateRange(IEnumerable<T> entities)
+    {
+        _dbSet.UpdateRange(entities);
+    }
+
+    #endregion
+
+    #region Remove Methods
+
+    public virtual void Remove(T entity)
+    {
+        _dbSet.Remove(entity);
+    }
+
+    public virtual void RemoveRange(IEnumerable<T> entities)
+    {
+        _dbSet.RemoveRange(entities);
+    }
+
+    public virtual async Task RemoveAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var entity = await GetByIdAsync(id, cancellationToken);
+        
+        if (entity != null)
+        {
+            Remove(entity);
+        }
+    }
+
+    #endregion
+
+    #region Advanced Methods
+
+    public virtual async Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters)
+    {
+        return await _context.Database.ExecuteSqlRawAsync(sql, parameters);
+    }
+
+    public virtual async Task<List<T>> FromSqlRawAsync(string sql, params object[] parameters)
+    {
+        return await _dbSet.FromSqlRaw(sql, parameters).ToListAsync();
+    }
+
+    public virtual IQueryable<T> AsQueryable()
+    {
+        return _dbSet.AsQueryable();
+    }
+
+    #endregion
+}

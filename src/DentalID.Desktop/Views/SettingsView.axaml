@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             x:Class="DentalID.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer>
+        <StackPanel Spacing="32" MaxWidth="600" Margin="0,8">
+
+            <!-- Appearance Section -->
+            <Border Background="{DynamicResource CardBgBrush}"
+                    BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{DynamicResource Str_Settings_Appearance}"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                    <TextBlock Text="{DynamicResource Str_Settings_Theme}"
+                               FontSize="13" Foreground="{DynamicResource TextMutedBrush}"
+                               Margin="0,4,0,0"/>
+
+                    <!-- Theme Radio Buttons -->
+                    <StackPanel Spacing="8">
+                        <RadioButton GroupName="Theme"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=0}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconMoon}" Width="16" Height="16"/>
+                                <TextBlock Text="{DynamicResource Str_Settings_ThemeDark}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="Theme"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=1}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconSun}" Width="16" Height="16"/>
+                                <TextBlock Text="{DynamicResource Str_Settings_ThemeLight}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="Theme"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=2}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconContrast}" Width="16" Height="16"/>
+                                <TextBlock Text="{DynamicResource Str_Settings_ThemeHC}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Language Section -->
+            <Border Background="{DynamicResource CardBgBrush}"
+                    BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{DynamicResource Str_Settings_Localization}"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                    <TextBlock Text="{DynamicResource Str_Settings_Language}"
+                               FontSize="13" Foreground="{DynamicResource TextMutedBrush}"
+                               Margin="0,4,0,0"/>
+
+                    <StackPanel Spacing="8">
+                        <RadioButton GroupName="Language"
+                                     IsChecked="{Binding SelectedLanguageIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=0}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="EN" FontWeight="Bold" Width="24" TextAlignment="Center"/>
+                                <TextBlock Text="English" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="Language"
+                                     IsChecked="{Binding SelectedLanguageIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=1}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="AR" FontWeight="Bold" Width="24" TextAlignment="Center"/>
+                                <TextBlock Text="العربية" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Data Management Section -->
+            <Border Background="{DynamicResource CardBgBrush}"
+                    BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{DynamicResource Str_Settings_Data}"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+
+                    <TextBlock Text="{DynamicResource Str_Settings_DataDesc}"
+                               FontSize="13" Foreground="{DynamicResource TextMutedBrush}"
+                               Margin="0,4,0,0"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <Button Command="{Binding ExportSubjectsCommand}"
+                                Content="{DynamicResource Str_Settings_ExportSubj}"
+                                Classes="Outline"/>
+                        
+                        <Button Command="{Binding ExportCasesCommand}"
+                                Content="{DynamicResource Str_Settings_ExportCases}"
+                                Classes="Outline"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

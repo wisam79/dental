@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="DentalID.Desktop.Views.StartupView"
+             x:DataType="vm:StartupViewModel">
+
+    <Grid Background="#1A1A1A">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+            <!-- App Logo / Title -->
+            <TextBlock Text="{DynamicResource Str_App_Title}" 
+                       FontSize="48" 
+                       FontWeight="Bold" 
+                       Foreground="#007ACC" 
+                       HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="{Binding Version}" 
+                       FontSize="16" 
+                       Foreground="#888888" 
+                       HorizontalAlignment="Center"/>
+
+            <ProgressBar Value="{Binding ProgressValue}" 
+                         Minimum="0" Maximum="100" 
+                         Width="400" Height="4"
+                         Background="#333333" 
+                         Foreground="#007ACC"
+                         Margin="0,20,0,10"/>
+
+            <TextBlock Text="{Binding StatusMessage}" 
+                       FontSize="14" 
+                       Foreground="#CCCCCC" 
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"/>
+        </StackPanel>
+        
+        <TextBlock Text="{DynamicResource Str_Startup_Warning}"
+                   FontSize="12"
+                   Foreground="#555555"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Margin="20"/>
+    </Grid>
+</UserControl>

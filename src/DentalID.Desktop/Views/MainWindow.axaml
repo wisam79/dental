@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:DentalID.Desktop.Views"
+        xmlns:svc="using:DentalID.Desktop.Services"
+        xmlns:conv="using:DentalID.Desktop.Converters"
+        x:Class="DentalID.Desktop.Views.MainWindow"
+        Title="DentalID"
+        Width="1400" Height="900"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="Mica, AcrylicBlur, Blur"
+        Background="Transparent"
+        FlowDirection="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlowDirectionConverter.Instance}}">
+
+    
+    <Grid>
+        <views:MainView />
+    </Grid>
+</Window>

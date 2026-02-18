@@ -1,0 +1,107 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="DentalID.Desktop.Views.ImportWizardView"
+             x:DataType="vm:ImportWizardViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.wizardCard">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="BoxShadow" Value="0 4 10 0 #20000000"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <Border Background="{DynamicResource PrimaryGradientBrush}" Height="60" Padding="20,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                <PathIcon Data="{StaticResource IconSave}" Foreground="White"/> <!-- Using Save icon as generic import/data icon -->
+                <TextBlock Text="{DynamicResource Str_Import_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" Padding="20">
+            <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Center">
+                
+                <!-- Status Bar -->
+                <Border Classes="wizardCard" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="1">
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="16" FontWeight="Medium"/>
+                </Border>
+
+                <!-- STEP 1: File Selection -->
+                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="{DynamicResource Str_Import_Step1}" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Text="{DynamicResource Str_Import_Formats}" Foreground="Gray"/>
+                        
+                        <Button Command="{Binding SelectFileCommand}" 
+                                HorizontalAlignment="Center" 
+                                Classes="primary"
+                                Padding="20,10">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <PathIcon Data="{StaticResource IconFolderOpen}"/>
+                                <TextBlock Text="{DynamicResource Str_Import_Browse}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- STEP 2: Mapping -->
+                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2}">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="{DynamicResource Str_Import_Step2}" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Text="{DynamicResource Str_Import_MapDesc}" Foreground="Gray"/>
+
+                        <ItemsControl ItemsSource="{Binding Mappings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="200, 20, *" Margin="0,5">
+                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBlock Text="→" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <ComboBox Grid.Column="2" 
+                                                  ItemsSource="{Binding SourceColumns}"
+                                                  SelectedItem="{Binding SelectedSourceColumn}"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Spacing="8" HorizontalAlignment="Right">
+                            <ProgressBar Value="{Binding ImportProgress}" Maximum="100" Width="200" IsVisible="{Binding IsImporting}" AutomationProperties.Name="{DynamicResource Str_Processing}"/>
+                            <TextBlock Text="{Binding ImportStatus}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsImporting}"/>
+                            <Button Command="{Binding ExecuteImportCommand}" 
+                                    Classes="accent" 
+                                    Content="{DynamicResource Str_Import_Start}" 
+                                    IsEnabled="{Binding !IsImporting}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                
+                <!-- STEP 3: Results -->
+                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=3}">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="{DynamicResource Str_Import_Step3}" FontSize="18" FontWeight="Bold"/>
+                        
+                        <TextBox Text="{Binding ImportLog}" 
+                                 Height="200" 
+                                 IsReadOnly="True" 
+                                 AcceptsReturn="True"
+                                 FontFamily="Consolas, Monospace"/>
+
+                        <Button Command="{Binding ResetCommand}" 
+                                Content="{DynamicResource Str_Import_Another}" 
+                                HorizontalAlignment="Right"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

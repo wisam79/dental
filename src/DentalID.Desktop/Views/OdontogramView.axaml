@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
+             x:Class="DentalID.Desktop.Views.OdontogramView"
+             x:DataType="vm:OdontogramViewModel">
+    
+    <UserControl.Styles>
+        <Style Selector="Border.treatmentItem">
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.treatmentItem:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.05)"/>
+        </Style>
+    </UserControl.Styles>
+
+     <Grid ColumnDefinitions="*, 200">
+        <!-- Main Chart -->
+        <Border Grid.Column="0" Background="{DynamicResource CardBgBrush}" CornerRadius="12" Padding="16" Margin="0,0,16,0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                    <TextBlock Text="{DynamicResource Str_Odo_Title}" FontWeight="SemiBold"/>
+                    <Button Content="{DynamicResource Str_Odo_Reset}" Command="{Binding ResetCommand}" Classes="accent" Padding="8,4" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Chart -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <Grid ColumnDefinitions="*,16,*" RowDefinitions="*,16,*" HorizontalAlignment="Center" VerticalAlignment="Center" Width="800" Height="600">
+                        
+                        <Grid.Resources>
+                             <DataTemplate x:Key="ToothTemplate" DataType="vm:ToothViewModel">
+                                 <StackPanel Spacing="4" ToolTip.Tip="{Binding TooltipText}" Background="Transparent"
+                                             DragDrop.AllowDrop="True"
+                                             DragDrop.DragOver="OnToothDragOver"
+                                             DragDrop.Drop="OnToothDrop">
+                                    <!-- Tooth Visual -->
+                                    <Grid Width="48" Height="60">
+                                        <!-- Tooth Shape -->
+                                        <Path Data="{Binding Geometry}" 
+                                              Fill="{Binding FillColor}"
+                                              Stroke="Gray" StrokeThickness="1"
+                                              Stretch="Uniform"/>
+                                        
+                                        <!-- Status Overlay (e.g. Red X for Missing if needed, or simple opacity) -->
+                                        <Path Data="M0,0 L1,1 M1,0 L0,1" Stroke="Red" StrokeThickness="2" Stretch="Uniform"
+                                              IsVisible="{Binding IsMissing}"/>
+                                    </Grid>
+                                     <!-- FDI Number -->
+                                     <TextBlock Text="{Binding FdiNumber}" HorizontalAlignment="Center" FontSize="12" Foreground="Gray"/>
+                                 </StackPanel>
+                            </DataTemplate>
+                        </Grid.Resources>
+
+                    <!-- Viewer's Left: Q1 (18..11) -->
+                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Quadrant1}" ItemTemplate="{StaticResource ToothTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    
+                    <!-- Viewer's Right: Q2 (21..28) -->
+                    <ItemsControl Grid.Row="0" Grid.Column="2" ItemsSource="{Binding Quadrant2}" ItemTemplate="{StaticResource ToothTemplate}">
+                         <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <!-- Center Cross -->
+                    <Rectangle Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Fill="{DynamicResource BorderPrimaryBrush}" Width="1"/>
+                    <Rectangle Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Fill="{DynamicResource BorderPrimaryBrush}" Height="1"/>
+
+                    <!-- Viewer's Left: Q4 (48..41) -->
+                    <ItemsControl Grid.Row="2" Grid.Column="0" ItemsSource="{Binding Quadrant4}" ItemTemplate="{StaticResource ToothTemplate}">
+                         <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    <!-- Viewer's Right: Q3 (31..38) -->
+                    <ItemsControl Grid.Row="2" Grid.Column="2" ItemsSource="{Binding Quadrant3}" ItemTemplate="{StaticResource ToothTemplate}">
+                         <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Legend -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" Margin="0,16,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="12" Height="12" CornerRadius="6" Background="White" BorderBrush="Gray" BorderThickness="1"/>
+                        <TextBlock Text="{DynamicResource Str_Odo_Healthy}" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Border Width="12" Height="12" CornerRadius="6" Background="Red"/>
+                        <TextBlock Text="{DynamicResource Str_Odo_Pathology}" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Tools / Palette -->
+        <Border Grid.Column="1" Background="{DynamicResource CardBgBrush}" CornerRadius="12" Padding="16">
+            <StackPanel Spacing="12">
+                <TextBlock Text="{DynamicResource Str_Odo_Palette}" FontWeight="SemiBold"/>
+                <TextBlock Text="{DynamicResource Str_Odo_DragHint}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                
+                <ItemsControl ItemsSource="{Binding Treatments}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="treatmentItem"
+                                    Background="{DynamicResource SurfaceBgBrush}"
+                                    CornerRadius="6" Padding="8" Margin="0,4"
+                                    PointerPressed="OnTreatmentPointerPressed">
+                                <Grid ColumnDefinitions="24, *">
+                                    <Border Width="16" Height="16" CornerRadius="8" 
+                                            Background="{Binding Color}" BorderBrush="Gray" BorderThickness="1"/>
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12"/>
+                                        <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

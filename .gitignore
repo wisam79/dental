@@ -1,0 +1,107 @@
+## .NET / C# Ignore File
+
+# Build outputs
+bin/
+obj/
+out/
+publish/
+
+# .NET specific
+*.user
+*.suo
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.db-wal
+*.db-shm
+
+# SQLite databases (runtime data)
+dentalid.db
+*.db
+data/
+
+# NuGet
+.nuget/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio
+.vs/
+*.rsuser
+*.vscache
+*.cache
+*.aps
+*.ncb
+*.opendb
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.opendb
+[Tt]est[Rr]esult*/
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# OS
+*.log
+*.tmp
+
+# Security - NEVER commit real secrets
+# appsettings.Development.json contains dev secrets
+src/DentalID.Desktop/appsettings.Development.json
+
+# ONNX Model files (large binary files - exceed GitHub's 100MB limit)
+# Store models separately and download before running
+models/*.onnx
+models/buffalo_l/*.onnx
+models/export_model.py
+# Desktop embedded models (also large)
+src/DentalID.Desktop/Models/*.onnx
+**/*.onnx
+
+# Debug/Test output files
+debug_tool_output*.txt
+detection_debug*.txt
+run_log_verbose.txt
+output.log
+TestResolveViewModel.cs
+
+# Panoramic dataset images (large dataset - store externally)
+Panoramic Dental Xray Dataset/
+
+# Published output
+publish.ps1
+
+# Benchmark results
+src/DentalID.Benchmark/benchmark_results_*.csv
+
+# Test runtime data
+tests/*/bin/Debug/net8.0/data/
+tests/DebugTool/
+tests/BatchXrayTest/
+tests/BatchXrayTest.csx

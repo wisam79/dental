@@ -1,0 +1,76 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══ DentalID Dark Theme (GitHub Dark) ═══ -->
+
+    <!-- Backgrounds -->
+    <Color x:Key="ThemeBg">#0D1117</Color>
+    <Color x:Key="SidebarBg">#161B22</Color>
+    <Color x:Key="CardBg">#161B22</Color>
+    <Color x:Key="SurfaceBg">#1C2128</Color>
+    <Color x:Key="InputBg">#0D1117</Color>
+    <Color x:Key="OverlayBg">#1C2333</Color>
+
+    <!-- Borders -->
+    <Color x:Key="BorderPrimary">#30363D</Color>
+    <Color x:Key="BorderSecondary">#21262D</Color>
+    <Color x:Key="BorderFocus">#1F6FEB</Color>
+
+    <!-- Text -->
+    <Color x:Key="TextPrimary">#E6EDF3</Color>
+    <Color x:Key="TextSecondary">#C9D1D9</Color>
+    <Color x:Key="TextMuted">#8B949E</Color>
+    <Color x:Key="TextDisabled">#484F58</Color>
+
+    <!-- Accent Colors -->
+    <Color x:Key="AccentBlue">#58A6FF</Color>
+    <Color x:Key="AccentBlueDark">#1F6FEB</Color>
+    <Color x:Key="AccentGreen">#3FB950</Color>
+    <Color x:Key="AccentRed">#F85149</Color>
+    <Color x:Key="AccentOrange">#D29922</Color>
+    <Color x:Key="AccentPurple">#BC8CFF</Color>
+
+    <!-- Navigation -->
+    <Color x:Key="NavItemHover">#1C2333</Color>
+    <Color x:Key="NavItemSelected">#1F6FEB</Color>
+    <Color x:Key="NavItemSelectedText">#FFFFFF</Color>
+    <Color x:Key="NavItemText">#8B949E</Color>
+    <Color x:Key="NavItemHoverText">#C9D1D9</Color>
+
+    <!-- Status -->
+    <Color x:Key="StatusSuccess">#3FB950</Color>
+    <Color x:Key="StatusWarning">#D29922</Color>
+    <Color x:Key="StatusError">#F85149</Color>
+    <Color x:Key="StatusInfo">#58A6FF</Color>
+
+    <!-- SolidColorBrushes (for direct binding) -->
+    <SolidColorBrush x:Key="ThemeBgBrush" Color="{StaticResource ThemeBg}"/>
+    <SolidColorBrush x:Key="SidebarBgBrush" Color="{StaticResource SidebarBg}"/>
+    <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource CardBg}"/>
+    <SolidColorBrush x:Key="SurfaceBgBrush" Color="{StaticResource SurfaceBg}"/>
+    <SolidColorBrush x:Key="InputBgBrush" Color="{StaticResource InputBg}"/>
+    <SolidColorBrush x:Key="OverlayBgBrush" Color="{StaticResource OverlayBg}"/>
+    <SolidColorBrush x:Key="BorderPrimaryBrush" Color="{StaticResource BorderPrimary}"/>
+    <SolidColorBrush x:Key="BorderSecondaryBrush" Color="{StaticResource BorderSecondary}"/>
+    <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocus}"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabled}"/>
+    <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
+    <SolidColorBrush x:Key="AccentBlueDarkBrush" Color="{StaticResource AccentBlueDark}"/>
+    <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreen}"/>
+    <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource AccentRed}"/>
+    <SolidColorBrush x:Key="AccentOrangeBrush" Color="{StaticResource AccentOrange}"/>
+    <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}"/>
+    <SolidColorBrush x:Key="NavItemHoverBrush" Color="{StaticResource NavItemHover}"/>
+    <SolidColorBrush x:Key="NavItemSelectedBrush" Color="{StaticResource NavItemSelected}"/>
+    <SolidColorBrush x:Key="NavItemSelectedTextBrush" Color="{StaticResource NavItemSelectedText}"/>
+    <SolidColorBrush x:Key="NavItemTextBrush" Color="{StaticResource NavItemText}"/>
+    <SolidColorBrush x:Key="NavItemHoverTextBrush" Color="{StaticResource NavItemHoverText}"/>
+    <SolidColorBrush x:Key="StatusSuccessBrush" Color="{StaticResource StatusSuccess}"/>
+    <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarning}"/>
+    <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusError}"/>
+    <SolidColorBrush x:Key="StatusInfoBrush" Color="{StaticResource StatusInfo}"/>
+
+</ResourceDictionary>

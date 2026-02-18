@@ -1,0 +1,252 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             x:Class="DentalID.Desktop.Views.SubjectsView"
+             x:DataType="vm:SubjectsViewModel">
+
+    <UserControl.Styles>
+        <!-- DataGrid Styling -->
+        <!-- DataGrid Styling -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="16,12"/>
+        </Style>
+        <Style Selector="DataGridCell">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,8"/>
+        </Style>
+        <Style Selector="DataGridRow:selected DataGridCell">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Action button -->
+        <Style Selector="Button.action">
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentBlueDarkBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{DynamicResource AccentRedBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.ghost">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimaryBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- TOP: Toolbar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource CardBgBrush}"
+                BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                BorderThickness="1" CornerRadius="12"
+                Padding="16,12" Margin="0,0,0,16">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Search -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Text="{Binding SearchQuery}"
+                             Watermark="{DynamicResource Str_Subj_SearchPlaceholder}"
+                             Width="300" Height="36" FontSize="13"
+                             Background="{DynamicResource InputBgBrush}"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                             CornerRadius="8"/>
+                    <Button Command="{Binding SearchCommand}"
+                            Classes="action ghost" Height="36" Width="36" Padding="8">
+                        <PathIcon Data="{StaticResource IconMatching}" Width="16" Height="16"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="{DynamicResource Str_Subj_Refresh}"
+                            Command="{Binding RefreshCommand}"
+                            Classes="action ghost"/>
+                    <Button Content="{DynamicResource Str_Subj_Add}"
+                            Command="{Binding OpenAddDialogCommand}"
+                            Classes="action primary"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MIDDLE: DataGrid -->
+        <Border Grid.Row="1" CornerRadius="12" ClipToBounds="True">
+            <DataGrid ItemsSource="{Binding Subjects}"
+                      SelectedItem="{Binding SelectedSubject}"
+                      AutoGenerateColumns="False"
+                      CanUserReorderColumns="True"
+                      CanUserSortColumns="True"
+                      CanUserResizeColumns="True"
+                      IsReadOnly="True"
+                      SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_ID}" Binding="{Binding SubjectId}" Width="Auto" MinWidth="120"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Name}" Binding="{Binding FullName}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Gender}" Binding="{Binding Gender}" Width="Auto" MinWidth="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_DOB}" Binding="{Binding DateOfBirth, StringFormat='{}{0:yyyy-MM-dd}'}" Width="Auto" MinWidth="100"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_NatID}" Binding="{Binding NationalId}" Width="Auto" MinWidth="120"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_DentalCode}" Binding="{Binding LatestDentalCode}" Width="Auto" MinWidth="150" FontFamily="Consolas"/>
+                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Created}" Binding="{Binding CreatedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="Auto" MinWidth="140"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- BOTTOM: Pagination & Actions -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource CardBgBrush}"
+                BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                BorderThickness="1" CornerRadius="12"
+                Padding="16,10" Margin="0,16,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Record Actions -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="{DynamicResource Str_Subj_Edit}"
+                            Command="{Binding OpenEditDialogCommand}"
+                            Classes="action ghost"
+                            IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <Button Content="{DynamicResource Str_Subj_Delete}"
+                            Command="{Binding DeleteSubjectCommand}"
+                            Classes="action danger"
+                            IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <!-- Pagination -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Foreground="{DynamicResource TextMutedBrush}" FontSize="12"
+                               VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Run Text="{DynamicResource Str_Subj_Total}"/>
+                        <Run Text="{Binding TotalCount}"/>
+                    </TextBlock>
+                    <Button Command="{Binding PreviousPageCommand}"
+                            Classes="action ghost" Width="36" Height="36" Padding="8"
+                            IsEnabled="{Binding HasPreviousPage}">
+                        <PathIcon Data="{StaticResource IconArrowLeft}" Width="12" Height="12"/>
+                    </Button>
+                    <TextBlock Text="{Binding PageInfo}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontSize="13" VerticalAlignment="Center"/>
+                    <Button Command="{Binding NextPageCommand}"
+                            Classes="action ghost" Width="36" Height="36" Padding="8"
+                            IsEnabled="{Binding HasNextPage}">
+                        <PathIcon Data="{StaticResource IconArrowRight}" Width="12" Height="12"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ADD/EDIT DIALOG OVERLAY -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                IsVisible="{Binding IsAddEditDialogOpen}"
+                Background="#80000000"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource CardBgBrush}"
+                    BorderBrush="{DynamicResource BorderPrimaryBrush}"
+                    BorderThickness="1" CornerRadius="16"
+                    Width="480" Padding="28"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <!-- Dialog Title -->
+                    <TextBlock FontSize="20" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               Text="{Binding IsEditing, Converter={x:Static vm:EditTitleConverter.Instance}}"/>
+
+                        <!-- Full Name -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{DynamicResource Str_Subj_Dialog_Name}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                             <TextBox Text="{Binding FormFullName}" Watermark="{DynamicResource Str_Subj_Dialog_NamePlace}"
+                                      Background="{DynamicResource InputBgBrush}"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      BorderBrush="{DynamicResource BorderPrimaryBrush}" CornerRadius="8">
+                                 <TextBox.Styles>
+                                     <Style Selector="TextBox:pointerover">
+                                         <Setter Property="BorderBrush" Value="{DynamicResource BorderFocusBrush}"/>
+                                     </Style>
+                                     <Style Selector="TextBox:focus">
+                                         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                     </Style>
+                                     <Style Selector="TextBox:invalid">
+                                         <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                         <Setter Property="Background" Value="{DynamicResource DangerBgBrush}"/>
+                                     </Style>
+                                 </TextBox.Styles>
+                             </TextBox>
+                        </StackPanel>
+
+                        <!-- Gender -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{DynamicResource Str_Subj_Dialog_Gender}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <ComboBox SelectedItem="{Binding FormGender}" Width="200"
+                                      Background="{DynamicResource InputBgBrush}"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      BorderBrush="{DynamicResource BorderPrimaryBrush}" CornerRadius="8">
+                                <ComboBoxItem Content="{DynamicResource Str_Subj_Dialog_Male}"/>
+                                <ComboBoxItem Content="{DynamicResource Str_Subj_Dialog_Female}"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Date of Birth -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{DynamicResource Str_Subj_Dialog_DOB}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <DatePicker SelectedDate="{Binding FormDateOfBirth}"
+                                        Background="{DynamicResource InputBgBrush}"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"
+                                    BorderBrush="{DynamicResource BorderPrimaryBrush}" CornerRadius="8"/>
+                    </StackPanel>
+
+                    <!-- National ID -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{DynamicResource Str_Subj_Dialog_NatID}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBox Text="{Binding FormNationalId}" Watermark="{DynamicResource Str_Subj_Dialog_Optional}"
+                                 Background="{DynamicResource InputBgBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderPrimaryBrush}" CornerRadius="8"/>
+                    </StackPanel>
+
+                    <!-- Notes -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{DynamicResource Str_Subj_Dialog_Notes}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBox Text="{Binding FormNotes}" Watermark="{DynamicResource Str_Subj_Dialog_NotesPlace}"
+                                 AcceptsReturn="True" Height="60"
+                                 Background="{DynamicResource InputBgBrush}"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 BorderBrush="{DynamicResource BorderPrimaryBrush}" CornerRadius="8"/>
+                    </StackPanel>
+
+                    <!-- Dialog Actions -->
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="{DynamicResource Str_Cancel}"
+                                Command="{Binding CloseDialogCommand}"
+                                Classes="action ghost"/>
+                        <Button Content="{DynamicResource Str_Save}"
+                                Command="{Binding SaveSubjectCommand}"
+                                Classes="action primary"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

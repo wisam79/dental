@@ -1,0 +1,224 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    
+    <!-- General -->
+    <system:String x:Key="Str_AppName">DentalID الطب الشرعي</system:String>
+    <system:String x:Key="Str_Loading">جاري التحميل...</system:String>
+    <system:String x:Key="Str_Save">حفظ</system:String>
+    <system:String x:Key="Str_Cancel">إلغاء</system:String>
+    <system:String x:Key="Str_Processing">جاري المعالجة...</system:String>
+    
+    <!-- Navigation -->
+    <system:String x:Key="Str_Nav_Dashboard">لوحة القيادة</system:String>
+    <system:String x:Key="Str_Nav_Analysis">مختبر التحليل</system:String>
+    
+    <!-- Control Text -->
+    <system:String x:Key="Str_Control_NoImage">لا توجد صورة</system:String>
+    <system:String x:Key="Str_Pathology_Caries">تسوس</system:String>
+    <system:String x:Key="Str_Pathology_Crown">تاج</system:String>
+    <system:String x:Key="Str_Pathology_Filling">حشوة</system:String>
+    <system:String x:Key="Str_Pathology_RootCanal">علاج جذور</system:String>
+    <system:String x:Key="Str_Nav_Subjects">سجل الحالات</system:String>
+    <system:String x:Key="Str_Nav_Matching">المطابقة</system:String>
+    <system:String x:Key="Str_Nav_Reports">التقارير</system:String>
+    <system:String x:Key="Str_Nav_Settings">الإعدادات</system:String>
+
+    <!-- Analysis Lab -->
+    <system:String x:Key="Str_Lab_Title">مختبر الأدلة الجنائية</system:String>
+    <system:String x:Key="Str_Lab_SubjectContext">سياق الحالة</system:String>
+    <system:String x:Key="Str_Lab_ExistingSubject">حالة موجودة</system:String>
+    <system:String x:Key="Str_Lab_NewSubject">تسجيل جديد</system:String>
+    <system:String x:Key="Str_Lab_SearchPlaceholder">بحث برقم الهوية أو الاسم...</system:String>
+    <system:String x:Key="Str_Lab_NamePlaceholder">الاسم الكامل</system:String>
+    <system:String x:Key="Str_Lab_IdPlaceholder">رقم الهوية / المرجع</system:String>
+    <system:String x:Key="Str_Lab_GenderPlaceholder">الجنس</system:String>
+    <system:String x:Key="Str_Lab_Male">ذكر</system:String>
+    <system:String x:Key="Str_Lab_Female">أنثى</system:String>
+    <system:String x:Key="Str_Lab_Unknown">مجهول</system:String>
+    
+    <system:String x:Key="Str_Lab_LoadXRay">تحميل الأشعة</system:String>
+    <system:String x:Key="Str_Lab_Analyze">تحليل فوري</system:String>
+    <system:String x:Key="Str_Lab_DropZone">اسحب الصورة هنا أو قم بالتحميل</system:String>
+    
+    <system:String x:Key="Str_Lab_Tools_Reset">إعادة ضبط</system:String>
+    <system:String x:Key="Str_Lab_Tools_Teeth">إظهار الأسنان</system:String>
+    <system:String x:Key="Str_Lab_Tools_Pathos">إظهار الإصابات</system:String>
+    <system:String x:Key="Str_Lab_Tools_Enhance">تحسين الصورة</system:String>
+    <system:String x:Key="Str_Lab_Tools_Brightness">السطوع</system:String>
+    <system:String x:Key="Str_Lab_Tools_Contrast">التباين</system:String>
+    
+    <system:String x:Key="Str_Lab_Report_Title">التقرير الجنائي</system:String>
+    <system:String x:Key="Str_Lab_Tab_Summary">ملخص</system:String>
+    <system:String x:Key="Str_Lab_Tab_Chart">المخطط</system:String>
+    <system:String x:Key="Str_Lab_Tab_Flags">تنبيهات</system:String>
+    <system:String x:Key="Str_Lab_Tab_Detections">الاكتشافات</system:String>
+    
+    <system:String x:Key="Str_Lab_Bio_Profile">الملف البيولوجي</system:String>
+    <system:String x:Key="Str_Lab_Est_Age">العمر المقدر (سنة)</system:String>
+    <system:String x:Key="Str_Lab_Est_Sex">الجنس المقدر</system:String>
+    <system:String x:Key="Str_Lab_Stats_Teeth">الأسنان المكتشفة</system:String>
+    <system:String x:Key="Str_Lab_Stats_Flags">الملاحظات</system:String>
+    <system:String x:Key="Str_Lab_AI_Findings">استنتاجات الذكاء الاصطناعي</system:String>
+    
+    <system:String x:Key="Str_Lab_Action_Save">حفظ واعتماد التقرير</system:String>
+    <system:String x:Key="Str_Lab_Odontogram">المخطط السني الرقمي</system:String>
+    
+    <!-- Fingerprint -->
+    <system:String x:Key="Str_Lab_Fingerprint_Title">البصمة الرقمية</system:String>
+    <system:String x:Key="Str_Lab_Fingerprint_Code">الكود السني</system:String>
+    <system:String x:Key="Str_Lab_Fingerprint_Uniqueness">درجة التفرد</system:String>
+    <system:String x:Key="Str_Lab_Fingerprint_Vector">البصمة البيومترية</system:String>
+    
+    <!-- Odontogram -->
+    <system:String x:Key="Str_Odo_Title">المخطط السني</system:String>
+    <system:String x:Key="Str_Odo_Reset">إعادة تعيين</system:String>
+    <system:String x:Key="Str_Odo_Healthy">سليم</system:String>
+    <system:String x:Key="Str_Odo_Pathology">إصابة / مرض</system:String>
+    <system:String x:Key="Str_Odo_Palette">لوحة المعالجات</system:String>
+    <system:String x:Key="Str_Odo_DragHint">اسحب العناصر إلى الأسنان</system:String>
+
+    <!-- Import Wizard -->
+    <system:String x:Key="Str_Import_Title">معالج استيراد البيانات</system:String>
+    <system:String x:Key="Str_Import_Step1">الخطوة 1: اختر الملف المصدر</system:String>
+    <system:String x:Key="Str_Import_Formats">الصيغ المدعومة: CSV (قيم مفصولة بفواصل)</system:String>
+    <system:String x:Key="Str_Import_Browse">استعراض الملفات...</system:String>
+    <system:String x:Key="Str_Import_Step2">الخطوة 2: ربط الأعمدة</system:String>
+    <system:String x:Key="Str_Import_MapDesc">ربط أعمدة الملف بحقول النظام.</system:String>
+    <system:String x:Key="Str_Import_Start">بدء الاستيراد</system:String>
+    <system:String x:Key="Str_Import_Step3">الخطوة 3: نتائج الاستيراد</system:String>
+    <system:String x:Key="Str_Import_Another">استيراد ملف آخر</system:String>
+
+    <!-- Dashboard -->
+    <system:String x:Key="Str_Dash_Header">ذكاء العمليات</system:String>
+    <system:String x:Key="Str_Dash_Exit">خروج من التطبيق</system:String>
+    <system:String x:Key="Str_Dash_TotalSubjects">إجمالي المرضى</system:String>
+    <system:String x:Key="Str_Dash_TotalCases">إجمالي القضايا</system:String>
+    <system:String x:Key="Str_Dash_OpenCases">قضايا مفتوحة</system:String>
+    <system:String x:Key="Str_Dash_QuickActions">إجراءات سريعة</system:String>
+    <system:String x:Key="Str_Dash_Action_AddSubject">تسجيل مريض</system:String>
+    <system:String x:Key="Str_Dash_Action_AddSubjectDesc">إضافة ملف مريض جديد للنظام</system:String>
+    <system:String x:Key="Str_Dash_Action_Analysis">بدء التحليل</system:String>
+    <system:String x:Key="Str_Dash_Action_AnalysisDesc">تحليل صور الأشعة بواسطة الذكاء الاصطناعي</system:String>
+    <system:String x:Key="Str_Dash_Action_Reports">التقارير</system:String>
+    <system:String x:Key="Str_Dash_Action_ReportsDesc">عرض التقارير الجنائية المحفوظة</system:String>
+
+    <!-- Subjects Registry -->
+    <system:String x:Key="Str_Subj_SearchPlaceholder">بحث...</system:String>
+    <system:String x:Key="Str_Subj_Refresh">تحديث</system:String>
+    <system:String x:Key="Str_Subj_Add">+ إضافة جديد</system:String>
+    <system:String x:Key="Str_Subj_Col_ID">رقم الملف</system:String>
+    <system:String x:Key="Str_Subj_Col_Name">الاسم الكامل</system:String>
+    <system:String x:Key="Str_Subj_Col_Gender">الجنس</system:String>
+    <system:String x:Key="Str_Subj_Col_DOB">تاريخ الميلاد</system:String>
+    <system:String x:Key="Str_Subj_Col_NatID">رقم الهوية</system:String>
+    <system:String x:Key="Str_Subj_Col_DentalCode">الكود السني</system:String>
+    <system:String x:Key="Str_Subj_Col_Created">تاريخ الإنشاء</system:String>
+    <system:String x:Key="Str_Subj_Edit">تعديل</system:String>
+    <system:String x:Key="Str_Subj_Delete">حذف</system:String>
+    <system:String x:Key="Str_Subj_Total">الإجمالي: {0}</system:String>
+    
+    <!-- Subjects Dialog -->
+    <system:String x:Key="Str_Subj_Dialog_Name">الاسم الكامل *</system:String>
+    <system:String x:Key="Str_Subj_Dialog_NamePlace">أدخل الاسم الكامل</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Gender">الجنس</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Male">ذكر</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Female">أنثى</system:String>
+    <system:String x:Key="Str_Subj_Dialog_DOB">تاريخ الميلاد</system:String>
+    <system:String x:Key="Str_Subj_Dialog_NatID">رقم الهوية</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Optional">اختياري</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Notes">ملاحظات</system:String>
+    <system:String x:Key="Str_Subj_Dialog_NotesPlace">ملاحظات إضافية</system:String>
+
+    <!-- Matching -->
+    <system:String x:Key="Str_Match_StudioTitle">استوديو المقارنة</system:String>
+    <system:String x:Key="Str_Match_Opacity">الشفافية</system:String>
+    <system:String x:Key="Str_Match_ModeOverlay">تراكب</system:String>
+    <system:String x:Key="Str_Match_ModeSplit">انقسام</system:String>
+    <system:String x:Key="Str_Match_LoadQuery">تحميل صورة الاستعلام</system:String>
+    <system:String x:Key="Str_Match_Run">بحث عن تطابق</system:String>
+    <system:String x:Key="Str_Match_NoImage">لا توجد صورة محملة</system:String>
+    <system:String x:Key="Str_Match_Scanning">جاري مسح قاعدة البيانات...</system:String>
+    <system:String x:Key="Str_Match_CandidatesTitle">أفضل النتائج</system:String>
+    <system:String x:Key="Str_Match_LinkCase">ربط بقضية (اختياري)</system:String>
+    <system:String x:Key="Str_Match_Confirm">تأكيد المطابقة</system:String>
+    <system:String x:Key="Str_Match_Score">نسبة التطابق</system:String>
+    <system:String x:Key="Str_Match_Method">طريقة التطابق</system:String>
+    <system:String x:Key="Str_Match_Export">تصدير PDF</system:String>
+    <system:String x:Key="Str_Match_QueryFingerprint">بصمة الاستعلام</system:String>
+    <system:String x:Key="Str_Match_VectorExtracted">تم الاستخراج ✓</system:String>
+
+    <!-- Cases -->
+    <system:String x:Key="Str_Cases_SearchPlace">بحث في القضايا...</system:String>
+    <system:String x:Key="Str_Cases_FilterStatus">تصفية حسب الحالة</system:String>
+    <system:String x:Key="Str_Cases_Reset">إعادة تعيين</system:String>
+    <system:String x:Key="Str_Cases_New">+ قضية جديدة</system:String>
+    <system:String x:Key="Str_Cases_Col_No">رقم القضية</system:String>
+    <system:String x:Key="Str_Cases_Col_Title">العنوان</system:String>
+    <system:String x:Key="Str_Cases_Col_Status">الحالة</system:String>
+    <system:String x:Key="Str_Cases_Col_Priority">الأولوية</system:String>
+    <system:String x:Key="Str_Cases_Col_Date">التاريخ</system:String>
+    <system:String x:Key="Str_Cases_Col_Location">الموقع</system:String>
+    
+    <!-- Case Editor -->
+    <system:String x:Key="Str_Cases_Ed_No">رقم القضية (تلقائي)</system:String>
+    <system:String x:Key="Str_Cases_Ed_Title">العنوان / المرجع *</system:String>
+    <system:String x:Key="Str_Cases_Ed_Status">الحالة</system:String>
+    <system:String x:Key="Str_Cases_Ed_Priority">الأولوية</system:String>
+    <system:String x:Key="Str_Cases_Ed_Date">تاريخ الحادثة</system:String>
+    <system:String x:Key="Str_Cases_Ed_Location">الموقع</system:String>
+    <system:String x:Key="Str_Cases_Ed_Desc">الوصف / ملاحظات</system:String>
+    <system:String x:Key="Str_Cases_Ed_Result">النتيجة / الاستنتاج</system:String>
+    <system:String x:Key="Str_Cases_Ed_Matches">الأدلة المرتبطة (المطابقات)</system:String>
+
+    <!-- Reports -->
+    <system:String x:Key="Str_Reports_SelectCase">اختر قضية</system:String>
+    <system:String x:Key="Str_Reports_Config">إعداد التقرير</system:String>
+    <system:String x:Key="Str_Reports_Generate">توليد تقرير PDF</system:String>
+    <system:String x:Key="Str_Reports_SelectPrompt">اختر قضية للمتابعة</system:String>
+
+    <!-- Settings (Replacing Loc) -->
+    <system:String x:Key="Str_Settings_Appearance">المظهر</system:String>
+    <system:String x:Key="Str_Settings_Theme">سمة التطبيق</system:String>
+    <system:String x:Key="Str_Settings_ThemeDark">داكن</system:String>
+    <system:String x:Key="Str_Settings_ThemeLight">فاتح</system:String>
+    <system:String x:Key="Str_Settings_ThemeHC">تباين عالي</system:String>
+    <system:String x:Key="Str_Settings_Localization">اللغة</system:String>
+    <system:String x:Key="Str_Settings_Language">لغة الواجهة</system:String>
+    <system:String x:Key="Str_Settings_Data">إدارة البيانات</system:String>
+    <system:String x:Key="Str_Settings_DataDesc">تصدير بيانات التطبيق بصيغة CSV.</system:String>
+    <system:String x:Key="Str_Settings_ExportSubj">تصدير المرضى</system:String>
+    <system:String x:Key="Str_Settings_ExportCases">تصدير القضايا</system:String>
+
+    <!-- Audit Log -->
+    <system:String x:Key="Str_Audit_Title">سجل التدقيق الأمني</system:String>
+    <system:String x:Key="Str_Audit_Desc">تتبع نشاط النظام والتحقق من النزاهة.</system:String>
+    <system:String x:Key="Str_Audit_Filter">تصفية</system:String>
+    <system:String x:Key="Str_Audit_Verify">التحقق من النزاهة</system:String>
+    <system:String x:Key="Str_Audit_VerifyTip">التحقق المشفر من سلسلة العهداة لجميع السجلات.</system:String>
+    <system:String x:Key="Str_Audit_Col_Time">الطابع الزمني</system:String>
+    <system:String x:Key="Str_Audit_Col_User">المستخدم</system:String>
+    <system:String x:Key="Str_Audit_Col_Action">الإجراء</system:String>
+    <system:String x:Key="Str_Audit_Col_Entity">الكيان</system:String>
+    <system:String x:Key="Str_Audit_Col_ID">المعرف</system:String>
+    <system:String x:Key="Str_Audit_Col_Details">التفاصيل</system:String>
+    <system:String x:Key="Str_Audit_Col_Hash">التشفير (Hash)</system:String>
+    <system:String x:Key="Str_Audit_Range">إلى</system:String>
+
+    <!-- Login -->
+    <system:String x:Key="Str_Login_Title">تسجيل الدخول</system:String>
+    <system:String x:Key="Str_Login_UserPlace">اسم المستخدم</system:String>
+    <system:String x:Key="Str_Login_PassPlace">كلمة المرور</system:String>
+    <system:String x:Key="Str_Login_Button">دخول</system:String>
+    <system:String x:Key="Str_Login_Forgot">نسيت كلمة المرور؟</system:String>
+    <system:String x:Key="Str_Login_Show">إظهار</system:String>
+    <system:String x:Key="Str_Login_Hide">إخفاء</system:String>
+
+    <!-- Startup -->
+    <system:String x:Key="Str_App_Title">DentalID</system:String>
+    <system:String x:Key="Str_Startup_Warning">جاري فحص النظام. لا تقم بإيقاف التشغيل.</system:String>
+    
+    <system:String x:Key="Str_GlobalSearch">بحث شامل</system:String>
+    <system:String x:Key="Str_Notifications">إشعارات</system:String>
+
+</ResourceDictionary>
