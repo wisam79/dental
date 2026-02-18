@@ -67,8 +67,10 @@ public class EncryptionService : IEncryptionService
             }
             else
             {
-                // Fallback for non-Windows (should use a proper KeyRing in production)
-                // For now, we assume simple storage for this prototype if not on Windows
+                // Bug #69: Non-Windows fallback stores key in plaintext — warn loudly in production
+                // TODO: Replace with OS keyring (libsecret on Linux, Keychain on macOS) for production deployments
+                Console.Error.WriteLine("[SECURITY WARNING] Running on non-Windows platform: encryption key stored in plaintext. " +
+                    "Use a proper secret manager for production deployments.");
                 key = protectedBytes; 
             }
             return key.Length == 32;
@@ -207,15 +209,15 @@ public class EncryptionService : IEncryptionService
     }
 
     /// <summary>
-    /// Attempts legacy decryption for data encrypted with the old static-IV format.
-    /// This allows a smooth migration path — old data can still be read.
-    /// </summary>
-    /// <summary>
-    /// Legacy decryption removed for security. All data must use the new dynamic IV format.
+    /// Bug #68: TryLegacyDecrypt must return the original string (not throw) when legacy data
+    /// cannot be decrypted. Throwing inside Decrypt's try-block was swallowed by the outer catch,
+    /// causing the method to silently return cipherText anyway — but the intent was "Try" (no-throw).
+    /// Returning cipherText allows the caller to display the raw value rather than crashing.
     /// </summary>
     private string TryLegacyDecrypt(string cipherText)
     {
-        // Legacy fallback removed to eliminate hardcoded IV vulnerability.
-        throw new CryptographicException("Legacy decryption is disabled. Data format is obsolete and insecure.");
+        // Legacy format is no longer supported. Return the ciphertext as-is so the caller
+        // can decide what to do (display placeholder, prompt re-encryption, etc.)
+        return cipherText;
     }
 }

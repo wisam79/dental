@@ -5,231 +5,325 @@
              x:DataType="vm:MatchingViewModel"
              x:Name="Root">
 
-    <Grid ColumnDefinitions="400,*" Margin="16">
-        
-        <!-- LEFT: Comparison Studio -->
-        <Border Grid.Column="0" Margin="0,0,16,0"
-                Background="{DynamicResource SurfaceElevatedBrush}"
-                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="1" CornerRadius="12" Padding="20">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,20">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                         <PathIcon Data="{StaticResource IconMatching}" Foreground="{DynamicResource AccentPrimaryBrush}" Width="16" Height="16"/>
-                         <TextBlock Text="{DynamicResource Str_Match_StudioTitle}" 
-                                   Classes="h3" FontSize="14" FontWeight="Bold" 
-                                   Foreground="{DynamicResource TextPrimaryBrush}" LetterSpacing="1"/>
-                    </StackPanel>
-                    <!-- Tools -->
-                    <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding IsQueryLoaded}" Margin="0,8,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                             <TextBlock Text="{DynamicResource Str_Match_Opacity}" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}"/>
-                             <Slider Minimum="0" Maximum="1" Value="{Binding OverlayOpacity}" Width="120" VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <ToggleSwitch Grid.Column="1" 
-                                      OnContent="{DynamicResource Str_Match_ModeOverlay}" OffContent="{DynamicResource Str_Match_ModeSplit}" 
-                                      IsChecked="{Binding IsOverlayMode}"/>
-                    </Grid>
-                </StackPanel>
-                
-                <StackPanel DockPanel.Dock="Bottom" Spacing="12">
-                     <Button Command="{Binding BrowseQueryImageCommand}"
-                            HorizontalAlignment="Stretch"
-                            Classes="labAction labGhost">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconFolderOpen}"/>
-                            <TextBlock Text="{DynamicResource Str_Match_LoadQuery}"/>
-                        </StackPanel>
-                     </Button>
-                    
-                    <Button Command="{Binding RunMatchingCommand}"
-                            IsEnabled="{Binding IsQueryLoaded}"
-                            HorizontalAlignment="Stretch"
-                            Classes="labAction labPrimary">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconMatching}"/>
-                            <TextBlock Text="{DynamicResource Str_Match_Run}"/>
-                        </StackPanel>
-                    </Button>
-                    
-                    <TextBlock Text="{Binding StatusMessage}" 
-                               Foreground="{DynamicResource TextMutedBrush}"
-                               TextWrapping="Wrap" FontSize="12"/>
-                    
-                    <!-- Query Fingerprint Status -->
-                    <Border IsVisible="{Binding IsQueryLoaded}" 
-                            Background="#1000D4FF" CornerRadius="6" Padding="10,8" 
-                            BorderBrush="#3000D4FF" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" 
-                                      Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                            <TextBlock Text="{DynamicResource Str_Match_QueryFingerprint}" 
-                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                            <Border Background="{DynamicResource AccentGreenBrush}" CornerRadius="4" Padding="6,2" 
-                                    VerticalAlignment="Center" IsVisible="{Binding QueryVector, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <TextBlock Text="{DynamicResource Str_Match_VectorExtracted}" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+    <!--
+    ════════════════════════════════════════════════════
+      MATCHING VIEW  — Forensic Comparison Studio
+      Fixed:
+        • Removed duplicate local Styles section
+        • IconList  → IconSubjects (available in App.axaml)
+        • PrimaryBrush → AccentPrimaryBrush
+        • labGhost/labPrimary/labSuccess → global classes
+    ════════════════════════════════════════════════════
+    -->
 
-                <!-- VIEWPORT -->
-                <Border Background="{DynamicResource SurfaceBgBrush}" 
-                        CornerRadius="8" Margin="0,0,0,16" ClipToBounds="True">
-                    <Panel>
-                        <!-- Empty State -->
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                    IsVisible="{Binding !IsQueryLoaded}">
-                            <PathIcon Data="{StaticResource IconQuestion}" Width="48" Height="48" HorizontalAlignment="Center" Foreground="{DynamicResource TextDisabledBrush}"/>
-                            <TextBlock Text="{DynamicResource Str_Match_NoImage}" Foreground="{DynamicResource TextDisabledBrush}" HorizontalAlignment="Center"/>
+    <Grid RowDefinitions="Auto,*" Margin="0,0,0,0">
+
+        <!-- ══════ PAGE HEADER ══════ -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+            <StackPanel>
+                <TextBlock Classes="h1"
+                           Text="{DynamicResource Str_Nav_Matching}"
+                           Margin="0,0,0,4"/>
+                <TextBlock Classes="caption"
+                           Text="Compare dental X-rays and identify candidates"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ══════ TWO-COLUMN LAYOUT ══════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="400,*">
+
+            <!-- ─── LEFT: Comparison Studio ─── -->
+            <Border Grid.Column="0"
+                    Margin="0,0,12,0"
+                    Classes="card"
+                    Padding="20">
+                <DockPanel>
+
+                    <!-- Studio header -->
+                    <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconAnalysis}"
+                                      Foreground="{DynamicResource AccentPrimaryBrush}"
+                                      Width="16" Height="16"/>
+                            <TextBlock Classes="h3"
+                                       Text="{DynamicResource Str_Match_StudioTitle}"
+                                       LetterSpacing="0.5"/>
                         </StackPanel>
-                        
-                        <!-- IMAGES -->
-                        <Grid IsVisible="{Binding IsQueryLoaded}">
-                            <!-- Background: Query Image (The 'Evidence') -->
-                            <Image Source="{Binding QueryImagePath}" Stretch="Uniform" Opacity="1.0"/>
-                            
-                            <!-- Foreground: Target Image (The 'Candidate') -->
-                            <!-- Only show if we have a candidate selected -->
-                            <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}" 
-                                   Stretch="Uniform" 
-                                   Opacity="{Binding OverlayOpacity}"
-                                   IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+                        <!-- Overlay tools row (visible only when query loaded) -->
+                        <Grid ColumnDefinitions="*,Auto"
+                              IsVisible="{Binding IsQueryLoaded}"
+                              Margin="0,6,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{DynamicResource Str_Match_Opacity}"
+                                           Classes="caption"
+                                           VerticalAlignment="Center"/>
+                                <Slider Minimum="0" Maximum="1"
+                                        Value="{Binding OverlayOpacity}"
+                                        Width="120"
+                                        VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1"
+                                          OnContent="{DynamicResource Str_Match_ModeOverlay}"
+                                          OffContent="{DynamicResource Str_Match_ModeSplit}"
+                                          IsChecked="{Binding IsOverlayMode}"/>
                         </Grid>
+                    </StackPanel>
 
-                        <Border Background="#80000000" IsVisible="{Binding IsMatching}">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
-                                <ProgressBar Value="{Binding MatchingProgress}" Maximum="100" Width="200"/>
-                                <TextBlock Text="{Binding StatusMessage}" Foreground="White" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Center"/>
+                    <!-- Bottom action panel -->
+                    <StackPanel DockPanel.Dock="Bottom" Spacing="10">
+
+                        <!-- Load query image -->
+                        <Button Command="{Binding BrowseQueryImageCommand}"
+                                HorizontalAlignment="Stretch"
+                                Classes="outline">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconFolderOpen}"
+                                          Width="14" Height="14"/>
+                                <TextBlock Text="{DynamicResource Str_Match_LoadQuery}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Run matching -->
+                        <Button Command="{Binding RunMatchingCommand}"
+                                IsEnabled="{Binding IsQueryLoaded}"
+                                HorizontalAlignment="Stretch"
+                                Classes="primary">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconMatching}"
+                                          Width="14" Height="14"/>
+                                <TextBlock Text="{DynamicResource Str_Match_Run}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Status text -->
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Classes="caption"
+                                   TextWrapping="Wrap"/>
+
+                        <!-- Query fingerprint status badge -->
+                        <Border Classes="badge-info"
+                                IsVisible="{Binding IsQueryLoaded}"
+                                Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconFingerprint}"
+                                          Width="14" Height="14"
+                                          Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                <TextBlock Text="{DynamicResource Str_Match_QueryFingerprint}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center"/>
+                                <Border Background="{DynamicResource SuccessBrush}"
+                                        CornerRadius="4"
+                                        Padding="6,2"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding QueryVector, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <TextBlock Text="{DynamicResource Str_Match_VectorExtracted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Foreground="White"/>
+                                </Border>
                             </StackPanel>
                         </Border>
-                    </Panel>
-                </Border>
-            </DockPanel>
-        </Border>
+                    </StackPanel>
 
-        <!-- RIGHT: Results Panel -->
-        <Border Grid.Column="1"
-                Background="{DynamicResource SurfaceElevatedBrush}"
-                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="1" CornerRadius="12" Padding="20">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,0,0,20">
-                    <PathIcon Data="{StaticResource IconList}" Foreground="{DynamicResource AccentSecondaryBrush}" Width="16" Height="16"/>
-                    <TextBlock Text="{DynamicResource Str_Match_CandidatesTitle}" 
-                               Classes="h3" FontSize="14" FontWeight="Bold" 
-                               Foreground="{DynamicResource TextPrimaryBrush}" LetterSpacing="1"/>
-                </StackPanel>
+                    <!-- ── Image Viewport ── -->
+                    <Border Background="{DynamicResource SurfaceDeepBrush}"
+                            CornerRadius="8"
+                            Margin="0,0,0,12"
+                            ClipToBounds="True"
+                            MinHeight="240">
+                        <Panel>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
-                    <ComboBox ItemsSource="{Binding ActiveCases}" 
-                              SelectedItem="{Binding SelectedCase}"
-                              PlaceholderText="{DynamicResource Str_Match_LinkCase}"
-                              HorizontalAlignment="Stretch"
-                              Margin="0,0,0,12">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="{Binding CaseNumber}" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextMutedBrush}"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                            <!-- Empty state -->
+                            <StackPanel VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        Spacing="10"
+                                        IsVisible="{Binding !IsQueryLoaded}">
+                                <PathIcon Data="{StaticResource IconTooth}"
+                                          Width="48" Height="48"
+                                          HorizontalAlignment="Center"
+                                          Foreground="{DynamicResource TextDisabledBrush}"/>
+                                <TextBlock Text="{DynamicResource Str_Match_NoImage}"
+                                           Classes="caption"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
 
-                    <Button Command="{Binding ConfirmMatchCommand}"
-                            IsEnabled="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}"
-                            HorizontalAlignment="Stretch"
-                            Classes="labAction labSuccess">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconCheck}"/>
-                            <TextBlock Text="{DynamicResource Str_Match_Confirm}"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-
-                <ListBox ItemsSource="{Binding Candidates}" 
-                         SelectedItem="{Binding SelectedCandidate}"
-                         Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8">
-                                <!-- Candidate Thumbnail -->
-                                <Border Width="80" Height="80" CornerRadius="8" ClipToBounds="True"
-                                        Background="{DynamicResource SurfaceBgBrush}">
-                                    <Image Source="{Binding Subject.ThumbnailPath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}" 
-                                           Stretch="UniformToFill"/>
-                                </Border>
-                                
-                                <!-- Info -->
-                                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Subject.FullName}" FontWeight="Bold" FontSize="16"/>
-                                        <!-- Match Method Badge -->
-                                        <Border CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
-                                                Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource AccentSecondaryBrush}" BorderThickness="1">
-                                            <TextBlock Text="{Binding MatchMethod}" FontSize="10" Foreground="{DynamicResource AccentSecondaryBrush}" FontWeight="SemiBold"/>
-                                        </Border>
-                                        
-                                        <!-- Export Button (Visible on Selection) -->
-                                        <Button Content="{DynamicResource Str_Match_Export}" 
-                                                Command="{Binding #Root.((vm:MatchingViewModel)DataContext).ExportReportCommand}"
-                                                IsVisible="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                                VerticalAlignment="Center"
-                                                FontSize="11" Padding="6,2"
-                                                Background="Transparent" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" Foreground="{DynamicResource PrimaryBrush}"
-                                                Margin="10,0,0,0"/>
-                                    </StackPanel>
-                                    
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <TextBlock Text="{DynamicResource Str_Subj_Col_ID}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
-                                        <TextBlock Text="{Binding Subject.SubjectId}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <TextBlock Text="{DynamicResource Str_Subj_Col_NatID}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
-                                        <TextBlock Text="{Binding Subject.NationalId}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- Score -->
-                                <Border Grid.Column="2" Background="{DynamicResource SurfaceBgBrush}" 
-                                        CornerRadius="8" Padding="12,6" VerticalAlignment="Center">
-                                    <StackPanel>
-                                        <TextBlock Text="{DynamicResource Str_Match_Score}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
-                                        <TextBlock Text="{Binding Score, StringFormat='{}{0:P1}'}" 
-                                                   FontWeight="Bold" FontSize="18" 
-                                                   Foreground="{DynamicResource AccentGreenBrush}"/>
-                                    </StackPanel>
-                                </Border>
+                            <!-- Images -->
+                            <Grid IsVisible="{Binding IsQueryLoaded}">
+                                <!-- Background: query (evidence) image -->
+                                <Image Source="{Binding QueryImagePath}"
+                                       Stretch="Uniform"
+                                       Opacity="1.0"/>
+                                <!-- Foreground: candidate overlay -->
+                                <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                       Stretch="Uniform"
+                                       Opacity="{Binding OverlayOpacity}"
+                                       IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                             </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
+
+                            <!-- Matching progress overlay -->
+                            <Border Background="#CC000000"
+                                    IsVisible="{Binding IsMatching}">
+                                <StackPanel VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Spacing="14">
+                                    <ProgressBar Value="{Binding MatchingProgress}"
+                                                 Maximum="100"
+                                                 Width="200"
+                                                 Classes="thick"/>
+                                    <TextBlock Text="{Binding StatusMessage}"
+                                               Foreground="White"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="280"
+                                               HorizontalAlignment="Center"
+                                               FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+
+                        </Panel>
+                    </Border>
+
+                </DockPanel>
+            </Border>
+
+            <!-- ─── RIGHT: Results / Candidates ─── -->
+            <Border Grid.Column="1"
+                    Classes="card"
+                    Padding="20">
+                <DockPanel>
+
+                    <!-- Results header -->
+                    <StackPanel DockPanel.Dock="Top"
+                                Orientation="Horizontal"
+                                Spacing="10"
+                                Margin="0,0,0,16">
+                        <PathIcon Data="{StaticResource IconSubjects}"
+                                  Foreground="{DynamicResource AccentSecondaryBrush}"
+                                  Width="16" Height="16"/>
+                        <TextBlock Classes="h3"
+                                   Text="{DynamicResource Str_Match_CandidatesTitle}"
+                                   LetterSpacing="0.5"/>
+                    </StackPanel>
+
+                    <!-- Bottom: Link case + confirm -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0" Spacing="10">
+                        <ComboBox ItemsSource="{Binding ActiveCases}"
+                                  SelectedItem="{Binding SelectedCase}"
+                                  PlaceholderText="{DynamicResource Str_Match_LinkCase}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding CaseNumber}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Title}"
+                                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Button Command="{Binding ConfirmMatchCommand}"
+                                IsEnabled="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                HorizontalAlignment="Stretch"
+                                Classes="success">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconCheck}"
+                                          Width="14" Height="14"/>
+                                <TextBlock Text="{DynamicResource Str_Match_Confirm}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Candidates list -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ListBox ItemsSource="{Binding Candidates}"
+                                 SelectedItem="{Binding SelectedCandidate}"
+                                 Padding="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="Auto,*,Auto"
+                                          Margin="0,4">
+
+                                        <!-- Candidate thumbnail -->
+                                        <Border Width="76" Height="76"
+                                                CornerRadius="8"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource SurfaceDeepBrush}">
+                                            <Image Source="{Binding Subject.ThumbnailPath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                                   Stretch="UniformToFill"/>
+                                        </Border>
+
+                                        <!-- Subject info -->
+                                        <StackPanel Grid.Column="1"
+                                                    Margin="14,0"
+                                                    VerticalAlignment="Center"
+                                                    Spacing="4">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Subject.FullName}"
+                                                           Classes="h3"/>
+                                                <!-- Method badge -->
+                                                <Border Classes="badge-info"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding MatchMethod}"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                                </Border>
+                                                <!-- Export (visible on selection) -->
+                                                <Button Content="{DynamicResource Str_Match_Export}"
+                                                        Command="{Binding #Root.((vm:MatchingViewModel)DataContext).ExportReportCommand}"
+                                                        IsVisible="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Padding="8,3"
+                                                        Classes="outline"
+                                                        Margin="8,0,0,0"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{DynamicResource Str_Subj_Col_ID}"
+                                                           Classes="caption"/>
+                                                <TextBlock Text="{Binding Subject.SubjectId}"
+                                                           Classes="mono caption"/>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{DynamicResource Str_Subj_Col_NatID}"
+                                                           Classes="caption"/>
+                                                <TextBlock Text="{Binding Subject.NationalId}"
+                                                           Classes="caption"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Score badge -->
+                                        <Border Grid.Column="2"
+                                                Classes="card-compact"
+                                                VerticalAlignment="Center"
+                                                Padding="14,8"
+                                                MinWidth="72">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="{DynamicResource Str_Match_Score}"
+                                                           Classes="caption"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Score, StringFormat='{}{0:P1}'}"
+                                                           FontWeight="Bold"
+                                                           FontSize="18"
+                                                           Foreground="{DynamicResource SuccessBrush}"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+
+                </DockPanel>
+            </Border>
+
+        </Grid>
     </Grid>
-    
-    <UserControl.Styles>
-        <Style Selector="Button.labAction">
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.labPrimary">
-            <Setter Property="Background" Value="{DynamicResource AccentBlueDarkBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        <Style Selector="Button.labSuccess">
-            <Setter Property="Background" Value="{DynamicResource AccentGreenBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        <Style Selector="Button.labGhost">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimaryBrush}"/>
-        </Style>
-    </UserControl.Styles>
+
 </UserControl>

@@ -3,44 +3,238 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="DentalID.Desktop.Views.StartupView"
              x:DataType="vm:StartupViewModel">
 
-    <Grid Background="#1A1A1A">
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
-            <!-- App Logo / Title -->
-            <TextBlock Text="{DynamicResource Str_App_Title}" 
-                       FontSize="48" 
-                       FontWeight="Bold" 
-                       Foreground="#007ACC" 
-                       HorizontalAlignment="Center"/>
-            
-            <TextBlock Text="{Binding Version}" 
-                       FontSize="16" 
-                       Foreground="#888888" 
-                       HorizontalAlignment="Center"/>
+    <!-- ════════════════════════════════════════════════════
+         STARTUP / SPLASH SCREEN
+         A forensic-grade loading screen with professional
+         branding, animated progress, and system diagnostics.
+    ════════════════════════════════════════════════════ -->
 
-            <ProgressBar Value="{Binding ProgressValue}" 
-                         Minimum="0" Maximum="100" 
-                         Width="400" Height="4"
-                         Background="#333333" 
-                         Foreground="#007ACC"
-                         Margin="0,20,0,10"/>
+    <Grid>
 
-            <TextBlock Text="{Binding StatusMessage}" 
-                       FontSize="14" 
-                       Foreground="#CCCCCC" 
-                       HorizontalAlignment="Center"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center"/>
-        </StackPanel>
-        
-        <TextBlock Text="{DynamicResource Str_Startup_Warning}"
-                   FontSize="12"
-                   Foreground="#555555"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Bottom"
-                   Margin="20"/>
+        <!-- ── Deep background ── -->
+        <Border Background="{DynamicResource SurfaceDeepBrush}"/>
+
+        <!-- ── Radial ambient glow (accent-coloured) ── -->
+        <Border>
+            <Border.Background>
+                <RadialGradientBrush Center="50%,40%" GradientOrigin="50%,40%"
+                                     RadiusX="60%" RadiusY="55%">
+                    <GradientStop Color="#180078D4" Offset="0"/>
+                    <GradientStop Color="#00000000" Offset="1"/>
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <!-- ── Subtle dot-grid texture ── -->
+        <Canvas Opacity="0.04" IsHitTestVisible="False">
+            <Path Data="M0,0 L1,0 L1,1 L0,1 Z"
+                  Fill="{DynamicResource TextPrimaryBrush}"
+                  Width="900" Height="600"
+                  Stretch="Fill"/>
+        </Canvas>
+
+        <!-- ════════════════════ MAIN CONTENT ════════════════════ -->
+        <Grid RowDefinitions="*, Auto">
+
+            <!-- ── Centre column ── -->
+            <StackPanel Grid.Row="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="0">
+
+                <!-- Logo mark -->
+                <Border Width="88" Height="88"
+                        CornerRadius="22"
+                        Margin="0,0,0,28"
+                        HorizontalAlignment="Center">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#200078D4" Offset="0"/>
+                            <GradientStop Color="#100078D4" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.BorderBrush>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#600078D4" Offset="0"/>
+                            <GradientStop Color="#200078D4" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.BorderBrush>
+                    <Border.BorderThickness>1</Border.BorderThickness>
+                    <PathIcon Data="{StaticResource IconFingerprint}"
+                              Width="44" Height="44"
+                              Foreground="{DynamicResource AccentPrimaryBrush}"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- App name -->
+                <TextBlock Text="DENTAL ID"
+                           FontSize="38"
+                           FontWeight="Bold"
+                           LetterSpacing="6"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,6"/>
+
+                <!-- Tagline -->
+                <TextBlock Text="FORENSIC INVESTIGATION SUITE"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           LetterSpacing="3"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,4"/>
+
+                <!-- Version badge -->
+                <Border Background="#15FFFFFF"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="12,4"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,48">
+                    <TextBlock Text="{Binding Version}"
+                               Classes="mono"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"/>
+                </Border>
+
+                <!-- Progress section -->
+                <StackPanel Width="360" Spacing="10">
+
+                    <!-- Progress bar track + indicator -->
+                    <Grid>
+                        <!-- Track -->
+                        <Border Height="3"
+                                CornerRadius="1.5"
+                                Background="{DynamicResource BorderSubtleBrush}"/>
+                        <!-- Fill -->
+                        <ProgressBar Value="{Binding ProgressValue}"
+                                     Minimum="0" Maximum="100"
+                                     Height="3"
+                                     CornerRadius="1.5"
+                                     Foreground="{DynamicResource AccentPrimaryBrush}"
+                                     Background="Transparent"/>
+                    </Grid>
+
+                    <!-- Status message + percentage -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding StatusMessage}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1"
+                                   Classes="mono"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextMutedBrush}">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0}%">
+                                    <Binding Path="ProgressValue"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </Grid>
+                </StackPanel>
+
+            </StackPanel>
+
+            <!-- ══════ BOTTOM STATUS BAR ══════ -->
+            <Border Grid.Row="1"
+                    Margin="0,0,0,32">
+                <StackPanel HorizontalAlignment="Center" Spacing="12">
+
+                    <!-- System diagnostics row -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="24">
+
+                        <!-- AI Engine indicator -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="6" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Text="AI ENGINE"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{DynamicResource TextDisabledBrush}"/>
+                            <TextBlock Text="ONNX Runtime"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- Divider -->
+                        <Border Width="1" Height="14"
+                                Background="{DynamicResource BorderSubtleBrush}"
+                                VerticalAlignment="Center"/>
+
+                        <!-- Encryption indicator -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="6" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Text="ENCRYPTION"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{DynamicResource TextDisabledBrush}"/>
+                            <TextBlock Text="AES-256"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
+                        </StackPanel>
+
+                        <!-- Divider -->
+                        <Border Width="1" Height="14"
+                                Background="{DynamicResource BorderSubtleBrush}"
+                                VerticalAlignment="Center"/>
+
+                        <!-- Database indicator -->
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="6" Height="6" CornerRadius="3"
+                                    Background="{DynamicResource SuccessBrush}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Text="DATABASE"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       LetterSpacing="1"
+                                       Foreground="{DynamicResource TextDisabledBrush}"/>
+                            <TextBlock Text="SQLite"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- Legal disclaimer -->
+                    <TextBlock Text="{DynamicResource Str_Startup_Warning}"
+                               FontSize="10"
+                               Foreground="{DynamicResource TextDisabledBrush}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="560"
+                               Opacity="0.7"/>
+
+                </StackPanel>
+            </Border>
+
+        </Grid>
+
+        <!-- ── Subtle top accent line ── -->
+        <Border Height="2"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Stretch">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#000078D4" Offset="0"/>
+                    <GradientStop Color="#FF0078D4" Offset="0.35"/>
+                    <GradientStop Color="#FF0078D4" Offset="0.65"/>
+                    <GradientStop Color="#000078D4" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
     </Grid>
 </UserControl>

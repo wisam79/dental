@@ -18,11 +18,18 @@ public class User : AuditableEntity
     public string? Department { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime? LastLogin { get; set; }
-    public bool MustChangePassword { get; set; } = false;
+
+    // Bug #10 fix: Track failed login attempts for lockout policy
+    public int FailedLoginAttempts { get; set; } = 0;
+
+    // Bug #11 fix: Track account lockout expiry timestamp
+    public DateTime? LockedUntil { get; set; }
+
+    // Bug #12 fix: New users should be forced to change their password on first login
+    public bool MustChangePassword { get; set; } = true;
 
     // Navigation properties
     public ICollection<Subject> CreatedSubjects { get; set; } = new List<Subject>();
     public ICollection<Case> AssignedCases { get; set; } = new List<Case>();
     public ICollection<AuditLogEntry> AuditLogs { get; set; } = new List<AuditLogEntry>();
 }
-

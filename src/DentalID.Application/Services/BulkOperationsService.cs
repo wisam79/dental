@@ -69,7 +69,8 @@ public class BulkOperationsService : IBulkOperationsService
                         NationalId = record.NationalId,
                         ContactInfo = record.ContactInfo,
                         Notes = record.Notes,
-                        SubjectId = $"SUB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}",
+                    // Bug #42: Use 8 hex chars of GUID (not 4) to drastically reduce SubjectId collision probability in bulk imports
+                    SubjectId = $"SUB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper()}",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     });
@@ -115,13 +116,15 @@ public class BulkOperationsService : IBulkOperationsService
 
             result.TotalRecords = records.Count;
 
+            // Bug #40: Batch inserts into a list, then AddRangeAsync once (avoids N individual tracker registrations)
+            var imagesToAdd = new List<DentalImage>();
             foreach (var record in records)
             {
                 var validationResult = await _dentalImageValidator.ValidateAsync(record);
 
                 if (validationResult.IsValid)
                 {
-                    var dentalImage = new DentalImage
+                    imagesToAdd.Add(new DentalImage
                     {
                         SubjectId = record.SubjectId,
                         ImagePath = record.ImagePath,
@@ -137,9 +140,7 @@ public class BulkOperationsService : IBulkOperationsService
                         IsProcessed = record.IsProcessed,
                         UploadedAt = DateTime.UtcNow,
                         CreatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.GetRepository<DentalImage>().AddAsync(dentalImage);
+                    });
                     result.SuccessfulRecords++;
                 }
                 else
@@ -149,7 +150,11 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            if (imagesToAdd.Any())
+            {
+                await _unitOfWork.GetRepository<DentalImage>().AddRangeAsync(imagesToAdd);
+                await _unitOfWork.SaveChangesAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -178,13 +183,15 @@ public class BulkOperationsService : IBulkOperationsService
 
             result.TotalRecords = records.Count;
 
+            // Bug #40: Batch inserts into a list, then AddRangeAsync once
+            var casesToAdd = new List<Case>();
             foreach (var record in records)
             {
                 var validationResult = await _caseValidator.ValidateAsync(record);
 
                 if (validationResult.IsValid)
                 {
-                    var caseEntity = new Case
+                    casesToAdd.Add(new Case
                     {
                         CaseNumber = record.CaseNumber,
                         Title = record.Title,
@@ -200,9 +207,7 @@ public class BulkOperationsService : IBulkOperationsService
                         Result = record.Result,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.GetRepository<Case>().AddAsync(caseEntity);
+                    });
                     result.SuccessfulRecords++;
                 }
                 else
@@ -212,7 +217,11 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            if (casesToAdd.Any())
+            {
+                await _unitOfWork.GetRepository<Case>().AddRangeAsync(casesToAdd);
+                await _unitOfWork.SaveChangesAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -241,13 +250,15 @@ public class BulkOperationsService : IBulkOperationsService
 
             result.TotalRecords = records.Count;
 
+            // Bug #40: Batch inserts into a list, then AddRangeAsync once
+            var matchesToAdd = new List<Match>();
             foreach (var record in records)
             {
                 var validationResult = await _matchValidator.ValidateAsync(record);
 
                 if (validationResult.IsValid)
                 {
-                    var match = new Match
+                    matchesToAdd.Add(new Match
                     {
                         CaseId = record.CaseId,
                         QueryImageId = record.QueryImageId,
@@ -261,9 +272,7 @@ public class BulkOperationsService : IBulkOperationsService
                         ConfirmedAt = record.ConfirmedAt,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.GetRepository<Match>().AddAsync(match);
+                    });
                     result.SuccessfulRecords++;
                 }
                 else
@@ -273,7 +282,11 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            if (matchesToAdd.Any())
+            {
+                await _unitOfWork.GetRepository<Match>().AddRangeAsync(matchesToAdd);
+                await _unitOfWork.SaveChangesAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -299,7 +312,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(s => subjectIds.Contains(s.Id));
             }
 
-            var subjects = query
+            // Bug #41: Offload synchronous EF materialization to a thread-pool thread to avoid blocking the UI/async context
+            var subjects = await Task.Run(() => query
                 .Select(s => new SubjectDto
                 {
                     Id = s.Id,
@@ -316,7 +330,7 @@ public class BulkOperationsService : IBulkOperationsService
                     UpdatedAt = s.UpdatedAt,
                     CreatedById = s.CreatedById
                 })
-                .ToList();
+                .ToList());
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -347,7 +361,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(d => imageIds.Contains(d.Id));
             }
 
-            var images = query
+            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
+            var images = await Task.Run(() => query
                 .Select(d => new DentalImageDto
                 {
                     Id = d.Id,
@@ -365,7 +380,7 @@ public class BulkOperationsService : IBulkOperationsService
                     IsProcessed = d.IsProcessed,
                     CreatedAt = d.CreatedAt
                 })
-                .ToList();
+                .ToList());
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -396,7 +411,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(c => caseIds.Contains(c.Id));
             }
 
-            var cases = query
+            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
+            var cases = await Task.Run(() => query
                 .Select(c => new CaseDto
                 {
                     Id = c.Id,
@@ -417,7 +433,7 @@ public class BulkOperationsService : IBulkOperationsService
                     ClosedAt = c.ClosedAt,
                     CreatedById = c.CreatedById
                 })
-                .ToList();
+                .ToList());
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -448,7 +464,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(m => matchIds.Contains(m.Id));
             }
 
-            var matches = query
+            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
+            var matches = await Task.Run(() => query
                 .Select(m => new MatchDto
                 {
                     Id = m.Id,
@@ -465,13 +482,14 @@ public class BulkOperationsService : IBulkOperationsService
                     CreatedAt = m.CreatedAt,
                     UpdatedAt = m.UpdatedAt
                 })
-                .ToList();
+                .ToList());
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
             await csv.WriteRecordsAsync(matches);
 
-            result.RecordsExported = matches.Count();
+            // Bug #44: Use .Count property (not .Count() method) on materialized List<T>
+            result.RecordsExported = matches.Count;
         }
         catch (Exception ex)
         {
@@ -626,9 +644,14 @@ public class BulkOperationsService : IBulkOperationsService
         // Security: Prevent access to system directories
         var systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
         var windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        // Bug #43: Also block ProgramFiles and ProgramFilesX86 from import paths
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         
         if (fullPath.StartsWith(systemPath, StringComparison.OrdinalIgnoreCase) ||
-            fullPath.StartsWith(windowsPath, StringComparison.OrdinalIgnoreCase))
+            fullPath.StartsWith(windowsPath, StringComparison.OrdinalIgnoreCase) ||
+            fullPath.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(programFilesX86) && fullPath.StartsWith(programFilesX86, StringComparison.OrdinalIgnoreCase)))
         {
             throw new UnauthorizedAccessException("Access to system directories is restricted.");
         }

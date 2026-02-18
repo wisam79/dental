@@ -7,97 +7,290 @@
              x:Class="DentalID.Desktop.Views.ImportWizardView"
              x:DataType="vm:ImportWizardViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="Border.wizardCard">
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="BoxShadow" Value="0 4 10 0 #20000000"/>
-        </Style>
-    </UserControl.Styles>
+    <Grid RowDefinitions="Auto, *" Background="{DynamicResource SurfaceDeepBrush}">
 
-    <Grid RowDefinitions="Auto, *">
         <!-- Header -->
-        <Border Background="{DynamicResource PrimaryGradientBrush}" Height="60" Padding="20,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-                <PathIcon Data="{StaticResource IconSave}" Foreground="White"/> <!-- Using Save icon as generic import/data icon -->
-                <TextBlock Text="{DynamicResource Str_Import_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
-            </StackPanel>
+        <Border Grid.Row="0" Height="56" Background="{DynamicResource SurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1"
+                Padding="24,0">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="8"
+                            Background="{DynamicResource SurfaceFloatingBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                        <PathIcon Data="{StaticResource IconImport}" Width="16" Height="16"
+                                  Foreground="{DynamicResource AccentPrimaryBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{DynamicResource Str_Import_Title}"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Import subject records from external data sources"
+                                   FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Step Indicator (3-step wizard progress) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <!-- Step 1 -->
+                    <Border Width="28" Height="28" CornerRadius="14"
+                            BorderThickness="2">
+                        <Border.BorderBrush>
+                            <SolidColorBrush Color="#0078D4"/>
+                        </Border.BorderBrush>
+                        <Border.Background>
+                            <SolidColorBrush Color="#0078D4"
+                                Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1, FallbackValue=0}"/>
+                        </Border.Background>
+                        <TextBlock Text="1" FontSize="11" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </Border>
+                    <Border Width="24" Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
+                    <!-- Step 2 -->
+                    <Border Width="28" Height="28" CornerRadius="14"
+                            BorderThickness="2">
+                        <Border.BorderBrush>
+                            <SolidColorBrush Color="#0078D4"/>
+                        </Border.BorderBrush>
+                        <Border.Background>
+                            <SolidColorBrush Color="#0078D4"
+                                Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2, FallbackValue=0}"/>
+                        </Border.Background>
+                        <TextBlock Text="2" FontSize="11" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </Border>
+                    <Border Width="24" Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
+                    <!-- Step 3 -->
+                    <Border Width="28" Height="28" CornerRadius="14"
+                            BorderThickness="2">
+                        <Border.BorderBrush>
+                            <SolidColorBrush Color="#0078D4"/>
+                        </Border.BorderBrush>
+                        <Border.Background>
+                            <SolidColorBrush Color="#0078D4"
+                                Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=3, FallbackValue=0}"/>
+                        </Border.Background>
+                        <TextBlock Text="3" FontSize="11" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- Content -->
-        <ScrollViewer Grid.Row="1" Padding="20">
-            <StackPanel Spacing="20" MaxWidth="800" HorizontalAlignment="Center">
-                
-                <!-- Status Bar -->
-                <Border Classes="wizardCard" BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="1">
-                    <TextBlock Text="{Binding StatusMessage}" FontSize="16" FontWeight="Medium"/>
+        <ScrollViewer Grid.Row="1" Padding="24">
+            <StackPanel Spacing="20" MaxWidth="760" HorizontalAlignment="Center">
+
+                <!-- Status Banner -->
+                <Border Classes="card" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="0,0,0,2">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <PathIcon Data="{StaticResource IconInfo}" Width="16" Height="16"
+                                  Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Border>
 
-                <!-- STEP 1: File Selection -->
-                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}">
-                    <StackPanel Spacing="15">
-                        <TextBlock Text="{DynamicResource Str_Import_Step1}" FontSize="18" FontWeight="Bold"/>
-                        <TextBlock Text="{DynamicResource Str_Import_Formats}" Foreground="Gray"/>
-                        
-                        <Button Command="{Binding SelectFileCommand}" 
-                                HorizontalAlignment="Center" 
-                                Classes="primary"
-                                Padding="20,10">
+                <!-- ═══ STEP 1: File Selection ═══ -->
+                <Border Classes="card"
+                        IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}">
+                    <StackPanel Spacing="24">
+                        <!-- Step Header -->
+                        <StackPanel Spacing="6">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource IconFolderOpen}"/>
-                                <TextBlock Text="{DynamicResource Str_Import_Browse}"/>
+                                <Border Width="28" Height="28" CornerRadius="14"
+                                        Background="{DynamicResource AccentPrimaryBrush}">
+                                    <TextBlock Text="1" FontSize="12" FontWeight="Bold" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Import_Step1}"
+                                           FontSize="16" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{DynamicResource Str_Import_Formats}"
+                                       FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                                       Margin="38,0,0,0"/>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                        <!-- Drop Zone -->
+                        <Border CornerRadius="12" Padding="48,40"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="2" HorizontalAlignment="Center">
+                            <StackPanel HorizontalAlignment="Center" Spacing="20">
+                                <Border Width="64" Height="64" CornerRadius="32"
+                                        Background="{DynamicResource SurfaceElevatedBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1" HorizontalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconFolderOpen}" Width="28" Height="28"
+                                              Foreground="{DynamicResource AccentPrimaryBrush}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel HorizontalAlignment="Center" Spacing="6">
+                                    <TextBlock Text="Select a file to import"
+                                               FontSize="16" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Supports CSV, JSON, Excel formats"
+                                               FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Command="{Binding SelectFileCommand}"
+                                        Classes="primary" Padding="24,10"
+                                        HorizontalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14"/>
+                                        <TextBlock Text="{DynamicResource Str_Import_Browse}"
+                                                   FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- ═══ STEP 2: Column Mapping ═══ -->
+                <Border Classes="card"
+                        IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2}">
+                    <StackPanel Spacing="24">
+                        <!-- Step Header -->
+                        <StackPanel Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Width="28" Height="28" CornerRadius="14"
+                                        Background="{DynamicResource AccentPrimaryBrush}">
+                                    <TextBlock Text="2" FontSize="12" FontWeight="Bold" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Import_Step2}"
+                                           FontSize="16" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="{DynamicResource Str_Import_MapDesc}"
+                                       FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
+                                       Margin="38,0,0,0"/>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                        <!-- Mapping Table Header -->
+                        <Grid ColumnDefinitions="200, 40, *">
+                            <TextBlock Text="Target Field" Classes="label"
+                                       Foreground="{DynamicResource TextDisabledBrush}" FontSize="11"/>
+                            <TextBlock Grid.Column="2" Text="Source Column" Classes="label"
+                                       Foreground="{DynamicResource TextDisabledBrush}" FontSize="11"/>
+                        </Grid>
+
+                        <!-- Mapping Rows -->
+                        <Border Background="{DynamicResource SurfaceFloatingBrush}"
+                                CornerRadius="8" BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1" ClipToBounds="True">
+                            <ItemsControl ItemsSource="{Binding Mappings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="200, 40, *" Margin="16,12">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontWeight="SemiBold" FontSize="13"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="→"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                       FontSize="16"/>
+                                            <ComboBox Grid.Column="2"
+                                                      ItemsSource="{Binding SourceColumns}"
+                                                      SelectedItem="{Binding SelectedSourceColumn}"
+                                                      HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
+                        <!-- Import Progress & Action -->
+                        <Border Background="{DynamicResource SurfaceFloatingBrush}"
+                                CornerRadius="8" Padding="16"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"
+                                IsVisible="{Binding IsImporting}">
+                            <StackPanel Spacing="10">
+                                <DockPanel>
+                                    <TextBlock Text="Importing..." FontWeight="SemiBold" FontSize="13"/>
+                                    <TextBlock Text="{Binding ImportStatus}"
+                                               HorizontalAlignment="Right" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </DockPanel>
+                                <ProgressBar Value="{Binding ImportProgress}" Maximum="100"
+                                             Height="6" CornerRadius="3"
+                                             Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Command="{Binding ExecuteImportCommand}"
+                                Classes="primary" HorizontalAlignment="Right"
+                                Padding="20,8"
+                                IsEnabled="{Binding !IsImporting}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource IconImport}" Width="14" Height="14"/>
+                                <TextBlock Text="{DynamicResource Str_Import_Start}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
-                <!-- STEP 2: Mapping -->
-                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2}">
-                    <StackPanel Spacing="15">
-                        <TextBlock Text="{DynamicResource Str_Import_Step2}" FontSize="18" FontWeight="Bold"/>
-                        <TextBlock Text="{DynamicResource Str_Import_MapDesc}" Foreground="Gray"/>
-
-                        <ItemsControl ItemsSource="{Binding Mappings}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid ColumnDefinitions="200, 20, *" Margin="0,5">
-                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                        <TextBlock Text="→" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        <ComboBox Grid.Column="2" 
-                                                  ItemsSource="{Binding SourceColumns}"
-                                                  SelectedItem="{Binding SelectedSourceColumn}"
-                                                  HorizontalAlignment="Stretch"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <StackPanel Spacing="8" HorizontalAlignment="Right">
-                            <ProgressBar Value="{Binding ImportProgress}" Maximum="100" Width="200" IsVisible="{Binding IsImporting}" AutomationProperties.Name="{DynamicResource Str_Processing}"/>
-                            <TextBlock Text="{Binding ImportStatus}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsImporting}"/>
-                            <Button Command="{Binding ExecuteImportCommand}" 
-                                    Classes="accent" 
-                                    Content="{DynamicResource Str_Import_Start}" 
-                                    IsEnabled="{Binding !IsImporting}"/>
+                <!-- ═══ STEP 3: Results ═══ -->
+                <Border Classes="card"
+                        IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=3}">
+                    <StackPanel Spacing="24">
+                        <!-- Step Header -->
+                        <StackPanel Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Width="28" Height="28" CornerRadius="14"
+                                        Background="{DynamicResource SuccessBrush}">
+                                    <PathIcon Data="{StaticResource IconCheck}" Width="14" Height="14"
+                                              Foreground="White"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Import_Step3}"
+                                           FontSize="16" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-                
-                <!-- STEP 3: Results -->
-                <Border Classes="wizardCard" IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=3}">
-                    <StackPanel Spacing="15">
-                        <TextBlock Text="{DynamicResource Str_Import_Step3}" FontSize="18" FontWeight="Bold"/>
-                        
-                        <TextBox Text="{Binding ImportLog}" 
-                                 Height="200" 
-                                 IsReadOnly="True" 
-                                 AcceptsReturn="True"
-                                 FontFamily="Consolas, Monospace"/>
 
-                        <Button Command="{Binding ResetCommand}" 
-                                Content="{DynamicResource Str_Import_Another}" 
-                                HorizontalAlignment="Right"/>
+                        <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                        <!-- Import Log -->
+                        <Border Background="{DynamicResource SurfaceDeepBrush}"
+                                CornerRadius="8" BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1" Padding="4">
+                            <TextBox Text="{Binding ImportLog}"
+                                     MinHeight="180" MaxHeight="300"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     FontFamily="{DynamicResource FontMono}"
+                                     FontSize="12"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                            <Button Command="{Binding ResetCommand}"
+                                    Classes="outline" Padding="20,8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14"/>
+                                    <TextBlock Text="{DynamicResource Str_Import_Another}"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

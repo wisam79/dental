@@ -50,11 +50,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Subject>(e =>
         {
             e.HasIndex(s => s.SubjectId).IsUnique();
+            // Bug #52: Keep index for structural purposes only — with random-IV encryption, equality search
+            // must be done client-side (see SubjectRepository.SearchAsync). The index helps EF/SQLite scans.
             e.HasIndex(s => s.NationalId);
             e.Property(s => s.SubjectId).IsRequired().HasMaxLength(50);
             e.Property(s => s.FullName).HasConversion(encryptedConverter); // Encrypt Patient Name
+            // Bug #52: NationalId contains PII — must be encrypted at rest like FullName
+            e.Property(s => s.NationalId).HasConversion(encryptedConverter);
             e.Property(s => s.RowVersion).IsConcurrencyToken(); // Optimistic Concurrency (Manual)
-            // e.Property(s => s.SubjectId).HasConversion(encryptedConverter); // ID usually needs exact match lookup, tricky if IV is random.
             
             e.HasOne(s => s.CreatedBy)
              .WithMany(u => u.CreatedSubjects)
@@ -105,6 +108,11 @@ public class AppDbContext : DbContext
              .WithMany(d => d.QueryMatches)
              .HasForeignKey(m => m.QueryImageId)
              .OnDelete(DeleteBehavior.Cascade);
+            // Bug #53/54: MatchedImage relationship was missing — asymmetric config caused EF shadow property issues
+            e.HasOne(m => m.MatchedImage)
+             .WithMany()
+             .HasForeignKey(m => m.MatchedImageId)
+             .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(m => m.MatchedSubject)
              .WithMany(s => s.Matches)
              .HasForeignKey(m => m.MatchedSubjectId)

@@ -153,8 +153,10 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var subjects = await _subjectRepo.GetAllAsync(); // TODO: Implement GetRecent
-            Subjects = new ObservableCollection<Subject>(subjects.OrderByDescending(s => s.CreatedAt).Take(20));
+            // Bug Fix: Use built-in pagination (pageSize=20) instead of loading all records
+            // then doing .Take(20) in memory. ISubjectRepository.GetAllAsync supports pagination directly.
+            var subjects = await _subjectRepo.GetAllAsync(page: 1, pageSize: 20);
+            Subjects = new ObservableCollection<Subject>(subjects);
         }
         catch (Exception ex)
         {
@@ -236,7 +238,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
     private bool CanRunAnalysis => CurrentState == AnalysisState.Ready || 
                                    CurrentState == AnalysisState.Review || 
-                                   CurrentState == AnalysisState.Error;
+                                   CurrentState == AnalysisState.Error ||
+                                   (CurrentState == AnalysisState.Idle && !string.IsNullOrWhiteSpace(LoadedImagePath));
 
     [RelayCommand(CanExecute = nameof(CanRunAnalysis))]
     private async Task RunAnalysis()
@@ -299,6 +302,14 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ConfirmSaveNewSubject()
     {
+        if (_currentAnalysisResult == null || string.IsNullOrWhiteSpace(LoadedImagePath))
+        {
+            _toastService.Show("Validation Error", "No completed analysis available to save.", ToastType.Warning);
+            return;
+        }
+
+        var analysisResult = _currentAnalysisResult!;
+        var imagePath = LoadedImagePath!;
         Subject? targetSubject = SelectedSubject;
 
         if (targetSubject == null)
@@ -338,8 +349,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
             // Since we don't have a full Analysis entity yet in context, we assume UpdateAsync handles linking?
             // Or maybe we create a DentalImage entity?
             
-            // Link image to subject
-             await _forensicService.SaveEvidenceAsync(LoadedImagePath, _currentAnalysisResult, targetSubject.Id);
+             // Link image to subject
+             await _forensicService.SaveEvidenceAsync(imagePath, analysisResult, targetSubject.Id);
 
              // Log
              _logger.LogInformation($"Saved analysis for subject {targetSubject.FullName}");

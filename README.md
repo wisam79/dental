@@ -68,8 +68,12 @@ dotnet build DentalID.sln --configuration Release
 ### Run Tests
 
 ```bash
-dotnet test tests/DentalID.Tests/DentalID.Tests.csproj --configuration Release --verbosity normal
+dotnet tool restore
+pwsh ./scripts/test.ps1 -Suite all -Configuration Release -CollectCoverage -AllowKnownFailures
 ```
+
+For strict mode (fail on any test failure), remove `-AllowKnownFailures`.
+More details: [`TESTING.md`](TESTING.md)
 
 ### Run Application
 
@@ -96,7 +100,7 @@ GitHub Actions runs on every push to `main`:
 
 | Job | Description |
 |-----|-------------|
-| 🔨 Build & Test | Restore → Build → Run xUnit tests → Publish results |
+| 🔨 Build & Test | Restore → Build → Run unified test suites → Coverage + TRX artifacts |
 | 🔍 Code Quality | Build each project layer separately |
 | 🚀 Publish Release | Auto-publish Windows x64 on `v*` tag push |
 

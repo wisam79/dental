@@ -63,6 +63,7 @@ public partial class MatchingViewModel : ViewModelBase
     private const int CaseLoadBatchSize = 100;
     // MatchThreshold moved to AiConfiguration
     private const int MatchingBatchSize = 1000; // Process 1000 subjects at a time
+    private const string QuerySubjectCode = "QRY-SYSTEM";
 
     [ObservableProperty]
     private double _overlayOpacity = 0.5;
@@ -274,15 +275,8 @@ public partial class MatchingViewModel : ViewModelBase
 
     private async Task<int> SaveQueryImageAsync(string path)
     {
-        // Create transient subject for query
-        var subject = new Subject 
-        { 
-            FullName = $"Query {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
-            SubjectId = $"QRY-{Guid.NewGuid().ToString().Substring(0,8)}",
-            DateOfBirth = DateTime.UtcNow,
-            Gender = "Unknown"
-        };
-        var savedSubject = await _subjectRepo.AddAsync(subject);
+        // Keep all probe images under one dedicated system subject to avoid polluting subject records.
+        var savedSubject = await GetOrCreateQuerySubjectAsync();
 
         var image = new DentalImage
         {
@@ -293,6 +287,33 @@ public partial class MatchingViewModel : ViewModelBase
         };
         var saved = await _imageRepo.AddAsync(image);
         return saved.Id;
+    }
+
+    private async Task<Subject> GetOrCreateQuerySubjectAsync()
+    {
+        var existing = await _subjectRepo.GetBySubjectIdAsync(QuerySubjectCode);
+        if (existing != null)
+            return existing;
+
+        try
+        {
+            var subject = new Subject
+            {
+                SubjectId = QuerySubjectCode,
+                FullName = "Query Probe (System)",
+                Gender = "Unknown",
+                Notes = "System-managed container for matching query images."
+            };
+            return await _subjectRepo.AddAsync(subject);
+        }
+        catch
+        {
+            // Handle concurrent creation in multi-window/session scenarios.
+            var createdByAnother = await _subjectRepo.GetBySubjectIdAsync(QuerySubjectCode);
+            if (createdByAnother != null)
+                return createdByAnother;
+            throw;
+        }
     }
 
     [RelayCommand]

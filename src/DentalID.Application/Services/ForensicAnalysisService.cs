@@ -103,13 +103,17 @@ public class ForensicAnalysisService : IForensicAnalysisService
         // Sensitivity 1.0 -> Threshold (Base - Slope) (Very Loose)
         double baseThreshold = _config.Thresholds.ForensicBaseThreshold - (sensitivity * _config.Thresholds.SensitivitySlope);
 
-        // 2. Filter Teeth from RawTeeth to prevent destructive filtering
-        result.Teeth = result.RawTeeth
+        // Bug #18 fix: Guard against null RawTeeth to avoid silently clearing result.Teeth
+        var rawTeeth = result.RawTeeth ?? result.Teeth ?? new List<DetectedTooth>();
+        result.Teeth = rawTeeth
             .Where(t => t.Confidence >= baseThreshold)
             .ToList();
 
-        // 3. Filter Pathologies from RawPathologies with Class Bias
-        result.Pathologies = result.RawPathologies
+        // Use raw pathologies when available, otherwise fallback to current set.
+        var rawPathologies = result.RawPathologies ?? result.Pathologies ?? new List<DetectedPathology>();
+
+        // 3. Filter Pathologies from raw list with class bias
+        result.Pathologies = rawPathologies
             .Where(p => 
             {
                 double classBias = GetClassBias(p.ClassName);
@@ -133,6 +137,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
         
         if (!_fileService.Exists(sourcePath))
             throw new FileNotFoundException("Source file not found", sourcePath);
+
+        var subject = await _subjectRepo.GetByIdAsync(subjectId);
+        if (subject == null)
+            throw new InvalidOperationException($"Subject {subjectId} not found.");
 
         _logger.LogInformation($"Starting evidence preservation for Subject {subjectId}");
 
@@ -173,7 +181,8 @@ public class ForensicAnalysisService : IForensicAnalysisService
             throw new InvalidOperationException("Failed to serialize analysis result");
         }
         
-        string digitalSealSource = fileHash + resultJson + subjectId;
+        // Bug #19 fix: Add pipe separators to prevent hash collision between different field combinations
+        string digitalSealSource = $"{fileHash}|{resultJson}|{subjectId}";
         string digitalSeal = ComputeSeal(digitalSealSource);
 
         // 3. Database Transaction (Bug #16 fix: use try/catch for consistency)
@@ -192,6 +201,7 @@ public class ForensicAnalysisService : IForensicAnalysisService
             FileHash = fileHash,
             ImageType = ImageType.Panoramic,
             IsProcessed = true,
+            UploadedAt = DateTime.UtcNow,
             CaptureDate = DateTime.UtcNow,
             AnalysisResults = resultJson,
             // Bug #2 fix: store the digital seal
@@ -201,26 +211,39 @@ public class ForensicAnalysisService : IForensicAnalysisService
             UniquenessScore = result.Fingerprint?.UniquenessScore ?? 0,
         };
 
+        bool imagePersisted = false;
         try
         {
             await _imageRepo.AddAsync(imageEntity);
+            imagePersisted = true;
 
             // 4. Update Subject Vector (if present)
             if (featureVectorBytes != null)
             {
-                var subject = await _subjectRepo.GetByIdAsync(subjectId);
-                if (subject != null)
-                {
-                    subject.FeatureVector = featureVectorBytes;
-                    await _subjectRepo.UpdateAsync(subject);
-                }
+                subject.FeatureVector = featureVectorBytes;
+                await _subjectRepo.UpdateAsync(subject);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Database operations failed during evidence save");
-            // Cleanup the file since DB failed
-            if (_fileService.Exists(finalPath)) _fileService.Delete(finalPath);
+            // Compensate persisted image if subject update failed.
+            if (imagePersisted && imageEntity.Id > 0)
+            {
+                try
+                {
+                    await _imageRepo.DeleteAsync(imageEntity.Id);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogError(cleanupEx, $"Failed to compensate image record {imageEntity.Id} after DB failure.");
+                }
+            }
+            else if (_fileService.Exists(finalPath))
+            {
+                _fileService.Delete(finalPath);
+            }
+
             throw new IOException("Failed to persist evidence to database.", ex);
         }
 
@@ -236,7 +259,11 @@ public class ForensicAnalysisService : IForensicAnalysisService
     /// <returns>Bias value to add to threshold</returns>
     private double GetClassBias(string className)
     {
-        return _config.Thresholds.PathologyBias.TryGetValue(className, out double bias) ? bias : 0.0;
+        if (_config.Thresholds.PathologyBias.TryGetValue(className, out double bias))
+            return bias;
+        // Bug #22 fix: Log a warning when an unknown class name is encountered (typos are now visible)
+        _logger.LogWarning($"Unknown pathology class '{className}' not found in PathologyBias config — using default bias 0.0");
+        return 0.0;
     }
 
     /// <summary>
@@ -278,9 +305,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
     /// <returns>True if seal is valid</returns>
     public bool VerifySeal(string storedSeal, string fileHash, string resultJson, int subjectId)
     {
-        var rawData = fileHash + resultJson + subjectId;
+        // Bug #19 fix: Consistent separator usage matching ComputeSeal
+        var rawData = $"{fileHash}|{resultJson}|{subjectId}";
         var computedSeal = ComputeSeal(rawData);
-        return string.Equals(storedSeal, computedSeal, StringComparison.OrdinalIgnoreCase);
+        // Bug #20 fix: Hex strings are always lowercase; use Ordinal instead of OrdinalIgnoreCase
+        return string.Equals(storedSeal, computedSeal, StringComparison.Ordinal);
     }
 }
-

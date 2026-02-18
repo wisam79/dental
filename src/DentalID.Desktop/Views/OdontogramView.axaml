@@ -22,7 +22,7 @@
             <Grid RowDefinitions="Auto,*,Auto">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
                     <TextBlock Text="{DynamicResource Str_Odo_Title}" FontWeight="SemiBold"/>
-                    <Button Content="{DynamicResource Str_Odo_Reset}" Command="{Binding ResetCommand}" Classes="accent" Padding="8,4" FontSize="12"/>
+                <Button Content="{DynamicResource Str_Odo_Reset}" Command="{Binding ResetCommand}" Classes="outline" Padding="8,4" FontSize="12"/>
                 </StackPanel>
 
                 <!-- Chart -->

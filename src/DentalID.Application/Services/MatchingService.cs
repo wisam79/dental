@@ -120,7 +120,16 @@ public class MatchingService : IMatchingService
             double bestScore = 0;
             DentalImage? bestImage = null;
 
-            foreach (var img in candidate.DentalImages)
+            var images = candidate.DentalImages ?? new List<DentalImage>();
+            if (images.Count == 0)
+            {
+                if (probe.FeatureVector != null && candidateVector != null)
+                {
+                    bestScore = CalculateCosineSimilarity(probe.FeatureVector, candidateVector);
+                }
+            }
+
+            foreach (var img in images)
             {
                 if (string.IsNullOrEmpty(img.FingerprintCode) && img.FeatureVector == null && candidate.FeatureVector == null) continue;
 

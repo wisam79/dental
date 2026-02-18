@@ -1,76 +1,62 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- ═══ DentalID Light Theme ═══ -->
+    <!-- ═══════════════════════════════════════════════════════
+         DentalID — GitHub Light Theme Override
+         Overrides the default Fluent-gray palette in App.axaml
+         with a clean GitHub-inspired light aesthetic.
+    ═══════════════════════════════════════════════════════ -->
 
-    <!-- Backgrounds -->
-    <Color x:Key="ThemeBg">#F6F8FA</Color>
-    <Color x:Key="SidebarBg">#FFFFFF</Color>
-    <Color x:Key="CardBg">#FFFFFF</Color>
-    <Color x:Key="SurfaceBg">#F0F2F5</Color>
-    <Color x:Key="InputBg">#FFFFFF</Color>
-    <Color x:Key="OverlayBg">#EEF1F5</Color>
+    <!-- ── Backgrounds ───────────────────────────────────── -->
+    <SolidColorBrush x:Key="SurfaceDeepBrush"     Color="#F6F8FA"/>  <!-- Page root -->
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#FFFFFF"/>  <!-- Cards / panels -->
+    <SolidColorBrush x:Key="SurfaceFloatingBrush" Color="#EEF1F5"/>  <!-- Dropdowns / overlays -->
+    <SolidColorBrush x:Key="SurfaceBgBrush"       Color="#F0F2F5"/>
+    <SolidColorBrush x:Key="CardBgBrush"          Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="InputBgBrush"         Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PageBgBrush"          Color="#F6F8FA"/>
+    <SolidColorBrush x:Key="SidebarBgBrush"       Color="#E8FFFFFF"/> <!-- 91% opacity white -->
 
-    <!-- Borders -->
-    <Color x:Key="BorderPrimary">#D0D7DE</Color>
-    <Color x:Key="BorderSecondary">#E1E4E8</Color>
-    <Color x:Key="BorderFocus">#0969DA</Color>
+    <!-- ── Accent Colors ─────────────────────────────────── -->
+    <Color x:Key="AccentPrimaryColor">#0969DA</Color>
+    <SolidColorBrush x:Key="AccentPrimaryBrush"        Color="#0969DA"/> <!-- GitHub Blue -->
+    <SolidColorBrush x:Key="AccentPrimaryHoverBrush"   Color="#0860CA"/>
+    <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="#0550AE"/>
+    <SolidColorBrush x:Key="AccentSecondaryBrush"      Color="#0550AE"/> <!-- Dark blue -->
+    <SolidColorBrush x:Key="AccentTertiaryBrush"       Color="#8250DF"/> <!-- Purple -->
+    <SolidColorBrush x:Key="AccentBlueBrush"           Color="#0969DA"/>
+    <SolidColorBrush x:Key="AccentBlueDarkBrush"       Color="#0550AE"/>
+    <SolidColorBrush x:Key="AccentRedBrush"            Color="#CF222E"/>
+    <SolidColorBrush x:Key="AccentOrangeBrush"         Color="#BF8700"/>
+    <SolidColorBrush x:Key="AccentPurpleBrush"         Color="#8250DF"/>
+    <SolidColorBrush x:Key="AccentGreenBrush"          Color="#1A7F37"/>
 
-    <!-- Text -->
-    <Color x:Key="TextPrimary">#1F2328</Color>
-    <Color x:Key="TextSecondary">#424A53</Color>
-    <Color x:Key="TextMuted">#656D76</Color>
-    <Color x:Key="TextDisabled">#8C959F</Color>
+    <!-- ── Functional Status ─────────────────────────────── -->
+    <SolidColorBrush x:Key="SuccessBrush"         Color="#1A7F37"/>
+    <SolidColorBrush x:Key="WarningBrush"         Color="#BF8700"/>
+    <SolidColorBrush x:Key="ErrorBrush"           Color="#CF222E"/>
+    <SolidColorBrush x:Key="ForensicWarningBrush" Color="#CF222E"/>
+    <SolidColorBrush x:Key="ForensicSuccessBrush" Color="#1A7F37"/>
 
-    <!-- Accent Colors -->
-    <Color x:Key="AccentBlue">#0969DA</Color>
-    <Color x:Key="AccentBlueDark">#0550AE</Color>
-    <Color x:Key="AccentGreen">#1A7F37</Color>
-    <Color x:Key="AccentRed">#CF222E</Color>
-    <Color x:Key="AccentOrange">#BF8700</Color>
-    <Color x:Key="AccentPurple">#8250DF</Color>
+    <!-- ── Text ──────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#1F2328"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#424A53"/>
+    <SolidColorBrush x:Key="TextMutedBrush"     Color="#656D76"/>
+    <SolidColorBrush x:Key="TextDisabledBrush"  Color="#8C959F"/>
+    <SolidColorBrush x:Key="TextOnAccentBrush"  Color="#FFFFFF"/>
 
-    <!-- Navigation -->
-    <Color x:Key="NavItemHover">#EEF1F5</Color>
-    <Color x:Key="NavItemSelected">#0969DA</Color>
-    <Color x:Key="NavItemSelectedText">#FFFFFF</Color>
-    <Color x:Key="NavItemText">#656D76</Color>
-    <Color x:Key="NavItemHoverText">#1F2328</Color>
+    <!-- ── Borders ───────────────────────────────────────── -->
+    <SolidColorBrush x:Key="BorderPrimaryBrush"   Color="#D0D7DE"/>
+    <SolidColorBrush x:Key="BorderSubtleBrush"    Color="#E1E4E8"/>
+    <SolidColorBrush x:Key="BorderSecondaryBrush" Color="#E1E4E8"/>
+    <SolidColorBrush x:Key="BorderFocusBrush"     Color="#0969DA"/>
+    <SolidColorBrush x:Key="BorderInputBrush"     Color="#D0D7DE"/>
 
-    <!-- Status -->
-    <Color x:Key="StatusSuccess">#1A7F37</Color>
-    <Color x:Key="StatusWarning">#BF8700</Color>
-    <Color x:Key="StatusError">#CF222E</Color>
-    <Color x:Key="StatusInfo">#0969DA</Color>
-
-    <!-- SolidColorBrushes -->
-    <SolidColorBrush x:Key="ThemeBgBrush" Color="{StaticResource ThemeBg}"/>
-    <SolidColorBrush x:Key="SidebarBgBrush" Color="{StaticResource SidebarBg}"/>
-    <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource CardBg}"/>
-    <SolidColorBrush x:Key="SurfaceBgBrush" Color="{StaticResource SurfaceBg}"/>
-    <SolidColorBrush x:Key="InputBgBrush" Color="{StaticResource InputBg}"/>
-    <SolidColorBrush x:Key="OverlayBgBrush" Color="{StaticResource OverlayBg}"/>
-    <SolidColorBrush x:Key="BorderPrimaryBrush" Color="{StaticResource BorderPrimary}"/>
-    <SolidColorBrush x:Key="BorderSecondaryBrush" Color="{StaticResource BorderSecondary}"/>
-    <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocus}"/>
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
-    <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
-    <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabled}"/>
-    <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
-    <SolidColorBrush x:Key="AccentBlueDarkBrush" Color="{StaticResource AccentBlueDark}"/>
-    <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreen}"/>
-    <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource AccentRed}"/>
-    <SolidColorBrush x:Key="AccentOrangeBrush" Color="{StaticResource AccentOrange}"/>
-    <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}"/>
-    <SolidColorBrush x:Key="NavItemHoverBrush" Color="{StaticResource NavItemHover}"/>
-    <SolidColorBrush x:Key="NavItemSelectedBrush" Color="{StaticResource NavItemSelected}"/>
-    <SolidColorBrush x:Key="NavItemSelectedTextBrush" Color="{StaticResource NavItemSelectedText}"/>
-    <SolidColorBrush x:Key="NavItemTextBrush" Color="{StaticResource NavItemText}"/>
-    <SolidColorBrush x:Key="NavItemHoverTextBrush" Color="{StaticResource NavItemHoverText}"/>
-    <SolidColorBrush x:Key="StatusSuccessBrush" Color="{StaticResource StatusSuccess}"/>
-    <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarning}"/>
-    <SolidColorBrush x:Key="StatusErrorBrush" Color="{StaticResource StatusError}"/>
-    <SolidColorBrush x:Key="StatusInfoBrush" Color="{StaticResource StatusInfo}"/>
+    <!-- ── Navigation ───────────────────────────────────── -->
+    <SolidColorBrush x:Key="NavItemHoverBrush"        Color="#EEF1F5"/>
+    <SolidColorBrush x:Key="NavItemSelectedBrush"     Color="#0969DA"/>
+    <SolidColorBrush x:Key="NavItemSelectedTextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="NavItemTextBrush"         Color="#656D76"/>
+    <SolidColorBrush x:Key="NavItemHoverTextBrush"    Color="#1F2328"/>
 
 </ResourceDictionary>

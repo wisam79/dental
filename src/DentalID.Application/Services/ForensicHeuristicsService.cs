@@ -9,26 +9,45 @@ namespace DentalID.Application.Services;
 /// </summary>
 public class ForensicHeuristicsService : IForensicHeuristicsService
 {
+    // Bug #48 fix: Limit the O(n²) IoU loop to a reasonable tooth count
+    private const int MaxTeethForIoUCheck = 80;
+
     public void ApplyChecks(AnalysisResult result)
     {
-        // 1. Structural Anomaly Check: Impossible tooth counts
-        if (result.RawTeeth.Count > 40)
+        if (result == null)
+            throw new ArgumentNullException(nameof(result));
+
+        int rawToothCount = result.RawTeeth?.Count ?? 0;
+        var rawTeeth = (result.RawTeeth ?? new List<DetectedTooth>())
+            .Where(t => t != null)
+            .ToList();
+
+        // Bug #49 fix: Adult permanent dentition max is 32; >32 is already anatomically impossible
+        if (rawToothCount > 32)
         {
-            result.Flags.Add("Forensic Alert: Unusual tooth count detected (>40). Possible image manipulation or composite.");
+            result.Flags.Add($"Forensic Alert: Unusual tooth count detected (>{rawToothCount}). Possible image manipulation or composite.");
         }
 
         // 2. Anatomical Conflict Check: Bilateral Asymmetry
-        AnalyzeBilateralAsymmetry(result);
+        AnalyzeBilateralAsymmetry(result, rawTeeth);
+
+        // Bug #48 fix: Guard against O(n²) explosion for large detection sets
+        if (rawToothCount > MaxTeethForIoUCheck)
+        {
+            result.Flags.Add($"Forensic Note: IoU overlap check skipped — too many detections ({rawToothCount} > {MaxTeethForIoUCheck}).");
+            return;
+        }
 
         // 3. Overlap Density Check — high overlap density suggests AI hallucinations
         int highOverlapCount = 0;
-        for (int i = 0; i < result.RawTeeth.Count; i++)
+        for (int i = 0; i < rawTeeth.Count; i++)
         {
-            for (int j = i + 1; j < result.RawTeeth.Count; j++)
+            for (int j = i + 1; j < rawTeeth.Count; j++)
             {
+                // Bug #46 fix: Lower IoU threshold from 0.8 to 0.5 to catch near-duplicate detections
                 if (CalculateIoU(
-                    result.RawTeeth[i].X, result.RawTeeth[i].Y, result.RawTeeth[i].Width, result.RawTeeth[i].Height,
-                    result.RawTeeth[j].X, result.RawTeeth[j].Y, result.RawTeeth[j].Width, result.RawTeeth[j].Height) > 0.8f)
+                    rawTeeth[i].X, rawTeeth[i].Y, rawTeeth[i].Width, rawTeeth[i].Height,
+                    rawTeeth[j].X, rawTeeth[j].Y, rawTeeth[j].Width, rawTeeth[j].Height) > 0.5f)
                 {
                     highOverlapCount++;
                 }
@@ -36,16 +55,25 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         }
         if (highOverlapCount > 3)
         {
-            result.Flags.Add($"Forensic Alert: {highOverlapCount} high-density overlaps detected. Possible AI artifacting.");
+            result.Flags.Add($"Forensic Alert: {highOverlapCount} high-density overlaps detected (IoU > 0.5). Possible AI artifacting.");
         }
     }
 
-    private void AnalyzeBilateralAsymmetry(AnalysisResult result)
+    private void AnalyzeBilateralAsymmetry(AnalysisResult result, List<DetectedTooth> rawTeeth)
     {
-        var leftCount = result.RawTeeth.Count(t => t.FdiNumber / 10 == 2 || t.FdiNumber / 10 == 3);
-        var rightCount = result.RawTeeth.Count(t => t.FdiNumber / 10 == 1 || t.FdiNumber / 10 == 4);
+        // Bug #47 fix: FdiNumber/10 == 2 matches FDI 20 (invalid tooth) and 21-29 (valid Q2)
+        // Correct filter: quadrant 2 is FDI 21-28, quadrant 3 is FDI 31-38
+        var leftCount = rawTeeth.Count(t =>
+            t != null &&
+            ((t.FdiNumber >= 21 && t.FdiNumber <= 28) ||
+             (t.FdiNumber >= 31 && t.FdiNumber <= 38)));
 
-        if (Math.Abs(leftCount - rightCount) > 6 && result.RawTeeth.Count > 10)
+        var rightCount = rawTeeth.Count(t =>
+            t != null &&
+            ((t.FdiNumber >= 11 && t.FdiNumber <= 18) ||
+             (t.FdiNumber >= 41 && t.FdiNumber <= 48)));
+
+        if (Math.Abs(leftCount - rightCount) > 6 && rawTeeth.Count > 10)
         {
             result.Flags.Add("Forensic Alert: Severe bilateral asymmetry detected. Verify image authenticity.");
         }

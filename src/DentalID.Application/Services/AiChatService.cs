@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using DentalID.Core.Interfaces;
@@ -43,6 +44,9 @@ public class AiChatService : IAiChatService
             _ => LlmProvider.RulesBased // Fallback for demo/testing
         };
         
+        // Bug #38: Set a reasonable timeout to avoid hanging requests indefinitely
+        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        
         _logger.LogInformation($"AI Chat Service initialized with provider: {_provider}");
     }
 
@@ -66,14 +70,15 @@ public class AiChatService : IAiChatService
             catch (Exception ex) when (attempt < MaxRetries && IsTransientError(ex))
             {
                 attempt++;
-                _logger.LogWarning($"{operationName} failed (attempt {attempt}/{MaxRetries}): {ex.Message}. Retrying in {delay}ms...");
                 
+                // Bug #31: Log error only on final attempt to avoid double-logging (warning "Retrying" + error on same attempt)
                 if (attempt >= MaxRetries)
                 {
                     _logger.LogError(ex, $"{operationName} failed after {MaxRetries} attempts");
                     throw;
                 }
                 
+                _logger.LogWarning($"{operationName} failed (attempt {attempt}/{MaxRetries}): {ex.Message}. Retrying in {delay}ms...");
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 delay *= 2; // Exponential backoff
             }
@@ -97,7 +102,9 @@ public class AiChatService : IAiChatService
     {
         try
         {
-            _logger.LogAudit("AI_CHAT_REQUEST", "User", userMessage);
+            // Bug #36: Truncate userMessage before logging to avoid PII leakage in audit log
+            var auditMsg = userMessage?.Length > 100 ? userMessage.Substring(0, 100) + "..." : userMessage ?? "";
+            _logger.LogAudit("AI_CHAT_REQUEST", "User", auditMsg);
             
             // Build context for the LLM
             var systemPrompt = BuildSystemPrompt(analysisContext);
@@ -121,7 +128,9 @@ public class AiChatService : IAiChatService
                 confidence = llmResponse.Confidence;
             }
             
-            _logger.LogAudit("AI_CHAT_RESPONSE", "System", response.Substring(0, Math.Min(100, response.Length)));
+            // Bug #32: Guard against null response before calling Substring
+            var responsePreview = response?.Length > 100 ? response.Substring(0, 100) : response ?? "";
+            _logger.LogAudit("AI_CHAT_RESPONSE", "System", responsePreview);
             
             return new AiChatResponse
             {
@@ -214,7 +223,7 @@ Current Analysis Context:
 - Detected Conditions: {string.Join(", ", context.DetectedPathologies)}
 - Estimated Age: {context.EstimatedAge ?? 0}
 - Estimated Gender: {context.EstimatedGender ?? "Unknown"}
-- Uniqueness Score: {context.UniquenessScore:P0}
+- Uniqueness Score: {(context.UniquenessScore.HasValue ? context.UniquenessScore.Value.ToString("P0") : "N/A")}
 - Smart Insights: {string.Join("; ", context.SmartInsights)}
 - Processing Time: {context.ProcessingTimeMs:F0}ms
 
@@ -262,13 +271,11 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
                 max_tokens = 1000
             };
             
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            
-            var response = await _httpClient.PostAsJsonAsync(
-                "https://api.openai.com/v1/chat/completions",
-                requestBody
-            );
+            // Bug #30: Use per-request HttpRequestMessage instead of mutating shared DefaultRequestHeaders (not thread-safe)
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+            request.Content = JsonContent.Create(requestBody);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -298,14 +305,12 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
                 messages = new[] { new { role = "user", content = $"{userMessage}\n\nAnalysis Data:\n{contextJson}" } }
             };
             
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-            
-            var response = await _httpClient.PostAsJsonAsync(
-                "https://api.anthropic.com/v1/messages",
-                requestBody
-            );
+            // Bug #30: Use per-request HttpRequestMessage instead of mutating shared DefaultRequestHeaders (not thread-safe)
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+            request.Headers.Add("x-api-key", apiKey);
+            request.Headers.Add("anthropic-version", "2023-06-01");
+            request.Content = JsonContent.Create(requestBody);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -337,7 +342,10 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
                 stream = false
             };
             
-            var response = await _httpClient.PostAsJsonAsync(endpoint, requestBody);
+            // Bug #30: Use per-request HttpRequestMessage for consistency (no auth headers for local but same pattern)
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+            request.Content = JsonContent.Create(requestBody);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -371,13 +379,11 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
                 max_tokens = 1000
             };
             
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            
-            var response = await _httpClient.PostAsJsonAsync(
-                "https://api.x.ai/v1/chat/completions",
-                requestBody
-            );
+            // Bug #30: Use per-request HttpRequestMessage instead of mutating shared DefaultRequestHeaders (not thread-safe)
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.x.ai/v1/chat/completions");
+            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+            request.Content = JsonContent.Create(requestBody);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -502,7 +508,8 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
         if (input.Contains("confidence") || input.Contains("reliable") || input.Contains("accuracy"))
         {
             var teethConf = context.TeethCount >= 28 ? "High" : context.TeethCount >= 20 ? "Medium" : "Low";
-            var pathConf = context.PathologiesCount == 0 ? "High" : context.PathologiesCount < 5 ? "Medium" : "High";
+            // Bug #34: High pathology count indicates more uncertainty/noise, not higher confidence
+            var pathConf = context.PathologiesCount == 0 ? "High" : context.PathologiesCount < 5 ? "Medium" : "Low";
             
             return ($"Analysis Confidence Assessment:\n" +
                     $"- Teeth Detection: {teethConf} ({context.TeethCount} teeth identified)\n" +
@@ -655,7 +662,8 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
         
         foreach (var line in lines)
         {
-            if (line.Contains("Tooth") || line.Contains("#"))
+            // Bug #39: Match "#<digits>" specifically to avoid false positives on any '#' character (e.g. C# comments, colors)
+            if (line.Contains("Tooth") || Regex.IsMatch(line, @"#\d+"))
             {
                 recommendations.Add(new TreatmentRecommendation
                 {

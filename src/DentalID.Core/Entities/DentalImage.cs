@@ -34,9 +34,9 @@ public class DentalImage : AuditableEntity
             {
                 return System.Text.Json.JsonSerializer.Deserialize<DentalID.Core.DTOs.AnalysisResult>(AnalysisResults);
             }
-            catch 
+            // Bug #5 fix: Catch only JsonException; other exceptions (OOM, etc.) should propagate
+            catch (System.Text.Json.JsonException)
             {
-                // In case of parsing error, return null or handle gracefully
                 return null;
             }
         }
@@ -47,10 +47,13 @@ public class DentalImage : AuditableEntity
         }
     }
     
-    /// <summary>Generated Dental DNA code (Biometric Fingerprint).</summary>
+    // Bug #4 fix: Remove duplicate <summary> XML comment
     /// <summary>Generated Dental DNA code (Biometric Fingerprint).</summary>
     public string? FingerprintCode { get; set; }
     
+    // Bug #6 fix: Default to UtcNow at construction time (nearest to actual upload);
+    // callers in SaveEvidenceAsync should set this explicitly via UploadedAt = DateTime.UtcNow
+    // Bug #7 fix: UploadedAt is distinct from CreatedAt (inherited); it records when image was submitted
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     
     /// <summary>Biometric uniqueness score of the dental map.</summary>

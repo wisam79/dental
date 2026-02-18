@@ -6,56 +6,67 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      strictTests:
+        description: "Run tests in strict mode (fail on any failing test)"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "0 2 * * *"
 
 env:
   DOTNET_VERSION: '8.0.x'
   SOLUTION_FILE: 'DentalID.sln'
 
 jobs:
-  # ─────────────────────────────────────────────
-  # JOB 1: Build & Unit Tests
-  # ─────────────────────────────────────────────
   build-and-test:
-    name: 🔨 Build & Test
+    name: Build & Test
     runs-on: windows-latest
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup .NET ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 📦 Restore NuGet packages
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Restore NuGet packages
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      - name: 🔨 Build Solution
+      - name: Build solution
         run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore
 
-      - name: 🧪 Run Unit Tests
+      - name: Run test suites
+        shell: pwsh
         run: |
-          dotnet test tests/DentalID.Tests/DentalID.Tests.csproj `
-            --configuration Release `
-            --no-build `
-            --verbosity normal `
-            --logger "trx;LogFileName=test-results.trx" `
-            --results-directory TestResults/
+          $strictInput = "${{ github.event.inputs.strictTests }}"
+          $eventName = "${{ github.event_name }}"
+          $strictMode = ($strictInput -eq "true") -or ($eventName -eq "schedule")
+
+          if ($strictMode) {
+            ./scripts/test.ps1 -Suite all -Configuration Release -CollectCoverage
+          } else {
+            ./scripts/test.ps1 -Suite all -Configuration Release -CollectCoverage -AllowKnownFailures
+          }
         env:
-          # Prevent Avalonia from trying to open a real window in CI
           AVALONIA_SCREEN_SCALE_OVERRIDE: 1
 
-      - name: 📊 Publish Test Results
+      - name: Publish test results
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: Unit Test Results
-          path: TestResults/*.trx
+          name: Test Results
+          path: TestResults/**/*.trx
           reporter: dotnet-trx
           fail-on-error: false
 
-      - name: 📤 Upload Test Results Artifact
+      - name: Upload test results artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -63,27 +74,24 @@ jobs:
           path: TestResults/
           retention-days: 7
 
-  # ─────────────────────────────────────────────
-  # JOB 2: Code Quality & Warnings Check
-  # ─────────────────────────────────────────────
   code-quality:
-    name: 🔍 Code Quality
+    name: Code Quality
     runs-on: windows-latest
     needs: build-and-test
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup .NET ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 📦 Restore packages
+      - name: Restore packages
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      - name: 🔍 Build with Warning as Error check (src only)
+      - name: Build with Warning as Error check (src only)
         run: |
           dotnet build src/DentalID.Core/DentalID.Core.csproj --configuration Release --no-restore
           dotnet build src/DentalID.Application/DentalID.Application.csproj --configuration Release --no-restore
@@ -91,33 +99,30 @@ jobs:
           dotnet build src/DentalID.Desktop/DentalID.Desktop.csproj --configuration Release --no-restore
         continue-on-error: true
 
-      - name: 📋 List build warnings summary
+      - name: List build warnings summary
         run: |
           echo "Build completed. Check logs above for any warnings."
           echo "Key areas monitored: Security, AI Engine, Medical Logic, DB/Matching, UI"
 
-  # ─────────────────────────────────────────────
-  # JOB 3: Publish Windows Release (on tag push)
-  # ─────────────────────────────────────────────
   publish-release:
-    name: 🚀 Publish Windows Release
+    name: Publish Windows Release
     runs-on: windows-latest
     needs: build-and-test
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup .NET ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 📦 Restore packages
+      - name: Restore packages
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      - name: 🚀 Publish Windows x64 Self-Contained
+      - name: Publish Windows x64 self-contained
         run: |
           dotnet publish src/DentalID.Desktop/DentalID.Desktop.csproj `
             --configuration Release `
@@ -128,13 +133,13 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:DebugType=None
 
-      - name: 📦 Package Release
+      - name: Package release
         run: |
           $version = "${{ github.ref_name }}"
           Compress-Archive -Path publish/win-x64/* -DestinationPath "DentalID-$version-win-x64.zip"
           echo "RELEASE_FILE=DentalID-$version-win-x64.zip" >> $env:GITHUB_ENV
 
-      - name: 🎉 Create GitHub Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.RELEASE_FILE }}

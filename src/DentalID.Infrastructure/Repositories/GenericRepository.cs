@@ -97,13 +97,16 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
 
     #region Add Methods
 
+    // Bug #56 fix: Remove auto-SaveChangesAsync from AddAsync.
+    // The Unit of Work pattern requires callers to call SaveChangesAsync explicitly.
+    // Previously this caused double-save when callers also called UoW.SaveChangesAsync().
     public virtual async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
         await _dbSet.AddAsync(entity, cancellationToken);
-        // Bug #25 fix: actually persist to DB — without this, data is silently lost
-        await _context.SaveChangesAsync(cancellationToken);
+        // NOTE: Do NOT call SaveChangesAsync here. Use IUnitOfWork.SaveChangesAsync() instead.
     }
 
+    // Bug #56 fix: AddRangeAsync is now consistent with AddAsync — no auto-save
     public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         await _dbSet.AddRangeAsync(entities, cancellationToken);
@@ -151,6 +154,8 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
 
     #region Advanced Methods
 
+    // Bug #58 fix: These methods accept raw SQL — NEVER pass user input directly.
+    // Always use parameterized queries: ExecuteSqlRawAsync("SELECT ... WHERE Id = {0}", userId)
     public virtual async Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters)
     {
         return await _context.Database.ExecuteSqlRawAsync(sql, parameters);

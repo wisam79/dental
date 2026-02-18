@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace DentalID.Infrastructure.Services;
 
@@ -22,11 +23,15 @@ public class AuditService : IAuditService
         _db = db;
     }
 
-    public async Task<List<AuditLogEntry>> GetLogsAsync(DateTime startDate, DateTime endDate)
+    public async Task<List<AuditLogEntry>> GetLogsAsync(DateTime startDate, DateTime endDate,
+        int page = 1, int pageSize = 200)
     {
+        // Bug #65: Add pagination to avoid loading millions of audit rows into memory
         return await _db.AuditLog
             .Where(x => x.Timestamp >= startDate && x.Timestamp <= endDate)
             .OrderByDescending(x => x.Timestamp)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
     }
 
@@ -91,7 +96,9 @@ public class AuditService : IAuditService
 
     private string ComputeHash(AuditLogEntry entry)
     {
-        var rawData = $"{entry.PreviousHash}|{entry.Timestamp:O}|{entry.Action}|{entry.EntityType ?? ""}|{entry.EntityId}|{entry.UserId}|{entry.OldValue ?? ""}|{entry.NewValue ?? ""}";
+        // Bug #66: Use explicit null-safe string representations for nullable int fields
+        // to ensure consistent hash across different null representations
+        var rawData = $"{entry.PreviousHash}|{entry.Timestamp:O}|{entry.Action}|{entry.EntityType ?? ""}|{entry.EntityId?.ToString() ?? ""}|{entry.UserId?.ToString() ?? ""}|{entry.OldValue ?? ""}|{entry.NewValue ?? ""}";
         using var sha256 = SHA256.Create();
         var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawData));
         return Convert.ToHexString(bytes);

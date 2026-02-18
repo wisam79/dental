@@ -71,9 +71,10 @@ public class AuthService : IAuthService
 
     public async Task InitializeAdminAsync()
     {
-        // Check if admin already exists
+        // Bug Fix: Use FirstOrDefaultAsync with predicate instead of loading ALL users into memory.
+        // The old code fetched every user record to find a single admin — O(N) memory when O(1) query works.
         var userRepo = _unitOfWork.GetRepository<User>();
-        var existingAdmin = (await userRepo.GetAllAsync()).FirstOrDefault(u => u.Username == "admin");
+        var existingAdmin = await userRepo.FirstOrDefaultAsync(u => u.Username == "admin");
         if (existingAdmin != null)
         {
             _logger.LogInformation("Admin account already exists. Skipping initialization.");

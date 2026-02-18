@@ -14,9 +14,18 @@ using DentalID.Application.Configuration;
 namespace DentalID.Application.Services;
 
 /// <summary>
-/// ONNX-based AI Pipeline Service for dental image analysis.
-/// Uses YOLOv8-style models for detection and ResNet-style encoder for features.
+/// ⚠️ LEGACY / STUB — DO NOT USE IN PRODUCTION ⚠️
+/// This class is a legacy stub implementation of IAiPipelineService.
+/// The active, production-ready implementation is <see cref="OnnxInferenceService"/>,
+/// which is registered in Bootstrapper.cs.
+/// 
+/// CRITICAL BUG: The internal DetectTeethAsync() method initializes an empty list
+/// and never populates it before applying NMS — always returning zero detections.
+/// 
+/// This file is kept for historical reference only. Any new AI pipeline features
+/// must be implemented in OnnxInferenceService.
 /// </summary>
+[Obsolete("Use OnnxInferenceService instead. This class contains stub methods and is not production-ready.", error: false)]
 public class OnnxAiPipelineService : IAiPipelineService
 {
     private readonly AiConfiguration _config;
