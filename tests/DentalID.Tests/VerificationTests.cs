@@ -69,7 +69,12 @@ namespace DentalID.Tests
             var fdiService = new FdiSpatialService();
             var heuristicsService = new ForensicHeuristicsService();
             var yoloParser = new YoloDetectionParser(aiConfig, aiSettings, fdiService);
-            var service = new OnnxInferenceService(aiConfig, aiSettings, new Infrastructure.Services.LogService(), bio, intelligence, cache, yoloParser, fdiService, heuristicsService, new TensorPreparationService());
+            var tensorPrep = new TensorPreparationService();
+            var sessionManager = new OnnxSessionManager(aiConfig, aiSettings, new Infrastructure.Services.LogService());
+            var teethSvc = new TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, aiConfig, aiSettings);
+            var pathSvc  = new PathologyDetectionService(sessionManager, yoloParser, tensorPrep, aiConfig, aiSettings);
+            var encoderSvc = new FeatureEncoderService(sessionManager, tensorPrep, aiConfig, new Infrastructure.Services.LogService());
+            var service = new OnnxInferenceService(sessionManager, teethSvc, pathSvc, encoderSvc, yoloParser, heuristicsService, intelligence, bio, cache, new Infrastructure.Services.LogService());
             
             await service.InitializeAsync(modelsDir);
 

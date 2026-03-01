@@ -20,6 +20,7 @@ public partial class App : Avalonia.Application
 {
     private Bootstrapper _bootstrapper = null!;
     private IServiceProvider _serviceProvider = null!;
+    private ResourceDictionary? _currentLanguageResources;
 
     public static ThemeService? ThemeService { get; private set; }
     public static IServiceProvider? Services { get; private set; }
@@ -40,6 +41,7 @@ public partial class App : Avalonia.Application
             var settings = AppSettings.Load();
             ThemeService = new ThemeService(this, settings);
             var aiSettings = LoadAiSettings();
+            InitializeLanguageResources();
 
             // 3. Initialize Bootstrapper
             _bootstrapper = new Bootstrapper();
@@ -59,9 +61,8 @@ public partial class App : Avalonia.Application
             var mainVm = _serviceProvider.GetRequiredService<MainWindowViewModel>();
             mainWindow.DataContext = mainVm;
 
-            // Initialize in Secure Boot Mode (Shell Hidden, Startup View Active)
+            // Initialize in Secure Boot Mode (Startup View Active)
             mainVm.CurrentView = startupVm; 
-            mainVm.IsShellVisible = false;
 
             desktop.MainWindow = mainWindow;
             
@@ -78,25 +79,18 @@ public partial class App : Avalonia.Application
                     logger.LogInformation("Running SecureBootAsync...");
                     await bootstrapper.RunSecureBootAsync(startupVm, provider);
                     
-                    logger.LogInformation("SecureBoot Async Completed. Scheduling UI switch to Login...");
+                    logger.LogInformation("SecureBoot Async Completed. Scheduling UI switch to Subjects...");
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         try 
                         {
                             var navigation = provider.GetRequiredService<INavigationService>();
-                            
-                            // Navigate to Login first
-                            var loginVm = navigation.NavigateTo<LoginViewModel>(); 
-                            
-                            if (loginVm != null)
-                            {
-                                mainVm.IsShellVisible = true; 
-                                logger.LogInformation("MainView Switched to Login.");
-                            }
-                            else
-                            {
-                                throw new Exception("Failed to navigate to Login View.");
-                            }
+                            var subjectsVm = navigation.NavigateTo<SubjectsViewModel>();
+                            if (subjectsVm == null)
+                                throw new Exception("Failed to navigate to Subjects View.");
+
+                            mainVm.IsShellVisible = true;
+                            logger.LogInformation("MainView Switched directly to Subjects (Login removed).");
                         }
                             catch (Exception innerEx)
                             {
@@ -121,6 +115,35 @@ public partial class App : Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void InitializeLanguageResources()
+    {
+        ApplyLanguageResources(Loc.Instance.CurrentLanguage);
+        Loc.Instance.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, string lang)
+    {
+        Dispatcher.UIThread.Post(() => ApplyLanguageResources(lang));
+    }
+
+    private void ApplyLanguageResources(string lang)
+    {
+        if (Resources == null)
+            return;
+
+        var uri = lang == "ar"
+            ? new Uri("avares://DentalID.Desktop/Assets/Lang/ar-SA.axaml")
+            : new Uri("avares://DentalID.Desktop/Assets/Lang/en-US.axaml");
+
+        var dictionary = (ResourceDictionary)AvaloniaXamlLoader.Load(uri);
+
+        if (_currentLanguageResources != null)
+            Resources.MergedDictionaries.Remove(_currentLanguageResources);
+
+        Resources.MergedDictionaries.Insert(0, dictionary);
+        _currentLanguageResources = dictionary;
     }
 
     private AppConfig.AiSettings LoadAiSettings()

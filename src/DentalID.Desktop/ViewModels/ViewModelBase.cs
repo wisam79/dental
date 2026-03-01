@@ -27,7 +27,14 @@ public abstract partial class ViewModelBase : ObservableValidator
     /// <param name="action">The async action to execute.</param>
     /// <param name="errorMessage">Optional custom error message.</param>
     /// <param name="successMessage">Optional success message to show on completion.</param>
-    protected async Task SafeExecuteAsync(Func<Task> action, string? errorMessage = null, string? successMessage = null)
+    /// <param name="errorTitle">Optional toast title for errors.</param>
+    /// <param name="successTitle">Optional toast title for success.</param>
+    protected async Task SafeExecuteAsync(
+        Func<Task> action,
+        string? errorMessage = null,
+        string? successMessage = null,
+        string? errorTitle = null,
+        string? successTitle = null)
     {
         if (IsBusy) return;
 
@@ -38,7 +45,7 @@ public abstract partial class ViewModelBase : ObservableValidator
             await action();
             if (!string.IsNullOrWhiteSpace(successMessage))
             {
-                WeakReferenceMessenger.Default.Send(new ShowToastMessage("Success", successMessage, ToastType.Success));
+                WeakReferenceMessenger.Default.Send(new ShowToastMessage(successTitle ?? "Success", successMessage, ToastType.Success));
                 StatusMessage = successMessage;
             }
         }
@@ -46,7 +53,7 @@ public abstract partial class ViewModelBase : ObservableValidator
         {
             var msg = errorMessage ?? ex.Message;
             StatusMessage = $"Error: {msg}";
-            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Error", msg, ToastType.Error));
+            WeakReferenceMessenger.Default.Send(new ShowToastMessage(errorTitle ?? "Error", msg, ToastType.Error));
             System.Diagnostics.Debug.WriteLine($"Error in ViewModel operation: {ex}");
         }
         finally

@@ -47,6 +47,10 @@ public class DataImportService : IDataImportService
                 csv.Read();
                 csv.ReadHeader();
                 var headers = csv.HeaderRecord;
+                if (headers == null || headers.Length == 0)
+                {
+                    throw new InvalidOperationException("CSV header row is missing or empty.");
+                }
 
                 while (csv.Read())
                 {
@@ -55,7 +59,7 @@ public class DataImportService : IDataImportService
                     {
                         if (!row.ContainsKey(header))
                         {
-                            row[header] = csv.GetField(header);
+                            row[header] = csv.GetField(header) ?? string.Empty;
                         }
                     }
                     records.Add(row);
@@ -191,7 +195,7 @@ public class DataImportService : IDataImportService
                 string subjectName = Path.GetFileName(subDir);
                 
                 // Bug #27 fix: Check for existing subject by name to prevent duplicates
-                var existingSubject = await _subjectRepo.FirstOrDefaultAsync(s => s.FullName == subjectName);
+                var existingSubject = await _subjectRepo.GetByFullNameExactAsync(subjectName);
                 Subject subject;
 
                 if (existingSubject != null)
@@ -220,21 +224,15 @@ public class DataImportService : IDataImportService
                 {
                     string finalPath = imgPath;
 
-                    // Bug #28 fix: Implement moveFiles logic to secure evidence
+                    // Move evidence into managed storage when requested.
                     if (moveFiles)
                     {
-                        // Create secure evidence directory
                         var secureDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DentalEvidence", subject.SubjectId);
-                        if (!Directory.Exists(secureDir)) Directory.CreateDirectory(secureDir);
+                        Directory.CreateDirectory(secureDir);
 
                         var fileName = Path.GetFileName(imgPath);
-                        var destPath = Path.Combine(secureDir, fileName);
-
-                        // Use Copy to be safe, or Move if strictly requested. 
-                        // "moveFiles" implies Move, but Copy is safer for import. 
-                        // Let's stick to Copy for safety unless explicitly Move is safer? 
-                        // User asked for "moveFiles" support.
-                        File.Copy(imgPath, destPath, overwrite: true);
+                        var destPath = GetUniqueDestinationPath(secureDir, fileName);
+                        File.Move(imgPath, destPath);
                         finalPath = destPath;
                     }
 
@@ -260,6 +258,23 @@ public class DataImportService : IDataImportService
         }
 
         return result;
+    }
+
+    private static string GetUniqueDestinationPath(string directory, string originalFileName)
+    {
+        var safeFileName = Path.GetFileName(originalFileName);
+        var name = Path.GetFileNameWithoutExtension(safeFileName);
+        var ext = Path.GetExtension(safeFileName);
+        var candidate = Path.Combine(directory, safeFileName);
+
+        int attempt = 1;
+        while (File.Exists(candidate))
+        {
+            candidate = Path.Combine(directory, $"{name}_{attempt}{ext}");
+            attempt++;
+        }
+
+        return candidate;
     }
 }
 

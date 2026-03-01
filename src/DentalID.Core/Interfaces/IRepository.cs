@@ -146,6 +146,16 @@ public interface IRepository<T> where T : BaseEntity
     /// <param name="cancellationToken">Cancellation token</param>
     Task RemoveAsync(int id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Removes an entity by ID and returns whether it was found and deleted.
+    /// Prefer this over <see cref="RemoveAsync"/> when callers need to distinguish
+    /// "not found" from a genuine deletion.
+    /// </summary>
+    /// <param name="id">Entity ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if the entity existed and was marked for deletion; false if not found</returns>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+
     #endregion
 
     #region Advanced Methods

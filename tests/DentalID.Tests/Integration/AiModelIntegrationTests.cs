@@ -85,17 +85,23 @@ public class AiModelIntegrationTests
         var heuristicsService = new ForensicHeuristicsService();
         var yoloParser = new YoloDetectionParser(config, aiSettings, fdiService);
 
+        var tensorPrep = new TensorPreparationService();
+        var sessionManager = new OnnxSessionManager(config, aiSettings, mockLogger.Object);
+        var teethSvc   = new TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, config, aiSettings);
+        var pathSvc    = new PathologyDetectionService(sessionManager, yoloParser, tensorPrep, config, aiSettings);
+        var encoderSvc = new FeatureEncoderService(sessionManager, tensorPrep, config, mockLogger.Object);
+
         var service = new OnnxInferenceService(
-            config, 
-            aiSettings, 
-            mockLogger.Object, 
-            mockBiometric.Object, 
-            mockIntelligence.Object,
-            mockCache.Object,
+            sessionManager,
+            teethSvc,
+            pathSvc,
+            encoderSvc,
             yoloParser,
-            fdiService,
             heuristicsService,
-            new TensorPreparationService()
+            mockIntelligence.Object,
+            mockBiometric.Object,
+            mockCache.Object,
+            mockLogger.Object
         );
 
         try
@@ -138,7 +144,7 @@ public class AiModelIntegrationTests
             {
                  _output.WriteLine("Checking Encoder Result...");
                  Assert.NotNull(result.FeatureVector);
-                 Assert.Equal(256, result.FeatureVector.Length);
+                 Assert.Equal(1024, result.FeatureVector.Length);
                  _output.WriteLine("Encoder Valid.");
             }
 

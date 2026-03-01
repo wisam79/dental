@@ -3,284 +3,510 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             xmlns:services="using:DentalID.Desktop.Services"
+             mc:Ignorable="d"
+             d:DesignWidth="1280"
+             d:DesignHeight="760"
              x:Class="DentalID.Desktop.Views.StartupView"
              x:DataType="vm:StartupViewModel">
-
-    <!-- ════════════════════════════════════════════════════
-         STARTUP / SPLASH SCREEN
-         A forensic-grade loading screen with professional
-         branding, animated progress, and system diagnostics.
-    ════════════════════════════════════════════════════ -->
-
     <Grid>
+        <Border Background="{DynamicResource SurfaceDeepBrush}" />
 
-        <!-- ── Deep background ── -->
-        <Border Background="{DynamicResource SurfaceDeepBrush}"/>
-
-        <!-- ── Radial ambient glow (accent-coloured) ── -->
         <Border>
             <Border.Background>
-                <RadialGradientBrush Center="50%,40%" GradientOrigin="50%,40%"
-                                     RadiusX="60%" RadiusY="55%">
-                    <GradientStop Color="#180078D4" Offset="0"/>
-                    <GradientStop Color="#00000000" Offset="1"/>
-                </RadialGradientBrush>
-            </Border.Background>
-        </Border>
-
-        <!-- ── Subtle dot-grid texture ── -->
-        <Canvas Opacity="0.04" IsHitTestVisible="False">
-            <Path Data="M0,0 L1,0 L1,1 L0,1 Z"
-                  Fill="{DynamicResource TextPrimaryBrush}"
-                  Width="900" Height="600"
-                  Stretch="Fill"/>
-        </Canvas>
-
-        <!-- ════════════════════ MAIN CONTENT ════════════════════ -->
-        <Grid RowDefinitions="*, Auto">
-
-            <!-- ── Centre column ── -->
-            <StackPanel Grid.Row="0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="0">
-
-                <!-- Logo mark -->
-                <Grid Margin="0,0,0,28" HorizontalAlignment="Center">
-                    <Border Width="102" Height="102" CornerRadius="30" Background="#080078D4"/>
-                    <Border Width="88" Height="88"
-                            CornerRadius="22"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                                <GradientStop Color="#200078D4" Offset="0"/>
-                                <GradientStop Color="#100078D4" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                                <GradientStop Color="#600078D4" Offset="0"/>
-                                <GradientStop Color="#200078D4" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
-                        <Image Source="/Assets/Brand/dental.png"
-                               Width="50"
-                               Height="50"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Stretch="Uniform"/>
-                    </Border>
-                </Grid>
-
-                <!-- App name -->
-                <TextBlock Text="DENTAL ID"
-                           FontSize="38"
-                           FontWeight="Bold"
-                           LetterSpacing="6"
-                           Foreground="{DynamicResource TextPrimaryBrush}"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,6"/>
-
-                <!-- Tagline -->
-                <TextBlock Text="FORENSIC INVESTIGATION SUITE"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           LetterSpacing="3"
-                           Foreground="{DynamicResource TextMutedBrush}"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,4"/>
-
-                <!-- Version badge -->
-                <Border Background="#15FFFFFF"
-                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                        BorderThickness="1"
-                        CornerRadius="12"
-                        Padding="12,4"
-                        HorizontalAlignment="Center"
-                        Margin="0,0,0,48">
-                    <TextBlock Text="{Binding Version}"
-                               Classes="mono"
-                               FontSize="11"
-                               Foreground="{DynamicResource TextMutedBrush}"/>
-                </Border>
-
-                <!-- Progress section -->
-                <StackPanel Width="360" Spacing="10">
-
-                    <!-- Progress bar track + indicator -->
-                    <Grid>
-                        <!-- Track -->
-                        <Border Height="3"
-                                CornerRadius="1.5"
-                                Background="{DynamicResource BorderSubtleBrush}"/>
-                        <!-- Fill -->
-                        <ProgressBar Value="{Binding ProgressValue}"
-                                     Minimum="0" Maximum="100"
-                                     Height="3"
-                                     CornerRadius="1.5"
-                                     Foreground="{DynamicResource AccentPrimaryBrush}"
-                                     Background="Transparent"/>
-                    </Grid>
-
-                    <!-- Status message + percentage -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding StatusMessage}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Column="1"
-                                   Classes="mono"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource TextMutedBrush}">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0}%">
-                                    <Binding Path="ProgressValue"/>
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </Grid>
-
-                    <!-- Startup stage chips -->
-                    <Grid ColumnDefinitions="*,8,*,8,*" Margin="0,8,0,0">
-                        <Border Grid.Column="0"
-                                CornerRadius="8"
-                                Padding="8,4"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                Background="#12000000"
-                                Opacity="{Binding IntegrityOpacity}">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
-                                <PathIcon Data="{StaticResource IconCheckCircle}" Width="10" Height="10" Foreground="{DynamicResource SuccessBrush}"/>
-                                <TextBlock Text="Integrity" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="2"
-                                CornerRadius="8"
-                                Padding="8,4"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                Background="#12000000"
-                                Opacity="{Binding DatabaseOpacity}">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
-                                <PathIcon Data="{StaticResource IconDatabase}" Width="10" Height="10" Foreground="{DynamicResource AccentSecondaryBrush}"/>
-                                <TextBlock Text="Database" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="4"
-                                CornerRadius="8"
-                                Padding="8,4"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                Background="#12000000"
-                                Opacity="{Binding AiOpacity}">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
-                                <PathIcon Data="{StaticResource IconAnalysis}" Width="10" Height="10" Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                                <TextBlock Text="AI Engine" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </StackPanel>
-
-            </StackPanel>
-
-            <!-- ══════ BOTTOM STATUS BAR ══════ -->
-            <Border Grid.Row="1"
-                    Margin="0,0,0,32">
-                <StackPanel HorizontalAlignment="Center" Spacing="12">
-
-                    <!-- System diagnostics row -->
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                Spacing="24">
-
-                        <!-- AI Engine indicator -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Width="6" Height="6" CornerRadius="3"
-                                    Background="{DynamicResource SuccessBrush}"
-                                    VerticalAlignment="Center"/>
-                            <TextBlock Text="AI ENGINE"
-                                       FontSize="10" FontWeight="SemiBold"
-                                       LetterSpacing="1"
-                                       Foreground="{DynamicResource TextDisabledBrush}"/>
-                            <TextBlock Text="ONNX Runtime"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
-                        </StackPanel>
-
-                        <!-- Divider -->
-                        <Border Width="1" Height="14"
-                                Background="{DynamicResource BorderSubtleBrush}"
-                                VerticalAlignment="Center"/>
-
-                        <!-- Encryption indicator -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Width="6" Height="6" CornerRadius="3"
-                                    Background="{DynamicResource SuccessBrush}"
-                                    VerticalAlignment="Center"/>
-                            <TextBlock Text="ENCRYPTION"
-                                       FontSize="10" FontWeight="SemiBold"
-                                       LetterSpacing="1"
-                                       Foreground="{DynamicResource TextDisabledBrush}"/>
-                            <TextBlock Text="AES-256"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
-                        </StackPanel>
-
-                        <!-- Divider -->
-                        <Border Width="1" Height="14"
-                                Background="{DynamicResource BorderSubtleBrush}"
-                                VerticalAlignment="Center"/>
-
-                        <!-- Database indicator -->
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Width="6" Height="6" CornerRadius="3"
-                                    Background="{DynamicResource SuccessBrush}"
-                                    VerticalAlignment="Center"/>
-                            <TextBlock Text="DATABASE"
-                                       FontSize="10" FontWeight="SemiBold"
-                                       LetterSpacing="1"
-                                       Foreground="{DynamicResource TextDisabledBrush}"/>
-                            <TextBlock Text="SQLite"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource AccentTertiaryBrush}"/>
-                        </StackPanel>
-
-                    </StackPanel>
-
-                    <!-- Legal disclaimer -->
-                    <TextBlock Text="{DynamicResource Str_Startup_Warning}"
-                               FontSize="10"
-                               Foreground="{DynamicResource TextDisabledBrush}"
-                               HorizontalAlignment="Center"
-                               TextWrapping="Wrap"
-                               TextAlignment="Center"
-                               MaxWidth="560"
-                               Opacity="0.7"/>
-
-                </StackPanel>
-            </Border>
-
-        </Grid>
-
-        <!-- ── Subtle top accent line ── -->
-        <Border Height="2"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Stretch">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                    <GradientStop Color="#000078D4" Offset="0"/>
-                    <GradientStop Color="#FF0078D4" Offset="0.35"/>
-                    <GradientStop Color="#FF0078D4" Offset="0.65"/>
-                    <GradientStop Color="#000078D4" Offset="1"/>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Color="#FF111821" Offset="0" />
+                    <GradientStop Color="#FF1A1F2A" Offset="0.45" />
+                    <GradientStop Color="#FF0F141C" Offset="1" />
                 </LinearGradientBrush>
             </Border.Background>
         </Border>
 
+        <Border Margin="30"
+                CornerRadius="22"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#C0181E28" Offset="0" />
+                    <GradientStop Color="#C0141A24" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid ColumnDefinitions="320,*">
+                <Border Grid.Column="0"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="0,0,1,0"
+                        Padding="28">
+                    <StackPanel Spacing="18" VerticalAlignment="Stretch">
+                        <StackPanel Spacing="12">
+                            <Border Width="96"
+                                    Height="96"
+                                    CornerRadius="22"
+                                    BorderBrush="#7040A7FF"
+                                    BorderThickness="1"
+                                    Background="#1A2F84AE"
+                                    HorizontalAlignment="Left">
+                                <Image Source="/Assets/Brand/dental.png"
+                                       Width="56"
+                                       Height="56"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                            </Border>
+
+                            <TextBlock Text="{Binding [Startup_AppName], Source={x:Static services:Loc.Instance}}"
+                                       FontSize="30"
+                                       FontWeight="Bold"
+                                       LineHeight="38"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       LetterSpacing="3" />
+
+                            <TextBlock Text="{Binding [Startup_Tagline], Source={x:Static services:Loc.Instance}}"
+                                       FontSize="11"
+                                       LetterSpacing="2.2"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+
+                            <Border Background="#1AFFFFFF"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Padding="10,5"
+                                    CornerRadius="10"
+                                    HorizontalAlignment="Left">
+                                <TextBlock Text="{Binding Version}"
+                                           Classes="mono"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </Border>
+                        </StackPanel>
+
+                        <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Background="#15000000"
+                                CornerRadius="12"
+                                Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{Binding [Startup_BootStages], Source={x:Static services:Loc.Instance}}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+
+                                <Border Opacity="{Binding IntegrityOpacity}"
+                                        Padding="8,6"
+                                        CornerRadius="8"
+                                        Background="#12000000"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource IconShield}"
+                                                  Width="11"
+                                                  Height="11"
+                                                  Foreground="{DynamicResource SuccessBrush}" />
+                                        <TextBlock Text="{Binding [Startup_Stage_Integrity], Source={x:Static services:Loc.Instance}}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Opacity="{Binding DatabaseOpacity}"
+                                        Padding="8,6"
+                                        CornerRadius="8"
+                                        Background="#12000000"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource IconDatabase}"
+                                                  Width="11"
+                                                  Height="11"
+                                                  Foreground="{DynamicResource AccentSecondaryBrush}" />
+                                        <TextBlock Text="{Binding [Startup_Stage_Database], Source={x:Static services:Loc.Instance}}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Opacity="{Binding AiOpacity}"
+                                        Padding="8,6"
+                                        CornerRadius="8"
+                                        Background="#12000000"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource IconAnalysis}"
+                                                  Width="11"
+                                                  Height="11"
+                                                  Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                        <TextBlock Text="{Binding [Startup_Stage_AI], Source={x:Static services:Loc.Instance}}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Background="#12000000"
+                                CornerRadius="12"
+                                Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{Binding [Startup_SecurityEnvelope], Source={x:Static services:Loc.Instance}}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Border Width="7" Height="7" CornerRadius="4"
+                                            Background="{DynamicResource SuccessBrush}"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="ONNX Runtime"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextMutedBrush}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource Str_Startup_Status_Active}"
+                                               Classes="mono"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Border Width="7" Height="7" CornerRadius="4"
+                                            Background="{DynamicResource SuccessBrush}"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="AES-256"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextMutedBrush}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource Str_Startup_Status_Sealed}"
+                                               Classes="mono"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Border Width="7" Height="7" CornerRadius="4"
+                                            Background="{DynamicResource SuccessBrush}"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="SQLite"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextMutedBrush}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{DynamicResource Str_Startup_Status_Online}"
+                                               Classes="mono"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <Grid Grid.Column="1"
+                      RowDefinitions="Auto,Auto,*,Auto"
+                      Margin="28">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="{Binding [Startup_SysInit], Source={x:Static services:Loc.Instance}}"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="{Binding [Startup_SysInitDesc], Source={x:Static services:Loc.Instance}}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+
+                        <Border Grid.Column="1"
+                                CornerRadius="12"
+                                Padding="10,5"
+                                BorderBrush="#502F84AE"
+                                BorderThickness="1"
+                                Background="#142F84AE"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <PathIcon Data="{StaticResource IconPower}"
+                                          Width="10"
+                                          Height="10"
+                                          Foreground="{DynamicResource AccentSecondaryBrush}" />
+                                <TextBlock Text="{Binding [Startup_SecureBoot], Source={x:Static services:Loc.Instance}}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1"
+                            Margin="0,18,0,16"
+                            CornerRadius="14"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            Background="#15000000"
+                            Padding="14">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <TextBlock Text="{Binding StatusMessage}"
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxLines="2"
+                                           MaxWidth="620" />
+                                <TextBlock Grid.Column="1"
+                                           Classes="mono"
+                                           FontSize="24"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource AccentSecondaryBrush}">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}%">
+                                            <Binding Path="ProgressValue" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Grid>
+
+                            <ProgressBar Value="{Binding ProgressValue}"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Height="8"
+                                         CornerRadius="4"
+                                         Foreground="{DynamicResource AccentPrimaryBrush}"
+                                         Background="{DynamicResource BorderSubtleBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            CornerRadius="16"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            Background="#11000000"
+                            Padding="16">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                <PathIcon Grid.Column="0"
+                                          Data="{StaticResource IconAnalysis}"
+                                          Width="14"
+                                          Height="14"
+                                          Foreground="{DynamicResource AccentSecondaryBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding [Startup_ModelGrid], Source={x:Static services:Loc.Instance}}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding ModelsSummary}"
+                                           Classes="mono"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <ProgressBar Value="{Binding ModelsSummaryProgress}"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Height="3"
+                                         CornerRadius="1.5"
+                                         Foreground="{DynamicResource AccentSecondaryBrush}"
+                                         Background="{DynamicResource BorderSubtleBrush}" />
+
+                            <Border CornerRadius="12"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Background="#12000000"
+                                    Padding="12"
+                                    Opacity="{Binding TeethModelOpacity}">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <PathIcon Data="{StaticResource IconTooth}"
+                                                  Width="13"
+                                                  Height="13"
+                                                  Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                  VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock Text="{Binding [Startup_TeethDetector], Source={x:Static services:Loc.Instance}}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="teeth_detect.onnx"
+                                                       Classes="mono"
+                                                       FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2"
+                                                CornerRadius="10"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                BorderThickness="1"
+                                                Background="#13000000"
+                                                Padding="8,3">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <PathIcon Data="{StaticResource IconRefresh}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource AccentSecondaryBrush}"
+                                                          IsVisible="{Binding TeethShowLoadingIcon}" />
+                                                <PathIcon Data="{StaticResource IconCheckCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource SuccessBrush}"
+                                                          IsVisible="{Binding TeethShowReadyIcon}" />
+                                                <PathIcon Data="{StaticResource IconErrorCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource ErrorBrush}"
+                                                          IsVisible="{Binding TeethShowErrorIcon}" />
+                                                <TextBlock Text="{Binding TeethModelStateDisplay}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <ProgressBar Value="{Binding TeethModelProgress}"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Height="4"
+                                                 CornerRadius="2"
+                                                 Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                 Background="{DynamicResource BorderSubtleBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <Border CornerRadius="12"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Background="#12000000"
+                                    Padding="12"
+                                    Opacity="{Binding PathologyModelOpacity}">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <PathIcon Data="{StaticResource IconAnalysis}"
+                                                  Width="13"
+                                                  Height="13"
+                                                  Foreground="{DynamicResource AccentSecondaryBrush}"
+                                                  VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock Text="{Binding [Startup_PathologyDetector], Source={x:Static services:Loc.Instance}}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="pathology_detect.onnx"
+                                                       Classes="mono"
+                                                       FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2"
+                                                CornerRadius="10"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                BorderThickness="1"
+                                                Background="#13000000"
+                                                Padding="8,3">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <PathIcon Data="{StaticResource IconRefresh}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource AccentSecondaryBrush}"
+                                                          IsVisible="{Binding PathologyShowLoadingIcon}" />
+                                                <PathIcon Data="{StaticResource IconCheckCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource SuccessBrush}"
+                                                          IsVisible="{Binding PathologyShowReadyIcon}" />
+                                                <PathIcon Data="{StaticResource IconErrorCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource ErrorBrush}"
+                                                          IsVisible="{Binding PathologyShowErrorIcon}" />
+                                                <TextBlock Text="{Binding PathologyModelStateDisplay}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <ProgressBar Value="{Binding PathologyModelProgress}"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Height="4"
+                                                 CornerRadius="2"
+                                                 Foreground="{DynamicResource AccentSecondaryBrush}"
+                                                 Background="{DynamicResource BorderSubtleBrush}" />
+                                </StackPanel>
+                            </Border>
+                            <Border CornerRadius="12"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Background="#12000000"
+                                    Padding="12"
+                                    Opacity="{Binding EncoderModelOpacity}">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <PathIcon Data="{StaticResource IconFingerprint}"
+                                                  Width="13"
+                                                  Height="13"
+                                                  Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                  VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock Text="{Binding [Startup_FeatureEncoder], Source={x:Static services:Loc.Instance}}"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="encoder.onnx"
+                                                       Classes="mono"
+                                                       FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2"
+                                                CornerRadius="10"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                BorderThickness="1"
+                                                Background="#13000000"
+                                                Padding="8,3">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <PathIcon Data="{StaticResource IconRefresh}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource AccentSecondaryBrush}"
+                                                          IsVisible="{Binding EncoderShowLoadingIcon}" />
+                                                <PathIcon Data="{StaticResource IconCheckCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource SuccessBrush}"
+                                                          IsVisible="{Binding EncoderShowReadyIcon}" />
+                                                <PathIcon Data="{StaticResource IconErrorCircle}"
+                                                          Width="9"
+                                                          Height="9"
+                                                          Foreground="{DynamicResource ErrorBrush}"
+                                                          IsVisible="{Binding EncoderShowErrorIcon}" />
+                                                <TextBlock Text="{Binding EncoderModelStateDisplay}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <ProgressBar Value="{Binding EncoderModelProgress}"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Height="4"
+                                                 CornerRadius="2"
+                                                 Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                 Background="{DynamicResource BorderSubtleBrush}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Grid.Row="3"
+                               Margin="0,14,0,0"
+                               Text="{DynamicResource Str_Startup_Warning}"
+                               FontSize="10"
+                               Foreground="{DynamicResource TextDisabledBrush}"
+                               TextWrapping="Wrap"
+                               MaxWidth="780"
+                               Opacity="0.85" />
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

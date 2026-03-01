@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -26,6 +26,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\..\models\**">
+      <Link>models\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\DentalID.Core\DentalID.Core.csproj" />
     <ProjectReference Include="..\..\src\DentalID.Infrastructure\DentalID.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DentalID.Application\DentalID.Application.csproj" />
@@ -33,3 +40,4 @@
   </ItemGroup>
 
 </Project>
+

@@ -22,7 +22,6 @@ public partial class ImportWizardViewModel : ViewModelBase
     private readonly IDataImportService _importService;
 
     [ObservableProperty] private int _currentStep = 1;
-    [ObservableProperty] private string _statusMessage = "Ready";
     [ObservableProperty] private string? _selectedFilePath;
     [ObservableProperty]
     private bool _isImporting;
@@ -50,6 +49,7 @@ public partial class ImportWizardViewModel : ViewModelBase
     public ImportWizardViewModel() 
     {
         _importService = null!;
+        StatusMessage = "Select a CSV file to begin.";
     }
 
     [RelayCommand]
@@ -125,66 +125,79 @@ public partial class ImportWizardViewModel : ViewModelBase
 
         ImportProgress = 0;
         ImportStatus = "Preparing to import...";
-
-        await SafeExecuteAsync(async () =>
+        IsImporting = true;
+        try
         {
-            // Run mapping and import on background thread to prevent UI freeze
-            var result = await Task.Run(async () => 
+            await SafeExecuteAsync(async () =>
             {
-                var subjects = new List<Subject>();
-                int totalRecords = _allRecords.Count;
-                
-                // This loop can be slow for 10k+ records
-                for (int i = 0; i < _allRecords.Count; i++)
+                // Build subjects in background, but report progress on UI thread via IProgress.
+                IProgress<(int Percent, string Message)> progress = new Progress<(int Percent, string Message)>(p =>
                 {
-                    var row = _allRecords[i];
-                    var s = new Subject();
-                    bool isValid = true;
+                    ImportProgress = p.Percent;
+                    ImportStatus = p.Message;
+                });
 
-                    foreach (var map in Mappings.Where(m => !string.IsNullOrEmpty(m.SelectedSourceColumn)))
+                var subjects = await Task.Run(() =>
+                {
+                    var built = new List<Subject>();
+                    int totalRecords = _allRecords.Count;
+
+                    for (int i = 0; i < totalRecords; i++)
                     {
-                        if (row.TryGetValue(map.SelectedSourceColumn, out var val))
+                        var row = _allRecords[i];
+                        var s = new Subject();
+                        bool isValid = true;
+
+                        foreach (var map in Mappings.Where(m => !string.IsNullOrEmpty(m.SelectedSourceColumn)))
                         {
-                            if (map.TargetProperty == "FullName")
+                            if (row.TryGetValue(map.SelectedSourceColumn, out var val))
                             {
-                                if (string.IsNullOrWhiteSpace(val)) isValid = false;
-                                s.FullName = val;
+                                if (map.TargetProperty == "FullName")
+                                {
+                                    if (string.IsNullOrWhiteSpace(val)) isValid = false;
+                                    s.FullName = val;
+                                }
+                                else if (map.TargetProperty == "Gender")
+                                {
+                                    s.Gender = val.StartsWith("M", StringComparison.OrdinalIgnoreCase) ? "Male" : 
+                                                   val.StartsWith("F", StringComparison.OrdinalIgnoreCase) ? "Female" : "Unknown";
+                                }
+                                else if (map.TargetProperty == "DateOfBirth")
+                                {
+                                    if (DateTime.TryParse(val, out var dob)) s.DateOfBirth = dob;
+                                }
+                                else if (map.TargetProperty == "ContactInfo") s.ContactInfo = val;
+                                else if (map.TargetProperty == "NationalId") s.NationalId = val;
+                                else if (map.TargetProperty == "Notes") s.Notes = val;
                             }
-                            else if (map.TargetProperty == "Gender")
-                            {
-                                s.Gender = val.StartsWith("M", StringComparison.OrdinalIgnoreCase) ? "Male" : 
-                                               val.StartsWith("F", StringComparison.OrdinalIgnoreCase) ? "Female" : "Unknown";
-                            }
-                            else if (map.TargetProperty == "DateOfBirth")
-                            {
-                                if (DateTime.TryParse(val, out var dob)) s.DateOfBirth = dob;
-                            }
-                            else if (map.TargetProperty == "ContactInfo") s.ContactInfo = val;
-                            else if (map.TargetProperty == "NationalId") s.NationalId = val;
-                            else if (map.TargetProperty == "Notes") s.Notes = val;
                         }
+
+                        if (isValid) built.Add(s);
+
+                        int percent = (int)((i + 1) / (double)totalRecords * 80);
+                        progress.Report((percent, $"Processing record {i + 1} of {totalRecords}..."));
                     }
 
-                    if (isValid) subjects.Add(s);
-
-                    // Update progress
-                    ImportProgress = (int)((i + 1) / (double)totalRecords * 80);
-                    ImportStatus = $"Processing record {i + 1} of {totalRecords}...";
-                }
+                    return built;
+                });
 
                 ImportStatus = "Importing to database...";
                 ImportProgress = 85;
 
-                return await _importService.ImportSubjectsAsync(subjects);
-            });
-            
-            ImportProgress = 100;
-            ImportStatus = "Import completed";
+                var result = await _importService.ImportSubjectsAsync(subjects);
+                
+                ImportProgress = 100;
+                ImportStatus = "Import completed";
 
-            ImportLog = $"Import Completed.\nSuccess: {result.SuccessCount}\nErrors: {result.ErrorCount}\n\nErrors:\n{string.Join("\n", result.Errors)}";
-            CurrentStep = 3;
-            // Additional specific success message
-        }, successMessage: "Data Import Completed Successfully");
+                ImportLog = $"Import Completed.\nSuccess: {result.SuccessCount}\nErrors: {result.ErrorCount}\n\nErrors:\n{string.Join("\n", result.Errors)}";
+                CurrentStep = 3;
+                // Additional specific success message
+            }, successMessage: "Data Import Completed Successfully");
+        }
+        finally
+        {
+            IsImporting = false;
+        }
     }
     
      [RelayCommand]

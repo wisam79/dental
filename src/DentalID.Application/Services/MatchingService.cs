@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using DentalID.Application.Configuration;
 using DentalID.Core.DTOs;
 using DentalID.Core.Entities;
 using DentalID.Core.Interfaces;
@@ -9,49 +11,66 @@ namespace DentalID.Application.Services;
 
 /// <summary>
 /// Provides high-performance vector matching using SIMD acceleration via System.Numerics.Vectors.
-/// This implementation uses hardware intrinsics (AVX/SSE) implicitly via the JIT compiler.
+/// Supports parallel candidate evaluation for large databases.
 /// </summary>
 public class MatchingService : IMatchingService
 {
+    private const int CenteredSimilarityMinCandidates = 3;
+    private const double CenteredScoreFloor = 0.50;
+    private const double CenteredScoreGamma = 1.4;
+    private const double MinCenteringVariancePerDimension = 1e-8;
+
+    private readonly IBiometricService _biometricService;
+    private readonly double _vectorScoreFloor;
+    private readonly double _vectorScoreGamma;
+
+    private sealed record VectorCenteringContext(float[] Centroid);
+
+    public MatchingService(IBiometricService biometricService, AiConfiguration? config = null)
+    {
+        _biometricService = biometricService;
+        _vectorScoreFloor = Math.Clamp(config?.Thresholds.MatchCalibrationFloor ?? 0.78f, 0.0f, 0.98f);
+        _vectorScoreGamma = Math.Clamp(config?.Thresholds.MatchCalibrationGamma ?? 1.8f, 0.5f, 4.0f);
+    }
+
+    /// <summary>
+    /// Calculates cosine similarity between two float vectors using SIMD hardware intrinsics.
+    /// </summary>
     public double CalculateCosineSimilarity(ReadOnlySpan<float> vectorA, ReadOnlySpan<float> vectorB)
     {
         if (vectorA.Length != vectorB.Length)
         {
-            throw new ArgumentException($"Vector length mismatch: {vectorA.Length} vs {vectorB.Length}. Vectors must have the same length for cosine similarity calculation.");
+            throw new ArgumentException(
+                $"Vector length mismatch: {vectorA.Length} vs {vectorB.Length}. " +
+                "Vectors must have the same length for cosine similarity calculation.");
         }
 
-        if (vectorA.Length == 0)
-        {
-            return 0;
-        }
+        if (vectorA.Length == 0) return 0;
 
-        // Optimized SIMD implementation using Vector<T>
+        // SIMD-accelerated path using Vector<T> (AVX/SSE via JIT)
         int vectorSize = Vector<float>.Count;
         var dotProductVec = Vector<float>.Zero;
         var mag1Vec = Vector<float>.Zero;
         var mag2Vec = Vector<float>.Zero;
 
         int i = 0;
-        // Process in chunks of Vector<float>.Count (usually 4 or 8 floats depending on hardware)
         for (; i <= vectorA.Length - vectorSize; i += vectorSize)
         {
             var va = new Vector<float>(vectorA.Slice(i));
             var vb = new Vector<float>(vectorB.Slice(i));
-
             dotProductVec += va * vb;
             mag1Vec += va * va;
             mag2Vec += vb * vb;
         }
 
-        // Sum up the vector lanes
-        float dot = Vector.Dot(dotProductVec, Vector<float>.One);
+        float dot  = Vector.Dot(dotProductVec, Vector<float>.One);
         float mag1 = Vector.Dot(mag1Vec, Vector<float>.One);
         float mag2 = Vector.Dot(mag2Vec, Vector<float>.One);
 
-        // Process remaining elements sequentially
+        // Scalar tail for remaining elements
         for (; i < vectorA.Length; i++)
         {
-            dot += vectorA[i] * vectorB[i];
+            dot  += vectorA[i] * vectorB[i];
             mag1 += vectorA[i] * vectorA[i];
             mag2 += vectorB[i] * vectorB[i];
         }
@@ -61,125 +80,360 @@ public class MatchingService : IMatchingService
         return dot / (Math.Sqrt(mag1) * Math.Sqrt(mag2));
     }
 
-    private readonly IBiometricService _biometricService;
-
-    // Optional: Constructor injection if not already present. 
-    // Since MatchingService might be transient/singleton, we need to ensure IBiometricService is available.
-    // If MatchingService didn't have a constructor before, we add one.
-    public MatchingService(IBiometricService biometricService)
+    /// <summary>
+    /// Finds matching candidates for a probe fingerprint from a set of subjects.
+    /// Uses parallel evaluation when the candidate list is large (>50 subjects).
+    /// </summary>
+    public List<MatchCandidate> FindMatches(
+        DentalFingerprint probe,
+        IEnumerable<Subject> candidates,
+        MatchingCriteria? criteria = null)
     {
-        _biometricService = biometricService;
+        var filteredCandidates = ApplyPreFilter(candidates, criteria).ToList();
+        var candidateVectors = BuildCandidateVectors(filteredCandidates, probe.FeatureVector);
+        var centeringContext = BuildCenteringContext(probe.FeatureVector, candidateVectors.Values.ToList());
+
+        // Choose serial vs parallel based on dataset size
+        var results = filteredCandidates.Count > 50
+            ? FindMatchesParallel(probe, filteredCandidates, candidateVectors, centeringContext)
+            : FindMatchesSerial(probe, filteredCandidates, candidateVectors, centeringContext);
+
+        // Return all scored candidates — let the caller apply its configured threshold.
+        // (Double-filtering was Bug Fallacy #6: MatchingService had a hardcoded 0.15 threshold
+        //  that conflicted with the caller's configurable threshold.)
+        return results
+            .Where(m => m.Score > 0)
+            .OrderByDescending(m => m.Score)
+            .ToList();
     }
 
-    public List<MatchCandidate> FindMatches(DentalFingerprint probe, IEnumerable<Subject> candidates, MatchingCriteria? criteria = null)
+    // ── Private helpers ──────────────────────────────────────────────────────────
+
+    private static IEnumerable<Subject> ApplyPreFilter(
+        IEnumerable<Subject> candidates,
+        MatchingCriteria? criteria)
     {
-        var matches = new List<MatchCandidate>();
+        if (criteria == null) return candidates;
 
-        // Pre-Filter Candidates (Optimization)
-        var filteredCandidates = candidates;
-
-        if (criteria != null)
+        return candidates.Where(c =>
         {
-            filteredCandidates = filteredCandidates.Where(c => 
+            // Gender filter (allow Unknowns to pass through)
+            if (!string.IsNullOrEmpty(criteria.Gender) &&
+                !string.Equals(c.Gender, criteria.Gender, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(c.Gender, "Unknown", StringComparison.OrdinalIgnoreCase))
             {
-                // Gender Filter (Allow Unknowns to pass if strictness low, but usually strict)
-                if (!string.IsNullOrEmpty(criteria.Gender) && 
-                    !string.Equals(c.Gender, criteria.Gender, StringComparison.OrdinalIgnoreCase) && 
-                    !string.Equals(c.Gender, "Unknown", StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                // Age Filter (Check if subject has DOB)
-                if (c.DateOfBirth.HasValue)
-                {
-                    var today = DateTime.UtcNow;
-                    var dob = c.DateOfBirth.Value;
-                    var age = today.Year - dob.Year;
-                    if (dob.Date > today.AddYears(-age)) age--; // Birthday hasn't occurred yet this year
-                    if (criteria.MinAge.HasValue && age < criteria.MinAge.Value) return false;
-                    if (criteria.MaxAge.HasValue && age > criteria.MaxAge.Value) return false;
-                }
-                
-                return true;
+            // Age filter
+            if (c.DateOfBirth.HasValue)
+            {
+                var today = DateTime.UtcNow;
+                var age = today.Year - c.DateOfBirth.Value.Year;
+                if (c.DateOfBirth.Value.Date > today.AddYears(-age)) age--;
+
+                if (criteria.MinAge.HasValue && age < criteria.MinAge.Value) return false;
+                if (criteria.MaxAge.HasValue && age > criteria.MaxAge.Value) return false;
+            }
+
+            return true;
+        });
+    }
+
+    private List<MatchCandidate> FindMatchesSerial(
+        DentalFingerprint probe,
+        List<Subject> candidates,
+        IReadOnlyDictionary<Subject, float[]> candidateVectors,
+        VectorCenteringContext? centeringContext)
+    {
+        var results = new List<MatchCandidate>(candidates.Count);
+        foreach (var candidate in candidates)
+        {
+            var match = EvaluateCandidate(probe, candidate, candidateVectors, centeringContext);
+            if (match != null) results.Add(match);
+        }
+        return results;
+    }
+
+    private List<MatchCandidate> FindMatchesParallel(
+        DentalFingerprint probe,
+        List<Subject> candidates,
+        IReadOnlyDictionary<Subject, float[]> candidateVectors,
+        VectorCenteringContext? centeringContext)
+    {
+        var bag = new ConcurrentBag<MatchCandidate>();
+
+        Parallel.ForEach(candidates,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount - 1) },
+            candidate =>
+            {
+                var match = EvaluateCandidate(probe, candidate, candidateVectors, centeringContext);
+                if (match != null) bag.Add(match);
             });
-        }
 
-        // Parallelize for larger datasets, but simple loop is fine for now
-        foreach (var candidate in filteredCandidates)
+        return bag.ToList();
+    }
+
+    /// <summary>
+    /// Evaluates a single candidate against the probe and returns a MatchCandidate if scored > 0.
+    /// </summary>
+    private MatchCandidate? EvaluateCandidate(
+        DentalFingerprint probe,
+        Subject candidate,
+        IReadOnlyDictionary<Subject, float[]> candidateVectors,
+        VectorCenteringContext? centeringContext)
+    {
+        candidateVectors.TryGetValue(candidate, out var candidateVector);
+
+        double bestScore = 0;
+        double bestRawScore = 0;
+        double? bestCenteredScore = null;
+
+        var images = candidate.DentalImages ?? new List<DentalImage>();
+
+        // Edge case: subject has a feature vector but no images
+        if (images.Count == 0 && probe.FeatureVector != null && candidateVector != null)
         {
-            // Optimization: Decode candidate vector once per candidate, not per image
-            float[]? candidateVector = null;
-            if (candidate.FeatureVector != null && candidate.FeatureVector.Length > 0)
+            var (score, rawScore, centeredScore) = ScoreVectorMatch(probe.FeatureVector, candidateVector, centeringContext);
+            bestScore = score;
+            bestRawScore = rawScore;
+            bestCenteredScore = centeredScore;
+        }
+
+        foreach (var img in images)
+        {
+            var (score, rawScore, centeredScore) = ScoreImage(probe, img, candidateVector, centeringContext);
+            if (score > bestScore)
             {
-                candidateVector = new float[candidate.FeatureVector.Length / sizeof(float)];
-                Buffer.BlockCopy(candidate.FeatureVector, 0, candidateVector, 0, candidate.FeatureVector.Length);
-            }
-
-            // Find the best matching image for this candidate
-            double bestScore = 0;
-            DentalImage? bestImage = null;
-
-            var images = candidate.DentalImages ?? new List<DentalImage>();
-            if (images.Count == 0)
-            {
-                if (probe.FeatureVector != null && candidateVector != null)
-                {
-                    bestScore = CalculateCosineSimilarity(probe.FeatureVector, candidateVector);
-                }
-            }
-
-            foreach (var img in images)
-            {
-                if (string.IsNullOrEmpty(img.FingerprintCode) && img.FeatureVector == null && candidate.FeatureVector == null) continue;
-
-                double score = 0;
-
-                // 1. Prefer Direct Vector Matching (Subject Aggregate)
-                if (probe.FeatureVector != null && candidateVector != null)
-                {
-                    score = CalculateCosineSimilarity(probe.FeatureVector, candidateVector);
-                }
-                // 2. Fallback to Code Matching (Legacy/Metadata)
-                // Note: per-image FeatureVector path removed — DentalImage.FeatureVector is [NotMapped] and never hydrated from DB
-                else if (!string.IsNullOrEmpty(img.FingerprintCode))
-                {
-                     var candidateFp = _biometricService.ParseFingerprintCode(img.FingerprintCode);
-                     score = _biometricService.CalculateSimilarity(probe, candidateFp);
-                }
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestImage = img;
-                }
-            }
-            
-            // If no images but Subject has vector (Edge case), we should still considering matching?
-            // Current validation loop iterates images. If candidate has no images but has vector (possible?), we skip.
-            // But usually Subject has images if it has vector.
-
-            if (bestScore > 0)
-            {
-                matches.Add(new MatchCandidate
-                {
-                    Subject = candidate,
-                    Score = bestScore,
-                    MatchMethod = "Biometric Fingerprint",
-                    MatchDetails = new Dictionary<string, double>
-                    {
-                        { "Fingerprint Similarity", bestScore }
-                    }
-                });
+                bestScore = score;
+                bestRawScore = rawScore;
+                bestCenteredScore = centeredScore;
             }
         }
 
-        // Fallacy #6 Fix: Removed the hardcoded MinSimilarityThreshold constant (was 0.15).
-        // This constant caused DOUBLE-FILTERING: MatchingService filtered at 0.15 AND the caller
-        // (MatchingViewModel) also filtered at _aiConfig.Thresholds.MatchSimilarityThreshold.
-        // The caller's configurable threshold is authoritative — return all scored candidates
-        // and let the caller apply its threshold as configured.
-        return matches.OrderByDescending(m => m.Score).ToList();
+        if (bestScore <= 0) return null;
+
+        var details = new Dictionary<string, double>
+        {
+            { "Fingerprint Similarity", bestScore },
+            { "Raw Fingerprint Similarity", bestRawScore }
+        };
+        if (bestCenteredScore.HasValue)
+        {
+            details["Centered Fingerprint Similarity"] = bestCenteredScore.Value;
+        }
+
+        return new MatchCandidate
+        {
+            Subject = candidate,
+            Score = bestScore,
+            MatchMethod = "Biometric Fingerprint",
+            MatchDetails = details
+        };
+    }
+
+    /// <summary>
+    /// Scores a single image against the probe. Prefers vector matching; falls back to code matching.
+    /// </summary>
+    private (double score, double rawScore, double? centeredScore) ScoreImage(
+        DentalFingerprint probe,
+        DentalImage img,
+        float[]? candidateVector,
+        VectorCenteringContext? centeringContext)
+    {
+        // 1. Direct vector matching (highest accuracy)
+        if (probe.FeatureVector != null && candidateVector != null)
+        {
+            return ScoreVectorMatch(probe.FeatureVector, candidateVector, centeringContext);
+        }
+
+        // 2. Fallback: code-based matching for legacy records
+        if (!string.IsNullOrEmpty(img.FingerprintCode))
+        {
+            var candidateFp = _biometricService.ParseFingerprintCode(img.FingerprintCode);
+            double raw = _biometricService.CalculateSimilarity(probe, candidateFp);
+            return (raw, raw, null);
+        }
+
+        return (0, 0, null);
+    }
+
+    private (double score, double rawScore, double? centeredScore) ScoreVectorMatch(
+        float[] probeVector,
+        float[] candidateVector,
+        VectorCenteringContext? centeringContext)
+    {
+        double raw = CalculateCosineSimilarity(probeVector, candidateVector);
+        double score = CalibrateVectorScore(raw);
+
+        if (centeringContext != null &&
+            TryCalculateCenteredCosineSimilarity(probeVector, candidateVector, centeringContext.Centroid, out var centeredRaw))
+        {
+            // Blend absolute cosine with centered cosine to suppress inflated near-perfect scores.
+            double centeredScore = CalibrateCenteredScore(centeredRaw);
+            score = Math.Sqrt(Math.Max(0.0, score * centeredScore));
+            return (score, raw, centeredRaw);
+        }
+
+        return (score, raw, null);
+    }
+
+    /// <summary>
+    /// Decodes a byte[] feature vector stored in the database back to float[].
+    /// Returns null if the input is null or empty.
+    /// </summary>
+    private static float[]? DecodeFeatureVector(byte[]? bytes)
+    {
+        if (bytes == null || bytes.Length == 0) return null;
+        if (bytes.Length % sizeof(float) != 0) return null;
+
+        var floats = new float[bytes.Length / sizeof(float)];
+        Buffer.BlockCopy(bytes, 0, floats, 0, bytes.Length);
+        return floats;
+    }
+
+    private static IReadOnlyDictionary<Subject, float[]> BuildCandidateVectors(
+        IReadOnlyCollection<Subject> candidates,
+        float[]? probeVector)
+    {
+        if (probeVector == null || probeVector.Length == 0)
+            return new Dictionary<Subject, float[]>();
+
+        int probeLength = probeVector.Length;
+        var vectors = new Dictionary<Subject, float[]>(candidates.Count);
+
+        foreach (var candidate in candidates)
+        {
+            var decoded = DecodeFeatureVector(candidate.FeatureVector);
+            if (decoded != null && decoded.Length == probeLength)
+            {
+                vectors[candidate] = decoded;
+            }
+        }
+
+        return vectors;
+    }
+
+    private static VectorCenteringContext? BuildCenteringContext(
+        float[]? probeVector,
+        IReadOnlyCollection<float[]> candidateVectors)
+    {
+        if (probeVector == null ||
+            probeVector.Length == 0 ||
+            candidateVectors.Count < CenteredSimilarityMinCandidates)
+        {
+            return null;
+        }
+
+        int length = probeVector.Length;
+        if (candidateVectors.Any(v => v.Length != length))
+            return null;
+
+        var centroid = new float[length];
+        foreach (var vector in candidateVectors)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                centroid[i] += vector[i];
+            }
+        }
+
+        for (int i = 0; i < length; i++)
+        {
+            centroid[i] /= candidateVectors.Count;
+        }
+
+        double variance = ComputeMeanVariance(candidateVectors, centroid);
+        if (variance < MinCenteringVariancePerDimension)
+            return null;
+
+        return new VectorCenteringContext(centroid);
+    }
+
+    private static double ComputeMeanVariance(IReadOnlyCollection<float[]> vectors, ReadOnlySpan<float> centroid)
+    {
+        if (vectors.Count == 0 || centroid.Length == 0)
+            return 0;
+
+        double varianceSum = 0;
+
+        foreach (var vector in vectors)
+        {
+            double distanceSquared = 0;
+            for (int i = 0; i < centroid.Length; i++)
+            {
+                double diff = vector[i] - centroid[i];
+                distanceSquared += diff * diff;
+            }
+
+            varianceSum += distanceSquared / centroid.Length;
+        }
+
+        return varianceSum / vectors.Count;
+    }
+
+    private static bool TryCalculateCenteredCosineSimilarity(
+        ReadOnlySpan<float> probe,
+        ReadOnlySpan<float> candidate,
+        ReadOnlySpan<float> centroid,
+        out double similarity)
+    {
+        similarity = 0;
+
+        if (probe.Length == 0 ||
+            probe.Length != candidate.Length ||
+            probe.Length != centroid.Length)
+        {
+            return false;
+        }
+
+        double dot = 0;
+        double probeNorm = 0;
+        double candidateNorm = 0;
+
+        for (int i = 0; i < probe.Length; i++)
+        {
+            double probeValue = probe[i] - centroid[i];
+            double candidateValue = candidate[i] - centroid[i];
+            dot += probeValue * candidateValue;
+            probeNorm += probeValue * probeValue;
+            candidateNorm += candidateValue * candidateValue;
+        }
+
+        if (probeNorm <= 1e-12 || candidateNorm <= 1e-12)
+            return false;
+
+        similarity = dot / (Math.Sqrt(probeNorm) * Math.Sqrt(candidateNorm));
+        similarity = Math.Clamp(similarity, -1.0, 1.0);
+        return !double.IsNaN(similarity) && !double.IsInfinity(similarity);
+    }
+
+    /// <summary>
+    /// Calibrates raw cosine similarity so near-baseline scores do not appear as high-confidence matches.
+    /// </summary>
+    private double CalibrateVectorScore(double rawSimilarity)
+    {
+        if (double.IsNaN(rawSimilarity) || double.IsInfinity(rawSimilarity))
+            return 0;
+
+        double clamped = Math.Clamp(rawSimilarity, -1.0, 1.0);
+        if (clamped <= _vectorScoreFloor)
+            return 0;
+
+        double normalized = (clamped - _vectorScoreFloor) / (1.0 - _vectorScoreFloor);
+        return Math.Clamp(Math.Pow(normalized, _vectorScoreGamma), 0.0, 1.0);
+    }
+
+    private static double CalibrateCenteredScore(double centeredSimilarity)
+    {
+        if (double.IsNaN(centeredSimilarity) || double.IsInfinity(centeredSimilarity))
+            return 0;
+
+        double normalized = (Math.Clamp(centeredSimilarity, -1.0, 1.0) + 1.0) * 0.5;
+        if (normalized <= CenteredScoreFloor)
+            return 0;
+
+        double scaled = (normalized - CenteredScoreFloor) / (1.0 - CenteredScoreFloor);
+        return Math.Clamp(Math.Pow(scaled, CenteredScoreGamma), 0.0, 1.0);
     }
 }
-

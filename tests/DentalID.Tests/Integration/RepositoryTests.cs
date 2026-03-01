@@ -13,8 +13,9 @@ namespace DentalID.Tests.Integration;
 
 public class RepositoryTests : IDisposable
 {
-    private SqliteConnection _connection;
-    private AppDbContext _db;
+    private readonly SqliteConnection _connection;
+    private readonly AppDbContext _db;
+    private readonly DentalID.Core.Interfaces.IEncryptionService _encryptionService;
 
     public RepositoryTests()
     {
@@ -29,8 +30,11 @@ public class RepositoryTests : IDisposable
         var mockEncryption = new Moq.Mock<DentalID.Core.Interfaces.IEncryptionService>();
         mockEncryption.Setup(x => x.Encrypt(It.IsAny<string>())).Returns((string s) => s); // Pass-through for repo tests
         mockEncryption.Setup(x => x.Decrypt(It.IsAny<string>())).Returns((string s) => s);
+        mockEncryption.Setup(x => x.ComputeDeterministicHash(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns((string value, string context) => $"{context}:{value}".ToUpperInvariant());
 
-        _db = new AppDbContext(options, mockEncryption.Object);
+        _encryptionService = mockEncryption.Object;
+        _db = new AppDbContext(options, _encryptionService);
         _db.Database.EnsureCreated();
     }
 
@@ -38,7 +42,7 @@ public class RepositoryTests : IDisposable
     public async Task StreamAllWithVectorsAsync_ShouldReturnOnlySubjectsWithVectors()
     {
         // Arrange
-        var repo = new SubjectRepository(_db);
+        var repo = new SubjectRepository(_db, _encryptionService);
 
         var s1 = new Subject { SubjectId = "SUB-001", FullName = "With Vector", FeatureVector = new byte[] { 1, 2, 3 } };
         var s2 = new Subject { SubjectId = "SUB-002", FullName = "No Vector", FeatureVector = null };
@@ -64,7 +68,7 @@ public class RepositoryTests : IDisposable
     public async Task StreamAllWithVectorsAsync_ShouldWorkWithEmptyDatabase()
     {
         // Arrange
-        var repo = new SubjectRepository(_db);
+        var repo = new SubjectRepository(_db, _encryptionService);
 
         // Act
         var results = new List<Subject>();

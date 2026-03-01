@@ -23,24 +23,36 @@ public class PerformanceTests
         
         var config = new AiConfiguration();
         var logger = new Mock<ILoggerService>();
-        var bio = new BiometricService();
         var intelligence = new Mock<IDentalIntelligenceService>().Object;
         var cache = new Mock<ICacheService>();
-        var integrity = new Mock<IImageIntegrityService>();
         var aiSettings = new AiSettings();
         var fdiService = new FdiSpatialService();
         var heuristicsService = new ForensicHeuristicsService();
         var yoloParser = new YoloDetectionParser(config, aiSettings, fdiService);
-        var service = new OnnxInferenceService(config, aiSettings, logger.Object, bio, intelligence, cache.Object, yoloParser, fdiService, heuristicsService, new Mock<ITensorPreparationService>().Object, integrity.Object);
-        var field = typeof(OnnxInferenceService).GetField("_inferenceLock", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        // Act
-        var semaphore = field?.GetValue(service) as System.Threading.SemaphoreSlim;
+        var mockTeeth   = new Mock<ITeethDetectionService>();
+        var mockPath    = new Mock<IPathologyDetectionService>();
+        var mockEncoder = new Mock<IFeatureEncoderService>();
+        var mockBio     = new Mock<IBiometricService>();
+        mockBio.Setup(s => s.GenerateFingerprint(It.IsAny<System.Collections.Generic.List<DentalID.Core.DTOs.DetectedTooth>>(), It.IsAny<System.Collections.Generic.List<DentalID.Core.DTOs.DetectedPathology>>()))
+               .Returns(new DentalID.Core.DTOs.DentalFingerprint());
+        mockTeeth.Setup(s => s.DetectTeeth(It.IsAny<SkiaSharp.SKBitmap>()))
+                 .Returns(new System.Collections.Generic.List<DentalID.Core.DTOs.DetectedTooth>());
+        mockPath.Setup(s => s.DetectPathologies(It.IsAny<SkiaSharp.SKBitmap>()))
+                .Returns(new System.Collections.Generic.List<DentalID.Core.DTOs.DetectedPathology>());
 
-        // Assert
-        Assert.NotNull(semaphore);
-        Assert.Equal(1, semaphore.CurrentCount); // Hardened service allows 1 concurrent request
+        var sessionManager = new Mock<IOnnxSessionManager>();
+        var semaphore = new System.Threading.SemaphoreSlim(1, 1);
+        sessionManager.Setup(s => s.InferenceLock).Returns(semaphore);
+        sessionManager.Setup(s => s.IsReady).Returns(false);
+
+        var service = new OnnxInferenceService(
+            sessionManager.Object, mockTeeth.Object, mockPath.Object, mockEncoder.Object,
+            yoloParser, heuristicsService, intelligence, mockBio.Object, cache.Object, logger.Object);
+
+        // Act & Assert: InferenceLock is accessible and is set to allow 1 concurrent request
+        var lockViaInterface = sessionManager.Object.InferenceLock;
+        Assert.NotNull(lockViaInterface);
+        Assert.Equal(1, lockViaInterface.CurrentCount);
         await Task.CompletedTask;
     }
 

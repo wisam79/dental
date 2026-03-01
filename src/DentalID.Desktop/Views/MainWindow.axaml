@@ -5,16 +5,16 @@
         xmlns:conv="using:DentalID.Desktop.Converters"
         x:Class="DentalID.Desktop.Views.MainWindow"
         Title="DentalID"
-        Width="1400" Height="900"
+        Icon="/Assets/Brand/dental.png"
+        Width="1280" Height="820"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         SystemDecorations="Full"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome"
-        ExtendClientAreaTitleBarHeightHint="-1"
-        TransparencyLevelHint="Mica, AcrylicBlur, Blur"
-        Background="Transparent"
-        FlowDirection="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlowDirectionConverter.Instance}}">
+        ExtendClientAreaToDecorationsHint="False"
+        ExtendClientAreaChromeHints="Default"
+        TransparencyLevelHint="None"
+        Background="#101216"
+        FlowDirection="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlowDirectionConverter.Instance}}">
 
     
     <Grid>

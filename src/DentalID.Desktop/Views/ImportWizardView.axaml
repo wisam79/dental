@@ -3,9 +3,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="DentalID.Desktop.Views.ImportWizardView"
-             x:DataType="vm:ImportWizardViewModel">
+             x:DataType="vm:ImportWizardViewModel"
+             x:Name="Root">
 
     <Grid RowDefinitions="Auto, *" Background="{DynamicResource SurfaceDeepBrush}">
 
@@ -37,10 +40,10 @@
                     <Border Width="28" Height="28" CornerRadius="14"
                             BorderThickness="2">
                         <Border.BorderBrush>
-                            <SolidColorBrush Color="#0078D4"/>
+                            <SolidColorBrush Color="#2F84AE"/>
                         </Border.BorderBrush>
                         <Border.Background>
-                            <SolidColorBrush Color="#0078D4"
+                            <SolidColorBrush Color="#2F84AE"
                                 Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1, FallbackValue=0}"/>
                         </Border.Background>
                         <TextBlock Text="1" FontSize="11" FontWeight="Bold"
@@ -52,10 +55,10 @@
                     <Border Width="28" Height="28" CornerRadius="14"
                             BorderThickness="2">
                         <Border.BorderBrush>
-                            <SolidColorBrush Color="#0078D4"/>
+                            <SolidColorBrush Color="#2F84AE"/>
                         </Border.BorderBrush>
                         <Border.Background>
-                            <SolidColorBrush Color="#0078D4"
+                            <SolidColorBrush Color="#2F84AE"
                                 Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2, FallbackValue=0}"/>
                         </Border.Background>
                         <TextBlock Text="2" FontSize="11" FontWeight="Bold"
@@ -67,10 +70,10 @@
                     <Border Width="28" Height="28" CornerRadius="14"
                             BorderThickness="2">
                         <Border.BorderBrush>
-                            <SolidColorBrush Color="#0078D4"/>
+                            <SolidColorBrush Color="#2F84AE"/>
                         </Border.BorderBrush>
                         <Border.Background>
-                            <SolidColorBrush Color="#0078D4"
+                            <SolidColorBrush Color="#2F84AE"
                                 Opacity="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=3, FallbackValue=0}"/>
                         </Border.Background>
                         <TextBlock Text="3" FontSize="11" FontWeight="Bold"
@@ -114,7 +117,7 @@
                             </StackPanel>
                             <TextBlock Text="{DynamicResource Str_Import_Formats}"
                                        FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
-                                       Margin="38,0,0,0"/>
+                                       Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='38,0,0,0'}"/>
                         </StackPanel>
 
                         <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -134,16 +137,17 @@
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel HorizontalAlignment="Center" Spacing="6">
-                                    <TextBlock Text="Select a file to import"
+                                    <TextBlock Text="Select a CSV file to import"
                                                FontSize="16" FontWeight="SemiBold"
                                                HorizontalAlignment="Center"
                                                Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                    <TextBlock Text="Supports CSV, JSON, Excel formats"
+                                    <TextBlock Text="Supports CSV format"
                                                FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <Button Command="{Binding SelectFileCommand}"
                                         Classes="primary" Padding="24,10"
+                                        IsEnabled="{Binding !IsImporting}"
                                         HorizontalAlignment="Center">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14"/>
@@ -174,7 +178,7 @@
                             </StackPanel>
                             <TextBlock Text="{DynamicResource Str_Import_MapDesc}"
                                        FontSize="12" Foreground="{DynamicResource TextMutedBrush}"
-                                       Margin="38,0,0,0"/>
+                                       Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='38,0,0,0'}"/>
                         </StackPanel>
 
                         <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -207,6 +211,7 @@
                                             <ComboBox Grid.Column="2"
                                                       ItemsSource="{Binding SourceColumns}"
                                                       SelectedItem="{Binding SelectedSourceColumn}"
+                                                      IsEnabled="{Binding #Root.((vm:ImportWizardViewModel)DataContext).IsImporting, Converter={x:Static BoolConverters.Not}}"
                                                       HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </DataTemplate>
@@ -223,9 +228,11 @@
                                 <DockPanel>
                                     <TextBlock Text="Importing..." FontWeight="SemiBold" FontSize="13"/>
                                     <TextBlock Text="{Binding ImportStatus}"
-                                               HorizontalAlignment="Right" FontSize="12"
+                                               HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FontSize="12"
                                                Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </DockPanel>
+                                <TextBlock Text="{Binding ImportProgress, StringFormat='{}{0}%'}"
+                                           Classes="caption"/>
                                 <ProgressBar Value="{Binding ImportProgress}" Maximum="100"
                                              Height="6" CornerRadius="3"
                                              Foreground="{DynamicResource AccentPrimaryBrush}"/>
@@ -233,7 +240,7 @@
                         </Border>
 
                         <Button Command="{Binding ExecuteImportCommand}"
-                                Classes="primary" HorizontalAlignment="Right"
+                                Classes="primary" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}"
                                 Padding="20,8"
                                 IsEnabled="{Binding !IsImporting}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -281,7 +288,7 @@
                         </Border>
 
                         <!-- Actions -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" Spacing="12">
                             <Button Command="{Binding ResetCommand}"
                                     Classes="outline" Padding="20,8">
                                 <StackPanel Orientation="Horizontal" Spacing="8">

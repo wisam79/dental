@@ -38,6 +38,7 @@ public class AnalysisResult
     [JsonIgnore] public List<DetectedPathology> RawPathologies { get; set; } = new();
 
     public int? EstimatedAge { get; set; }
+    public string? EstimatedAgeRange { get; set; }
     public string? EstimatedGender { get; set; }
     public float[]? FeatureVector { get; set; }
     public DentalFingerprint? Fingerprint { get; set; }

@@ -16,7 +16,7 @@ on:
     - cron: "0 2 * * *"
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   SOLUTION_FILE: 'DentalID.sln'
 
 jobs:
@@ -41,6 +41,14 @@ jobs:
 
       - name: Build solution
         run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore
+
+      - name: Verify Desktop project is in solution
+        shell: pwsh
+        run: |
+          $projects = dotnet sln ${{ env.SOLUTION_FILE }} list
+          if ($projects -notmatch "src\\DentalID.Desktop\\DentalID.Desktop.csproj") {
+            throw "Desktop project is missing from DentalID.sln"
+          }
 
       - name: Run test suites
         shell: pwsh
@@ -97,7 +105,6 @@ jobs:
           dotnet build src/DentalID.Application/DentalID.Application.csproj --configuration Release --no-restore
           dotnet build src/DentalID.Infrastructure/DentalID.Infrastructure.csproj --configuration Release --no-restore
           dotnet build src/DentalID.Desktop/DentalID.Desktop.csproj --configuration Release --no-restore
-        continue-on-error: true
 
       - name: List build warnings summary
         run: |
@@ -150,7 +157,7 @@ jobs:
             ### 🦷 Forensic Dental Identification System
             
             **Windows x64 Self-Contained Build**
-            - .NET 8 Runtime included (no installation needed)
+            - .NET 10 Runtime included (no installation needed)
             - ONNX AI Models: teeth_detect, pathology_detect, encoder, genderage
             - FDI tooth numbering system
             - SQLite encrypted database

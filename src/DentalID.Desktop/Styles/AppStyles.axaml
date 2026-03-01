@@ -15,10 +15,7 @@
     ══════════════════════════════════════════════════════ -->
 
     <Style Selector="Window">
-        <Setter Property="Background"                      Value="Transparent"/>
-        <Setter Property="TransparencyLevelHint"           Value="Mica, AcrylicBlur"/>
-        <Setter Property="ExtendClientAreaToDecorationsHint" Value="True"/>
-        <Setter Property="ExtendClientAreaChromeHints"     Value="PreferSystemChrome"/>
+        <Setter Property="Background"                      Value="#101216"/>
         <Setter Property="FontFamily"                      Value="{DynamicResource FontSans}"/>
         <Setter Property="Foreground"                      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize"                        Value="13"/>
@@ -26,6 +23,14 @@
 
     <Style Selector="UserControl">
         <Setter Property="FontFamily" Value="{DynamicResource FontSans}"/>
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="translateY(0)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut"/>
+            </Transitions>
+        </Setter>
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -113,12 +118,13 @@
     <!-- Base button reset -->
     <Style Selector="Button">
         <Setter Property="Cursor"        Value="Hand"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="FontSize"      Value="13"/>
         <Setter Property="FontFamily"    Value="{DynamicResource FontSans}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CircularEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="CircularEaseOut"/>
             </Transitions>
         </Setter>
     </Style>
@@ -128,12 +134,13 @@
         <Setter Property="Background"    Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="Foreground"    Value="{DynamicResource TextOnAccentBrush}"/>
         <Setter Property="Padding"       Value="20,10"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="FontWeight"    Value="SemiBold"/>
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryHoverBrush}"/>
+        <Setter Property="RenderTransform" Value="scale(1.01)"/>
     </Style>
     <Style Selector="Button.primary:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryPressedBrush}"/>
@@ -150,7 +157,7 @@
         <Setter Property="BorderBrush"   Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding"       Value="20,9"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="FontWeight"    Value="SemiBold"/>
     </Style>
     <Style Selector="Button.outline:pointerover /template/ ContentPresenter">
@@ -167,7 +174,7 @@
         <Setter Property="Foreground"    Value="#FFFFFF"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="20,10"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="FontWeight"    Value="SemiBold"/>
     </Style>
     <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
@@ -183,7 +190,7 @@
         <Setter Property="Foreground"    Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="8,6"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
     </Style>
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="#12FFFFFF"/>
@@ -201,7 +208,7 @@
         <Setter Property="Padding"       Value="0"/>
         <Setter Property="Width"         Value="48"/>
         <Setter Property="Height"        Value="48"/>
-        <Setter Property="CornerRadius"  Value="10"/>
+        <Setter Property="CornerRadius"  Value="6"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment"   Value="Center"/>
         <Setter Property="Transitions">
@@ -222,7 +229,7 @@
         <Setter Property="Background"    Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="6"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="Cursor"        Value="Hand"/>
     </Style>
     <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
@@ -235,7 +242,7 @@
         <Setter Property="Foreground"    Value="#FFFFFF"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="20,10"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="FontWeight"    Value="SemiBold"/>
     </Style>
     <Style Selector="Button.success:pointerover /template/ ContentPresenter">
@@ -251,7 +258,7 @@
         <Setter Property="Foreground"    Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="16,8"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
     </Style>
     <Style Selector="Button.subtle:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="#1AFFFFFF"/>
@@ -266,8 +273,9 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="CornerRadius"    Value="4"/>
         <Setter Property="Padding"         Value="12,9"/>
+        <Setter Property="MinHeight"       Value="38"/>
         <Setter Property="FontSize"        Value="13"/>
         <Setter Property="CaretBrush"      Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="SelectionBrush"  Value="{DynamicResource AccentSecondaryBrush}"/>
@@ -281,7 +289,7 @@
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
         <Setter Property="BorderBrush"    Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BoxShadow"      Value="0 0 0 2 #400078D4"/>
+        <Setter Property="BoxShadow"      Value="0 0 0 2 #402F84AE"/>
     </Style>
 
     <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
@@ -303,14 +311,14 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="CornerRadius"    Value="4"/>
         <Setter Property="Padding"         Value="12,8"/>
-        <Setter Property="MinHeight"       Value="36"/>
+        <Setter Property="MinHeight"       Value="38"/>
     </Style>
 
     <Style Selector="ComboBox:focus /template/ Border#Background">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
-        <Setter Property="BoxShadow"   Value="0 0 0 2 #400078D4"/>
+        <Setter Property="BoxShadow"   Value="0 0 0 2 #402F84AE"/>
     </Style>
 
     <Style Selector="ComboBoxItem">
@@ -385,7 +393,7 @@
     <Style Selector="ListBoxItem">
         <Setter Property="Foreground"   Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="Padding"      Value="12,8"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="Margin"       Value="0,1"/>
         <Setter Property="Transitions">
             <Transitions>
@@ -521,7 +529,7 @@
         <Setter Property="BorderBrush"   Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding"       Value="14,8"/>
-        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="CornerRadius"  Value="4"/>
         <Setter Property="Cursor"        Value="Hand"/>
     </Style>
 
@@ -543,7 +551,7 @@
         <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="8"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="16,12"/>
     </Style>
 
@@ -556,16 +564,18 @@
         <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="10"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="20"/>
+        <Setter Property="BoxShadow"       Value="0 8 24 0 #22000000"/>
     </Style>
 
     <Style Selector="Border.card-compact">
         <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="8"/>
+        <Setter Property="CornerRadius"    Value="4"/>
         <Setter Property="Padding"         Value="12,10"/>
+        <Setter Property="BoxShadow"       Value="0 6 18 0 #1A000000"/>
     </Style>
 
     <!-- Accent-bordered card (for highlighted items) -->
@@ -573,7 +583,7 @@
         <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="10"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="20"/>
     </Style>
 
@@ -591,7 +601,7 @@
         <Setter Property="Background"  Value="#203FB950"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding"     Value="8,3"/>
     </Style>
 
@@ -599,7 +609,7 @@
         <Setter Property="Background"  Value="#20D29922"/>
         <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding"     Value="8,3"/>
     </Style>
 
@@ -607,15 +617,15 @@
         <Setter Property="Background"  Value="#20F85149"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding"     Value="8,3"/>
     </Style>
 
     <Style Selector="Border.badge-info">
-        <Setter Property="Background"  Value="#2058A6FF"/>
+        <Setter Property="Background"  Value="#203A6F88"/>
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding"     Value="8,3"/>
     </Style>
 
@@ -673,6 +683,119 @@
 
     <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource NavItemHoverBrush}"/>
+    </Style>
+
+    <!-- ══════════════════════════════════════════════════════
+         § 21  PAGE TRANSITIONS
+         Subtle entrance animations for page navigation.
+    ══════════════════════════════════════════════════════ -->
+
+    <!-- SlideUp entrance: translate-Y 12→0 + fade -->
+    <Style Selector="Border.slide-up">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="translateY(0)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- ScaleIn entrance: scale 0.97→1 + fade -->
+    <Style Selector="Border.scale-in">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- ══════════════════════════════════════════════════════
+         § 22  TOAST NOTIFICATIONS
+         Styles for toast container and individual toasts.
+         Usage: <Border Classes="toast toast-success"> ... </Border>
+    ══════════════════════════════════════════════════════ -->
+
+    <!-- Toast container (positioned top-right) -->
+    <Style Selector="StackPanel.toast-container">
+        <Setter Property="Spacing" Value="8"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Margin" Value="0,20,20,0"/>
+        <Setter Property="MaxWidth" Value="380"/>
+    </Style>
+
+    <!-- Base toast style -->
+    <Style Selector="Border.toast">
+        <Setter Property="Background" Value="{DynamicResource SurfaceFloatingBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="16,12"/>
+        <Setter Property="MinWidth" Value="280"/>
+        <Setter Property="BoxShadow" Value="0 8 32 0 #40000000"/>
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="RenderTransform" Value="translateX(0)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CubicEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- Toast variants -->
+    <Style Selector="Border.toast-success">
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#1500E676" Offset="0"/>
+                    <GradientStop Color="#0A0D0E12" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.toast-error">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#15FF1744" Offset="0"/>
+                    <GradientStop Color="#0A0D0E12" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.toast-warning">
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#15FFD600" Offset="0"/>
+                    <GradientStop Color="#0A0D0E12" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.toast-info">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="Background">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#1500E5FF" Offset="0"/>
+                    <GradientStop Color="#0A0D0E12" Offset="1"/>
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </Styles>

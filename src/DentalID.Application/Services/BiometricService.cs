@@ -102,9 +102,9 @@ public class BiometricService : IBiometricService
         }
 
         fingerprint.Code = sb.ToString().TrimEnd('-');
-        // Normalize score to 0-100 range instead of capping
-        var maxPossibleScore = allFdi.Count * WeightImplant;
-        fingerprint.UniquenessScore = Math.Min((score / maxPossibleScore) * 100, 100);
+        // Score is weighted sum; cap at 100 to represent max forensic uniqueness.
+        // A single high-value feature (e.g. implant = 100) already saturates the scale.
+        fingerprint.UniquenessScore = Math.Min(score, 100);
         fingerprint.ToothMap = toothMap;
 
         return fingerprint;

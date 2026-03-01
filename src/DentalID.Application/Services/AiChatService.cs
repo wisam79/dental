@@ -100,36 +100,38 @@ public class AiChatService : IAiChatService
 
     public async Task<AiChatResponse> GetResponseAsync(string userMessage, AnalysisContext analysisContext)
     {
+        var safeUserMessage = userMessage ?? string.Empty;
+
         try
         {
             // Bug #36: Truncate userMessage before logging to avoid PII leakage in audit log
-            var auditMsg = userMessage?.Length > 100 ? userMessage.Substring(0, 100) + "..." : userMessage ?? "";
+            var auditMsg = safeUserMessage.Length > 100 ? safeUserMessage.Substring(0, 100) + "..." : safeUserMessage;
             _logger.LogAudit("AI_CHAT_REQUEST", "User", auditMsg);
             
             // Build context for the LLM
             var systemPrompt = BuildSystemPrompt(analysisContext);
             var contextJson = SerializeContext(analysisContext);
             
-            string response;
-            string confidence;
+            string response = string.Empty;
+            string confidence = "Low";
             
             if (_provider == LlmProvider.RulesBased)
             {
                 // Use enhanced rules-based as fallback
-                var (ruleResponse, ruleConfidence) = await GetRulesBasedResponseAsync(userMessage, analysisContext);
+                var (ruleResponse, ruleConfidence) = await GetRulesBasedResponseAsync(safeUserMessage, analysisContext);
                 response = ruleResponse;
                 confidence = ruleConfidence;
             }
             else
             {
                 // Use actual LLM
-                var llmResponse = await CallLlmAsync(systemPrompt, userMessage, contextJson);
+                var llmResponse = await CallLlmAsync(systemPrompt, safeUserMessage, contextJson);
                 response = llmResponse.Content;
                 confidence = llmResponse.Confidence;
             }
             
             // Bug #32: Guard against null response before calling Substring
-            var responsePreview = response?.Length > 100 ? response.Substring(0, 100) : response ?? "";
+            var responsePreview = response.Length > 100 ? response.Substring(0, 100) : response;
             _logger.LogAudit("AI_CHAT_RESPONSE", "System", responsePreview);
             
             return new AiChatResponse
@@ -150,7 +152,7 @@ public class AiChatService : IAiChatService
             _logger.LogError(ex, "AI Chat Service failed");
             
             // Fallback to rules-based on error
-            var (fallbackResponse, fallbackConfidence) = await GetRulesBasedResponseAsync(userMessage, analysisContext);
+            var (fallbackResponse, fallbackConfidence) = await GetRulesBasedResponseAsync(safeUserMessage, analysisContext);
             return new AiChatResponse
             {
                 Content = fallbackResponse,

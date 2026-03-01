@@ -279,24 +279,47 @@ public class MockAiService : IAiPipelineService
             Fingerprint = new DentalFingerprint { Code = "MOCK-CODE", UniquenessScore = 0.9, FeatureVector = Enumerable.Repeat(1.0f, 2048).ToArray() } // Ensure Fingerprint also has Vector if needed by mapper
         };
 
-        // Add 32 detected teeth
+        // Add 32 detected teeth — each with valid normalized bounding boxes
+        // Arranged in 4 rows of 8 (upper-right, upper-left, lower-left, lower-right)
+        // Rows spaced to avoid any IoU overlap during NMS
+        float[] rowY = { 0.10f, 0.22f, 0.60f, 0.72f };
+        float toothW = 0.04f, toothH = 0.06f;
+
         for (int i = 0; i < 32; i++)
         {
             // FDI Numbering: 11-18, 21-28, 31-38, 41-48
-            // Simplified loop for mock
-            int fdi = 0;
-            if (i < 8) fdi = 18 - i;
+            int fdi;
+            if (i < 8)       fdi = 18 - i;
             else if (i < 16) fdi = 21 + (i - 8);
             else if (i < 24) fdi = 48 - (i - 16);
-            else fdi = 31 + (i - 24);
+            else             fdi = 31 + (i - 24);
 
-            // Populate RawTeeth for filtering
-            result.RawTeeth.Add(new DetectedTooth { FdiNumber = fdi, Confidence = 0.99f });
-            result.Teeth.Add(new DetectedTooth { FdiNumber = fdi, Confidence = 0.99f });
+            int col     = i % 8;
+            float xCenter = 0.05f + col * 0.10f; // 0.05, 0.15, ..., 0.75 (non-overlapping)
+            float yCenter = rowY[i / 8];
+
+            // Populate RawTeeth for filtering — valid box so IsValidNormalizedBox passes
+            var tooth = new DetectedTooth
+            {
+                FdiNumber  = fdi,
+                Confidence = 0.99f,
+                X = xCenter, Y = yCenter,
+                Width = toothW, Height = toothH
+            };
+            result.RawTeeth.Add(tooth);
+            result.Teeth.Add(tooth);
         }
-        
-        // Add one pathology
-        var pathology = new DetectedPathology { ClassName = "Caries", ToothNumber = 11, Confidence = 0.8f };
+
+        // Tooth 11 is at i=7 → col=7, row=0 → x=0.75, y=0.10
+        // Confidence 0.8 > threshold(0.475) + Caries_bias(0.05)=0.525 ✓
+        var pathology = new DetectedPathology
+        {
+            ClassName  = "Caries",
+            ToothNumber = 11,
+            Confidence = 0.8f,
+            X = 0.75f, Y = 0.10f,
+            Width = toothW, Height = toothH
+        };
         result.RawPathologies.Add(pathology);
         result.Pathologies.Add(pathology);
         

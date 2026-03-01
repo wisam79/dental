@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
              xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              x:Class="DentalID.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
@@ -24,7 +25,7 @@
                         <TextBlock Text="{Binding [Str_Nav_Settings], Source={x:Static svc:Loc.Instance}}"
                                    FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <TextBlock Text="System configuration and preferences"
+                        <TextBlock Text="{DynamicResource Str_Settings_Desc}"
                                    FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
@@ -37,7 +38,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource IconShield}" Width="12" Height="12"
                                   Foreground="{DynamicResource SuccessBrush}"/>
-                        <TextBlock Text="v7.0  FORENSIC SUITE" Classes="mono"
+                        <TextBlock Text="{DynamicResource Str_Settings_VersionBadge}" Classes="mono"
                                    FontSize="10" Foreground="{DynamicResource TextDisabledBrush}"/>
                     </StackPanel>
                 </Border>
@@ -46,7 +47,7 @@
 
         <!-- Settings Content -->
         <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="20" MaxWidth="680" Margin="32,24" HorizontalAlignment="Left">
+            <StackPanel Spacing="20" MaxWidth="680" Margin="32,24" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}">
 
                 <!-- ── APPEARANCE ── -->
                 <Border Classes="card">
@@ -55,7 +56,7 @@
                         <DockPanel>
                             <Border Width="4" Height="20" CornerRadius="2"
                                     Background="{DynamicResource AccentPrimaryBrush}"
-                                    Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}" VerticalAlignment="Center"/>
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource Str_Settings_Appearance}"
                                            FontSize="14" FontWeight="SemiBold"
@@ -66,7 +67,7 @@
                             </StackPanel>
                             <PathIcon Data="{StaticResource IconPalette}" Width="20" Height="20"
                                       Foreground="{DynamicResource TextDisabledBrush}"
-                                      HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                                      HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Top"/>
                         </DockPanel>
 
                         <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -77,7 +78,7 @@
                             <Border Grid.Column="0" CornerRadius="8" Padding="16"
                                     BorderThickness="2" Cursor="Hand">
                                 <Border.BorderBrush>
-                                    <SolidColorBrush Color="#0078D4"
+                                    <SolidColorBrush Color="#2F84AE"
                                         Opacity="{Binding SelectedThemeIndex, Converter={x:Static vm:IndexToCheckedConverter.Instance}, ConverterParameter=0, FallbackValue=0}"/>
                                 </Border.BorderBrush>
                                 <RadioButton GroupName="Theme" HorizontalAlignment="Stretch"
@@ -97,7 +98,7 @@
                                                 <TextBlock Text="{DynamicResource Str_Settings_ThemeDark}"
                                                            FontWeight="SemiBold" FontSize="12"/>
                                             </StackPanel>
-                                            <TextBlock Text="Deep dark, eye-friendly" FontSize="10"
+                                            <TextBlock Text="{DynamicResource Str_Settings_ThemeDarkDesc}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -125,7 +126,7 @@
                                                 <TextBlock Text="{DynamicResource Str_Settings_ThemeLight}"
                                                            FontWeight="SemiBold" FontSize="12"/>
                                             </StackPanel>
-                                            <TextBlock Text="Clean, bright, professional" FontSize="10"
+                                            <TextBlock Text="{DynamicResource Str_Settings_ThemeLightDesc}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -153,7 +154,7 @@
                                                 <TextBlock Text="{DynamicResource Str_Settings_ThemeHC}"
                                                            FontWeight="SemiBold" FontSize="12"/>
                                             </StackPanel>
-                                            <TextBlock Text="Accessibility optimized" FontSize="10"
+                                            <TextBlock Text="{DynamicResource Str_Settings_ThemeHCDesc}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -169,7 +170,7 @@
                         <DockPanel>
                             <Border Width="4" Height="20" CornerRadius="2"
                                     Background="{DynamicResource AccentPurpleBrush}"
-                                    Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}" VerticalAlignment="Center"/>
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource Str_Settings_Localization}"
                                            FontSize="14" FontWeight="SemiBold"
@@ -180,7 +181,7 @@
                             </StackPanel>
                             <PathIcon Data="{StaticResource IconLanguage}" Width="20" Height="20"
                                       Foreground="{DynamicResource TextDisabledBrush}"
-                                      HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                                      HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Top"/>
                         </DockPanel>
 
                         <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -203,8 +204,8 @@
                                                        VerticalAlignment="Center"/>
                                         </Border>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="English" FontWeight="SemiBold" FontSize="13"/>
-                                            <TextBlock Text="Left-to-Right" FontSize="10"
+                                            <TextBlock Text="{DynamicResource Str_Settings_Lang_EN}" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="{DynamicResource Str_Settings_Lang_EN_Desc}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -228,7 +229,7 @@
                                         </Border>
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="العربية" FontWeight="SemiBold" FontSize="13"/>
-                                            <TextBlock Text="Right-to-Left" FontSize="10"
+                                            <TextBlock Text="{DynamicResource Str_Settings_Lang_AR_Desc}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -244,7 +245,7 @@
                         <DockPanel>
                             <Border Width="4" Height="20" CornerRadius="2"
                                     Background="{DynamicResource AccentOrangeBrush}"
-                                    Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}" VerticalAlignment="Center"/>
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource Str_Settings_Data}"
                                            FontSize="14" FontWeight="SemiBold"
@@ -255,7 +256,7 @@
                             </StackPanel>
                             <PathIcon Data="{StaticResource IconDatabase}" Width="20" Height="20"
                                       Foreground="{DynamicResource TextDisabledBrush}"
-                                      HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                                      HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Top"/>
                         </DockPanel>
 
                         <Border Height="1" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -276,14 +277,14 @@
                                     <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource Str_Settings_ExportSubj}"
                                                    FontWeight="SemiBold" FontSize="13"/>
-                                        <TextBlock Text="Export all subject records as CSV/JSON"
+                                        <TextBlock Text="{DynamicResource Str_Settings_ExportSubjDesc}"
                                                    FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
                                     </StackPanel>
                                     <Button Grid.Column="2" Command="{Binding ExportSubjectsCommand}"
                                             Classes="outline" Padding="14,6" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource IconExport}" Width="12" Height="12"/>
-                                            <TextBlock Text="Export" FontSize="12"/>
+                                            <TextBlock Text="{DynamicResource Str_Action_Export}" FontSize="12"/>
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -294,7 +295,7 @@
                                 <!-- Export Cases Row -->
                                 <Grid ColumnDefinitions="Auto, *, Auto" Margin="16,14">
                                     <Border Width="36" Height="36" CornerRadius="8"
-                                            Background="#200078D4">
+                                            Background="#202F84AE">
                                         <PathIcon Data="{StaticResource IconCases}" Width="16" Height="16"
                                                   Foreground="{DynamicResource AccentPrimaryBrush}"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -302,14 +303,14 @@
                                     <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource Str_Settings_ExportCases}"
                                                    FontWeight="SemiBold" FontSize="13"/>
-                                        <TextBlock Text="Export all forensic case records"
+                                        <TextBlock Text="{DynamicResource Str_Settings_ExportCasesDesc}"
                                                    FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
                                     </StackPanel>
                                     <Button Grid.Column="2" Command="{Binding ExportCasesCommand}"
                                             Classes="outline" Padding="14,6" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <PathIcon Data="{StaticResource IconExport}" Width="12" Height="12"/>
-                                            <TextBlock Text="Export" FontSize="12"/>
+                                            <TextBlock Text="{DynamicResource Str_Action_Export}" FontSize="12"/>
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -324,8 +325,8 @@
                         <DockPanel>
                             <Border Width="4" Height="20" CornerRadius="2"
                                     Background="{DynamicResource AccentTertiaryBrush}"
-                                    Margin="0,0,12,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="System Information" FontSize="14" FontWeight="SemiBold"
+                                    Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource Str_Settings_SystemInfo}" FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </DockPanel>
 
@@ -336,10 +337,10 @@
                                 <Border Width="8" Height="8" CornerRadius="4"
                                         Background="{DynamicResource SuccessBrush}"
                                         HorizontalAlignment="Center"/>
-                                <TextBlock Text="AI ENGINE" Classes="mono" FontSize="9"
+                                <TextBlock Text="{DynamicResource Str_Status_AiEngine}" Classes="mono" FontSize="9"
                                            Foreground="{DynamicResource TextDisabledBrush}"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock Text="ONNX Runtime" FontSize="11" FontWeight="SemiBold"
+                                <TextBlock Text="{DynamicResource Str_Status_AiRuntime}" FontSize="11" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AccentTertiaryBrush}"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
@@ -349,7 +350,7 @@
                                 <Border Width="8" Height="8" CornerRadius="4"
                                         Background="{DynamicResource SuccessBrush}"
                                         HorizontalAlignment="Center"/>
-                                <TextBlock Text="ENCRYPTION" Classes="mono" FontSize="9"
+                                <TextBlock Text="{DynamicResource Str_Status_Encryption}" Classes="mono" FontSize="9"
                                            Foreground="{DynamicResource TextDisabledBrush}"
                                            HorizontalAlignment="Center"/>
                                 <TextBlock Text="AES-256" FontSize="11" FontWeight="SemiBold"
@@ -362,7 +363,7 @@
                                 <Border Width="8" Height="8" CornerRadius="4"
                                         Background="{DynamicResource SuccessBrush}"
                                         HorizontalAlignment="Center"/>
-                                <TextBlock Text="DATABASE" Classes="mono" FontSize="9"
+                                <TextBlock Text="{DynamicResource Str_Status_Database}" Classes="mono" FontSize="9"
                                            Foreground="{DynamicResource TextDisabledBrush}"
                                            HorizontalAlignment="Center"/>
                                 <TextBlock Text="SQLite" FontSize="11" FontWeight="SemiBold"

@@ -18,8 +18,12 @@ public class ImageIntegrityService : IImageIntegrityService
     {
         if (imageStream == null) throw new ArgumentNullException(nameof(imageStream));
         
-        long originalPosition = imageStream.Position;
-        if (imageStream.CanSeek) imageStream.Position = 0;
+        long originalPosition = 0;
+        if (imageStream.CanSeek)
+        {
+            originalPosition = imageStream.Position;
+            imageStream.Position = 0;
+        }
 
         using (var sha256 = System.Security.Cryptography.SHA256.Create())
         {
@@ -59,6 +63,11 @@ public class ImageIntegrityService : IImageIntegrityService
             using (var fs = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 int bytesRead = fs.Read(buffer, 0, buffer.Length);
+                if (bytesRead <= 0)
+                {
+                    warnings.Add("Analysis Error: Unable to read image bytes.");
+                    return warnings;
+                }
                 
                 // 1. Header Validation
                 if (!ValidateHeader(buffer, Path.GetExtension(imagePath)))
@@ -69,7 +78,7 @@ public class ImageIntegrityService : IImageIntegrityService
                 // 2. Metadata/String Analysis (Simple Heuristic)
                 // We scan the raw bytes for known editing software strings.
                 // This works because metadata is often stored as clear text within the binary.
-                string content = Encoding.ASCII.GetString(buffer); // Most metadata tags are ASCII
+                string content = Encoding.ASCII.GetString(buffer, 0, bytesRead); // Most metadata tags are ASCII
                 foreach (var sig in EditingSoftwareSignatures)
                 {
                     if (content.Contains(sig, StringComparison.OrdinalIgnoreCase))

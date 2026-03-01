@@ -53,6 +53,26 @@ public class ForensicRulesEngineTests
     }
 
     [Fact]
+    public void ApplyRules_ShouldCollapseDuplicateImplantConflictsPerClass()
+    {
+        var result = new AnalysisResult
+        {
+            Pathologies = new List<DetectedPathology>
+            {
+                new() { ClassName = "Implant", ToothNumber = 27 },
+                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.9f, X = 0.20f, Y = 0.20f, Width = 0.10f, Height = 0.10f },
+                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.7f, X = 0.21f, Y = 0.21f, Width = 0.10f, Height = 0.10f }
+            }
+        };
+
+        _engine.ApplyRules(result);
+
+        Assert.Single(result.Flags);
+        Assert.Contains("Conflict", result.Flags[0]);
+        Assert.Contains("overlapping detections", result.Flags[0]);
+    }
+
+    [Fact]
     public void ApplyRules_ShouldFlagContradictoryRestorations_AsObservation()
     {
         var result = new AnalysisResult
@@ -85,6 +105,24 @@ public class ForensicRulesEngineTests
         _engine.ApplyRules(result);
 
         Assert.Empty(result.Flags);
+    }
+
+    [Fact]
+    public void ApplyRules_ShouldCollapseOverlappingOrphans()
+    {
+        var result = new AnalysisResult
+        {
+            Pathologies = new List<DetectedPathology>
+            {
+                new() { ClassName = "Caries", ToothNumber = 0, Confidence = 0.9f, X = 0.30f, Y = 0.30f, Width = 0.10f, Height = 0.10f },
+                new() { ClassName = "Caries", ToothNumber = null, Confidence = 0.8f, X = 0.31f, Y = 0.31f, Width = 0.10f, Height = 0.10f }
+            }
+        };
+
+        _engine.ApplyRules(result);
+
+        Assert.Single(result.Flags);
+        Assert.Contains("collapsed", result.Flags[0]);
     }
     
     [Theory]

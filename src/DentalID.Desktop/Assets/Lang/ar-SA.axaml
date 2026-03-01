@@ -8,6 +8,15 @@
     <system:String x:Key="Str_Save">حفظ</system:String>
     <system:String x:Key="Str_Cancel">إلغاء</system:String>
     <system:String x:Key="Str_Processing">جاري المعالجة...</system:String>
+    <system:String x:Key="Str_Action_Search">بحث</system:String>
+    <system:String x:Key="Str_Action_Export">تصدير</system:String>
+    <system:String x:Key="Str_SystemOnline">النظام متصل</system:String>
+    <system:String x:Key="Str_Status_SecureConnection">اتصال آمن: مشفّر</system:String>
+    <system:String x:Key="Str_Status_AiEngine">محرك الذكاء:</system:String>
+    <system:String x:Key="Str_Status_AiRuntime">ONNX Runtime</system:String>
+    <system:String x:Key="Str_Status_Label">الحالة:</system:String>
+    <system:String x:Key="Str_Status_Encryption">التشفير</system:String>
+    <system:String x:Key="Str_Status_Database">قاعدة البيانات</system:String>
     
     <!-- Navigation -->
     <system:String x:Key="Str_Nav_Dashboard">لوحة القيادة</system:String>
@@ -107,16 +116,33 @@
     <system:String x:Key="Str_Subj_SearchPlaceholder">بحث...</system:String>
     <system:String x:Key="Str_Subj_Refresh">تحديث</system:String>
     <system:String x:Key="Str_Subj_Add">+ إضافة جديد</system:String>
+    <system:String x:Key="Str_Subj_Registered">حالة مسجلة</system:String>
+    <system:String x:Key="Str_Subj_Selected">المحدد: </system:String>
     <system:String x:Key="Str_Subj_Col_ID">رقم الملف</system:String>
     <system:String x:Key="Str_Subj_Col_Name">الاسم الكامل</system:String>
     <system:String x:Key="Str_Subj_Col_Gender">الجنس</system:String>
+    <system:String x:Key="Str_Subj_Col_Analyses">التحليلات</system:String>
     <system:String x:Key="Str_Subj_Col_DOB">تاريخ الميلاد</system:String>
     <system:String x:Key="Str_Subj_Col_NatID">رقم الهوية</system:String>
     <system:String x:Key="Str_Subj_Col_DentalCode">الكود السني</system:String>
     <system:String x:Key="Str_Subj_Col_Created">تاريخ الإنشاء</system:String>
+    <system:String x:Key="Str_Subj_History_Title">سجل التحليلات</system:String>
+    <system:String x:Key="Str_Subj_History_Subject">الموضوع: </system:String>
+    <system:String x:Key="Str_Subj_History_Count">عدد التحليلات: </system:String>
+    <system:String x:Key="Str_Subj_History_Col_Date">تاريخ الحفظ</system:String>
+    <system:String x:Key="Str_Subj_History_Col_Type">نوع الصورة</system:String>
+    <system:String x:Key="Str_Subj_History_Col_Code">الكود السني</system:String>
+    <system:String x:Key="Str_Subj_History_Col_Score">التفرد</system:String>
+    <system:String x:Key="Str_Subj_History_Empty">لا توجد تحليلات محفوظة لهذه الحالة بعد.</system:String>
+    <system:String x:Key="Str_Subj_Detail_ID">رقم الملف</system:String>
+    <system:String x:Key="Str_Subj_Detail_DOB">تاريخ الميلاد</system:String>
+    <system:String x:Key="Str_Subj_Detail_NatID">رقم الهوية</system:String>
+    <system:String x:Key="Str_Subj_Detail_Code">الكود السني</system:String>
+    <system:String x:Key="Str_Subj_Empty_List">لا توجد حالات لعرضها. يمكنك إضافة حالة جديدة.</system:String>
+    <system:String x:Key="Str_Subj_Empty_Select">اختر سجلًا من القائمة لعرض تفاصيله وتحليلاته.</system:String>
     <system:String x:Key="Str_Subj_Edit">تعديل</system:String>
     <system:String x:Key="Str_Subj_Delete">حذف</system:String>
-    <system:String x:Key="Str_Subj_Total">الإجمالي: {0}</system:String>
+    <system:String x:Key="Str_Subj_Total">الإجمالي: </system:String>
     
     <!-- Subjects Dialog -->
     <system:String x:Key="Str_Subj_Dialog_Name">الاسم الكامل *</system:String>
@@ -124,6 +150,7 @@
     <system:String x:Key="Str_Subj_Dialog_Gender">الجنس</system:String>
     <system:String x:Key="Str_Subj_Dialog_Male">ذكر</system:String>
     <system:String x:Key="Str_Subj_Dialog_Female">أنثى</system:String>
+    <system:String x:Key="Str_Subj_Dialog_Unknown">غير معروف</system:String>
     <system:String x:Key="Str_Subj_Dialog_DOB">تاريخ الميلاد</system:String>
     <system:String x:Key="Str_Subj_Dialog_NatID">رقم الهوية</system:String>
     <system:String x:Key="Str_Subj_Dialog_Optional">اختياري</system:String>
@@ -147,6 +174,8 @@
     <system:String x:Key="Str_Match_Export">تصدير PDF</system:String>
     <system:String x:Key="Str_Match_QueryFingerprint">بصمة الاستعلام</system:String>
     <system:String x:Key="Str_Match_VectorExtracted">تم الاستخراج ✓</system:String>
+    <system:String x:Key="Str_Match_Desc">محرك مقارنة البصمات السنية بين الأدلة والسجلات.</system:String>
+    <system:String x:Key="Str_Match_NoCandidates">لا توجد نتائج مطابقة حاليًا.</system:String>
 
     <!-- Cases -->
     <system:String x:Key="Str_Cases_SearchPlace">بحث في القضايا...</system:String>
@@ -179,16 +208,27 @@
 
     <!-- Settings (Replacing Loc) -->
     <system:String x:Key="Str_Settings_Appearance">المظهر</system:String>
+    <system:String x:Key="Str_Settings_Desc">ضبط الواجهة، اللغة، وخيارات التصدير.</system:String>
     <system:String x:Key="Str_Settings_Theme">سمة التطبيق</system:String>
     <system:String x:Key="Str_Settings_ThemeDark">داكن</system:String>
     <system:String x:Key="Str_Settings_ThemeLight">فاتح</system:String>
     <system:String x:Key="Str_Settings_ThemeHC">تباين عالي</system:String>
+    <system:String x:Key="Str_Settings_ThemeDarkDesc">مناسب لغرف العمليات والعمل الليلي.</system:String>
+    <system:String x:Key="Str_Settings_ThemeLightDesc">واجهة فاتحة لبيئات الإضاءة العالية.</system:String>
+    <system:String x:Key="Str_Settings_ThemeHCDesc">يزيد الوضوح البصري لذوي الحساسية البصرية.</system:String>
     <system:String x:Key="Str_Settings_Localization">اللغة</system:String>
     <system:String x:Key="Str_Settings_Language">لغة الواجهة</system:String>
+    <system:String x:Key="Str_Settings_Lang_EN">English</system:String>
+    <system:String x:Key="Str_Settings_Lang_EN_Desc">واجهة باللغة الإنجليزية.</system:String>
+    <system:String x:Key="Str_Settings_Lang_AR_Desc">واجهة باللغة العربية.</system:String>
     <system:String x:Key="Str_Settings_Data">إدارة البيانات</system:String>
     <system:String x:Key="Str_Settings_DataDesc">تصدير بيانات التطبيق بصيغة CSV.</system:String>
     <system:String x:Key="Str_Settings_ExportSubj">تصدير المرضى</system:String>
     <system:String x:Key="Str_Settings_ExportCases">تصدير القضايا</system:String>
+    <system:String x:Key="Str_Settings_ExportSubjDesc">تنزيل جميع بيانات الحالات بصيغة CSV.</system:String>
+    <system:String x:Key="Str_Settings_ExportCasesDesc">تنزيل بيانات القضايا والتحليلات بصيغة CSV.</system:String>
+    <system:String x:Key="Str_Settings_SystemInfo">معلومات النظام</system:String>
+    <system:String x:Key="Str_Settings_VersionBadge">الإصدار 1.0.0</system:String>
 
     <!-- Audit Log -->
     <system:String x:Key="Str_Audit_Title">سجل التدقيق الأمني</system:String>
@@ -217,6 +257,9 @@
     <!-- Startup -->
     <system:String x:Key="Str_App_Title">DentalID</system:String>
     <system:String x:Key="Str_Startup_Warning">جاري فحص النظام. لا تقم بإيقاف التشغيل.</system:String>
+    <system:String x:Key="Str_Startup_Status_Active">نشط</system:String>
+    <system:String x:Key="Str_Startup_Status_Sealed">مُحكم</system:String>
+    <system:String x:Key="Str_Startup_Status_Online">متصل</system:String>
     
     <system:String x:Key="Str_GlobalSearch">بحث شامل</system:String>
     <system:String x:Key="Str_Notifications">إشعارات</system:String>

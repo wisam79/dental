@@ -57,6 +57,9 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         {
             result.Flags.Add($"Forensic Alert: {highOverlapCount} high-density overlaps detected (IoU > 0.5). Possible AI artifacting.");
         }
+
+        CheckSupernumerary(result, rawTeeth);
+        CheckRetainedDeciduous(result, rawTeeth);
     }
 
     private void AnalyzeBilateralAsymmetry(AnalysisResult result, List<DetectedTooth> rawTeeth)
@@ -76,6 +79,49 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         if (Math.Abs(leftCount - rightCount) > 6 && rawTeeth.Count > 10)
         {
             result.Flags.Add("Forensic Alert: Severe bilateral asymmetry detected. Verify image authenticity.");
+        }
+    }
+
+    private void CheckSupernumerary(AnalysisResult result, List<DetectedTooth> rawTeeth)
+    {
+        // Check for more than 8 permanent teeth in any quadrant
+        var quadrantCounts = rawTeeth
+            .Where(t => t != null && t.FdiNumber >= 11 && t.FdiNumber <= 48)
+            .GroupBy(t => t.FdiNumber / 10)
+            .Select(g => new { Quadrant = g.Key, Count = g.Count() })
+            .ToList();
+
+        foreach (var qc in quadrantCounts)
+        {
+            if (qc.Count > 8)
+            {
+                result.Flags.Add($"Forensic Alert: Supernumerary teeth detected in Quadrant {qc.Quadrant} (Count: {qc.Count} > 8 max permanent).");
+            }
+        }
+    }
+
+    private void CheckRetainedDeciduous(AnalysisResult result, List<DetectedTooth> rawTeeth)
+    {
+        // Retained deciduous check: if a primary tooth exists alongside its permanent successor
+        // Example: Primary 54 (1st molar) -> Permanent 14 (1st premolar)
+        // FDI Mapping relation: Primary Q5 maps to Adult Q1, Primary Q6 -> Adult Q2, etc.
+        var permanentFdis = rawTeeth.Where(t => t != null && t.FdiNumber >= 11 && t.FdiNumber <= 48).Select(t => t.FdiNumber).ToHashSet();
+        var primaryFdis = rawTeeth.Where(t => t != null && t.FdiNumber >= 51 && t.FdiNumber <= 85).Select(t => t.FdiNumber).ToHashSet();
+
+        foreach (var primary in primaryFdis)
+        {
+            // Calculate adult successor FDI
+            int pQuad = primary / 10;
+            int offset = primary % 10;
+            
+            // Map 5->1, 6->2, 7->3, 8->4
+            int aQuad = pQuad - 4;
+            int adultSuccessor = (aQuad * 10) + offset;
+            
+            if (permanentFdis.Contains(adultSuccessor))
+            {
+                result.Flags.Add($"Forensic Alert: Retained Deciduous tooth detected (Primary {primary} concurrent with Permanent {adultSuccessor}). High evidentiary value.");
+            }
         }
     }
 

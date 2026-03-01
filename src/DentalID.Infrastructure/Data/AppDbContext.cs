@@ -29,7 +29,10 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // Converter
-        var encryptedConverter = new EncryptedValueConverter(_encryptionService);
+        var encryptedNullableConverter = new EncryptedValueConverter(_encryptionService);
+        var encryptedRequiredConverter = new ValueConverter<string, string>(
+            v => _encryptionService.Encrypt(v),
+            v => _encryptionService.Decrypt(v));
 
         // ── User ──
         modelBuilder.Entity<User>(e =>
@@ -38,8 +41,8 @@ public class AppDbContext : DbContext
             e.Property(u => u.Username).IsRequired().HasMaxLength(100); 
             // Username is often used for lookups, encryption might break unique index or simple search if not deterministic. 
             // For now, let's encrypt Email and FullName.
-            e.Property(u => u.FullName).HasConversion(encryptedConverter);
-            e.Property(u => u.Email).HasConversion(encryptedConverter);
+            e.Property(u => u.FullName).HasConversion(encryptedNullableConverter);
+            e.Property(u => u.Email).HasConversion(encryptedNullableConverter);
 
             e.Property(u => u.PasswordHash).IsRequired();
             e.Property(u => u.Role).HasConversion<string>().HasMaxLength(30);
@@ -53,10 +56,14 @@ public class AppDbContext : DbContext
             // Bug #52: Keep index for structural purposes only — with random-IV encryption, equality search
             // must be done client-side (see SubjectRepository.SearchAsync). The index helps EF/SQLite scans.
             e.HasIndex(s => s.NationalId);
+            e.HasIndex(s => s.NationalIdLookupHash);
+            e.HasIndex(s => s.FullNameLookupHash);
             e.Property(s => s.SubjectId).IsRequired().HasMaxLength(50);
-            e.Property(s => s.FullName).HasConversion(encryptedConverter); // Encrypt Patient Name
+            e.Property(s => s.FullName).HasConversion(encryptedRequiredConverter); // Encrypt Patient Name
             // Bug #52: NationalId contains PII — must be encrypted at rest like FullName
-            e.Property(s => s.NationalId).HasConversion(encryptedConverter);
+            e.Property(s => s.NationalId).HasConversion(encryptedNullableConverter);
+            e.Property(s => s.NationalIdLookupHash).HasMaxLength(64);
+            e.Property(s => s.FullNameLookupHash).HasMaxLength(64);
             e.Property(s => s.RowVersion).IsConcurrencyToken(); // Optimistic Concurrency (Manual)
             
             e.HasOne(s => s.CreatedBy)
@@ -84,7 +91,7 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(c => c.CaseNumber).IsUnique();
             e.Property(c => c.CaseNumber).IsRequired().HasMaxLength(50);
-            e.Property(c => c.Title).IsRequired().HasMaxLength(300).HasConversion(encryptedConverter); // Encrypt Case Title
+            e.Property(c => c.Title).IsRequired().HasMaxLength(300).HasConversion(encryptedRequiredConverter); // Encrypt Case Title
             e.Property(c => c.Status).HasConversion<string>().HasMaxLength(30);
             e.Property(c => c.Priority).HasConversion<string>().HasMaxLength(20);
             e.HasOne(c => c.AssignedTo)
@@ -142,6 +149,9 @@ public class AppDbContext : DbContext
             e.Property(m => m.FilePath).IsRequired();
         });
     }
+
+    internal string ComputeDeterministicHash(string normalizedValue, string context)
+        => _encryptionService.ComputeDeterministicHash(normalizedValue, context);
 }
 
 

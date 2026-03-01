@@ -116,4 +116,95 @@ public class MatchingServiceEdgeCaseTests
         result.Should().HaveCount(1);
         result[0].Subject.Should().Be(subjectOld);
     }
+
+    [Fact]
+    public void FindMatches_ShouldCalibrateHighBaselineCosineScores()
+    {
+        // Probe vector with unit norm.
+        float[] probeVector = { 1.0f, 0.0f };
+
+        // Candidate A: cosine ~0.86 (can look high as raw cosine, should be down-calibrated).
+        float[] baselineLikeVector = { 0.86f, 0.5103f };
+        byte[] baselineLikeBytes = new byte[baselineLikeVector.Length * sizeof(float)];
+        Buffer.BlockCopy(baselineLikeVector, 0, baselineLikeBytes, 0, baselineLikeBytes.Length);
+
+        // Candidate B: perfect match.
+        float[] perfectVector = { 1.0f, 0.0f };
+        byte[] perfectBytes = new byte[perfectVector.Length * sizeof(float)];
+        Buffer.BlockCopy(perfectVector, 0, perfectBytes, 0, perfectBytes.Length);
+
+        var nearBaseline = new Subject { SubjectId = "A", FeatureVector = baselineLikeBytes };
+        var perfect = new Subject { SubjectId = "B", FeatureVector = perfectBytes };
+        var probe = new DentalFingerprint { FeatureVector = probeVector };
+
+        var result = _service.FindMatches(probe, new[] { nearBaseline, perfect });
+
+        result.Should().HaveCount(2);
+        result[0].Subject.SubjectId.Should().Be("B");
+        result[0].Score.Should().BeApproximately(1.0, 0.0001);
+        result[1].Score.Should().BeLessThan(0.2);
+    }
+
+    [Fact]
+    public void FindMatches_ShouldDeflateCompressedNearPerfectVectorSpace()
+    {
+        const int dim = 128;
+        var probeVector = new float[dim];
+        for (int i = 0; i < dim; i++)
+        {
+            probeVector[i] = 10.0f
+                + (float)Math.Sin((i + 1) * 0.013) * 0.15f
+                + (float)Math.Cos((i + 3) * 0.017) * 0.10f;
+        }
+
+        var candidates = new List<Subject>();
+        for (int c = 0; c < 12; c++)
+        {
+            float[] vector;
+            if (c == 0)
+            {
+                vector = probeVector.ToArray();
+            }
+            else
+            {
+                vector = new float[dim];
+                for (int i = 0; i < dim; i++)
+                {
+                    vector[i] = 10.0f
+                        + (float)Math.Sin((i + 1) * (c + 1) * 0.013) * 0.15f
+                        + (float)Math.Cos((i + 3) * (c + 2) * 0.017) * 0.10f;
+                }
+            }
+
+            var bytes = new byte[vector.Length * sizeof(float)];
+            Buffer.BlockCopy(vector, 0, bytes, 0, bytes.Length);
+
+            candidates.Add(new Subject
+            {
+                SubjectId = c == 0 ? "EXACT" : $"C{c:D2}",
+                FeatureVector = bytes
+            });
+        }
+
+        var probe = new DentalFingerprint { FeatureVector = probeVector };
+        var results = _service.FindMatches(probe, candidates);
+        results.Should().NotBeEmpty();
+
+        var scoreById = results.ToDictionary(r => r.Subject.SubjectId, r => r.Score);
+
+        foreach (var candidate in candidates.Where(c => c.SubjectId != "EXACT"))
+        {
+            candidate.FeatureVector.Should().NotBeNull();
+            var decoded = new float[candidate.FeatureVector!.Length / sizeof(float)];
+            Buffer.BlockCopy(candidate.FeatureVector, 0, decoded, 0, candidate.FeatureVector.Length);
+
+            var raw = _service.CalculateCosineSimilarity(probeVector, decoded);
+            raw.Should().BeGreaterThan(0.99);
+
+            var finalScore = scoreById.TryGetValue(candidate.SubjectId, out var s) ? s : 0.0;
+            finalScore.Should().BeLessThan(0.95);
+        }
+
+        scoreById["EXACT"].Should().BeGreaterThan(0.95);
+    }
 }

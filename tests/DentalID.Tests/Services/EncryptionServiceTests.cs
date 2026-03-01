@@ -23,7 +23,12 @@ public class EncryptionServiceTests
         _mockConfig = new Mock<IConfiguration>();
         _mockConfig.Setup(c => c["Security:EncryptionKey"]).Returns(_testKey);
 
-        _service = new EncryptionService(_mockConfig.Object);
+        // Bug fix: Use the internal raw-key constructor to bypass DPAPI key storage.
+        // The standard IConfiguration constructor tries TryLoadKeyFromStorage() first, which
+        // may find a key from a previous test run that differs from _testKey, breaking legacy
+        // decrypt tests that must encrypt and decrypt with the SAME deterministic key.
+        var rawKey = Convert.FromBase64String(_testKey);
+        _service = new EncryptionService(rawKey);
     }
 
     [Fact]
@@ -99,5 +104,23 @@ public class EncryptionServiceTests
         var result = _service.Decrypt(cipher);
         
         result.Should().Be(plain);
+    }
+
+    [Fact]
+    public void ComputeDeterministicHash_ShouldBeStable_ForSameInputAndContext()
+    {
+        var hash1 = _service.ComputeDeterministicHash("JOHN DOE", "subject:full-name:v1");
+        var hash2 = _service.ComputeDeterministicHash("JOHN DOE", "subject:full-name:v1");
+
+        hash1.Should().Be(hash2);
+    }
+
+    [Fact]
+    public void ComputeDeterministicHash_ShouldDiffer_ForDifferentContexts()
+    {
+        var hash1 = _service.ComputeDeterministicHash("ABC123", "subject:national-id:v1");
+        var hash2 = _service.ComputeDeterministicHash("ABC123", "subject:full-name:v1");
+
+        hash1.Should().NotBe(hash2);
     }
 }

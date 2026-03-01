@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <DeterministicReport>true</DeterministicReport>
+          <SkipAutoProps>true</SkipAutoProps>
+          <UseSourceLink>false</UseSourceLink>
+          <Exclude>[xunit.*]*,[*.Tests]*</Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute,Obsolete</ExcludeByAttribute>
+          <ExcludeByFile>**/*.g.cs,**/*.g.i.cs,**/obj/**,**/Migrations/**</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

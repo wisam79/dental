@@ -20,29 +20,49 @@ public class EncryptionService : IEncryptionService
 
     public EncryptionService(IConfiguration configuration)
     {
-        // 1. Try to load DPAPI-protected key from local storage
+        // 1. Try environment variable first (highest priority, best practice for production)
+        var envKey = Environment.GetEnvironmentVariable("DENTALID_ENCRYPTION_KEY");
+        if (!string.IsNullOrWhiteSpace(envKey))
+        {
+            try
+            {
+                var keyBytes = Convert.FromBase64String(envKey);
+                if (keyBytes.Length == 32)
+                {
+                    _key = keyBytes;
+                    return;
+                }
+            }
+            catch { /* Invalid base64, fall through */ }
+        }
+
+        // 2. Try to load OS-protected key from local storage
         if (TryLoadKeyFromStorage(out _key))
         {
             return;
         }
 
-        // 2. Migration: Check appsettings.json for legacy key
+        // 3. Migration: Check appsettings.json for legacy key
         var configKey = configuration["Security:EncryptionKey"];
-        if (!string.IsNullOrEmpty(configKey))
+        if (!string.IsNullOrEmpty(configKey) &&
+            !configKey.Contains("CHANGE-THIS") &&
+            !configKey.Contains("DO-NOT-USE"))
         {
-            try 
+            try
             {
-                _key = Convert.FromBase64String(configKey);
-                if (_key.Length != 32) throw new CryptographicException("Legacy key must be 32 bytes.");
-                
-                // Migrate to Secure Storage
-                SaveKeyToStorage(_key);
-                return;
+                var legacyKeyBytes = Convert.FromBase64String(configKey);
+                if (legacyKeyBytes.Length == 32)
+                {
+                    _key = legacyKeyBytes;
+                    // Migrate to OS-protected storage and stop using appsettings
+                    SaveKeyToStorage(_key);
+                    return;
+                }
             }
-            catch (Exception) { /* If invalid, ignore and generate new */ }
+            catch { /* If invalid, ignore and generate new */ }
         }
 
-        // 3. Generate New Key (Secure Default)
+        // 4. Generate New Key (Secure Default for first run)
         _key = new byte[32];
         using (var rng = RandomNumberGenerator.Create())
         {
@@ -60,24 +80,36 @@ public class EncryptionService : IEncryptionService
             if (!File.Exists(keyPath)) return false;
 
             var protectedBytes = File.ReadAllBytes(keyPath);
-            
-            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                    System.Runtime.InteropServices.OSPlatform.Windows))
             {
                 key = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.LocalMachine);
             }
             else
             {
-                // Bug #69: Non-Windows fallback stores key in plaintext — warn loudly in production
-                // TODO: Replace with OS keyring (libsecret on Linux, Keychain on macOS) for production deployments
-                Console.Error.WriteLine("[SECURITY WARNING] Running on non-Windows platform: encryption key stored in plaintext. " +
-                    "Use a proper secret manager for production deployments.");
-                key = protectedBytes; 
+                // Non-Windows: validate and use the stored key bytes, but warn loudly.
+                // RECOMMENDATION: Use DENTALID_ENCRYPTION_KEY environment variable or a vault in production.
+                if (protectedBytes.Length != 32)
+                {
+                    Console.Error.WriteLine(
+                        "[SECURITY WARNING] Non-Windows: stored key has unexpected length. " +
+                        "Regenerating. Existing encrypted data may be unreadable.");
+                    return false;
+                }
+                Console.Error.WriteLine(
+                    "[SECURITY WARNING] Non-Windows platform detected. Encryption key is stored " +
+                    "with OS-level file permissions only. For production, set the " +
+                    "DENTALID_ENCRYPTION_KEY environment variable to a 32-byte Base64 value, " +
+                    "or use a secrets manager (HashiCorp Vault, Azure Key Vault, etc.).");
+                key = protectedBytes;
             }
+
             return key.Length == 32;
         }
-        catch 
-        { 
-            return false; 
+        catch
+        {
+            return false;
         }
     }
 
@@ -88,17 +120,28 @@ public class EncryptionService : IEncryptionService
             var keyPath = GetKeyPath();
             Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
 
-            byte[] protectedBytes;
-            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            byte[] dataToWrite;
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                    System.Runtime.InteropServices.OSPlatform.Windows))
             {
-                protectedBytes = ProtectedData.Protect(key, null, DataProtectionScope.LocalMachine);
+                dataToWrite = ProtectedData.Protect(key, null, DataProtectionScope.LocalMachine);
             }
             else
             {
-                protectedBytes = key; // Fallback
+                // Non-Windows: store raw key bytes, rely on file system permissions (chmod 600)
+                dataToWrite = key;
+                // Attempt to set restrictive permissions (Linux/macOS)
+                TrySetRestrictiveFilePermissions(keyPath);
             }
 
-            File.WriteAllBytes(keyPath, protectedBytes);
+            File.WriteAllBytes(keyPath, dataToWrite);
+
+            // Set restrictive permissions after write on non-Windows
+            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                    System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                TrySetRestrictiveFilePermissions(keyPath);
+            }
         }
         catch (Exception ex)
         {
@@ -106,7 +149,44 @@ public class EncryptionService : IEncryptionService
         }
     }
 
+    /// <summary>
+    /// Attempts to set chmod 600 (owner read/write only) on Linux/macOS key files.
+    /// Silently ignores failures (e.g. when running as root or on unsupported FS).
+    /// </summary>
+    private static void TrySetRestrictiveFilePermissions(string filePath)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            // UnixFileMode is only available on .NET 6+ on Unix platforms
+            if (File.Exists(filePath))
+            {
+                File.SetUnixFileMode(filePath,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+        }
+        catch
+        {
+            // Best-effort; if this fails, the admin needs to handle permissions manually
+        }
+    }
+
     private string GetKeyPath() => Path.Combine(AppContext.BaseDirectory, "data", "security", "master.key");
+
+    /// <summary>
+    /// For unit testing only: creates an instance with a pre-supplied raw key,
+    /// bypassing all key storage and derivation logic.
+    /// </summary>
+    internal EncryptionService(byte[] rawKey)
+    {
+        if (rawKey == null || rawKey.Length != 32)
+            throw new ArgumentException("Key must be exactly 32 bytes (256-bit AES).", nameof(rawKey));
+        _key = rawKey;
+    }
 
     public string Encrypt(string plainText)
     {
@@ -128,7 +208,7 @@ public class EncryptionService : IEncryptionService
             cipherBytes = ms.ToArray();
         }
 
-        // Build: IV + Ciphertext + HMAC
+        // Build: IV + Ciphertext
         var payload = new byte[IvSize + cipherBytes.Length];
         Buffer.BlockCopy(aes.IV, 0, payload, 0, IvSize);
         Buffer.BlockCopy(cipherBytes, 0, payload, IvSize, cipherBytes.Length);
@@ -185,7 +265,6 @@ public class EncryptionService : IEncryptionService
             if (!CryptographicOperations.FixedTimeEquals(computedHmac, storedHmac))
             {
                 // HMAC mismatch — possible tampering or legacy data format
-                // Try legacy decryption (static IV format) for backward compatibility
                 return TryLegacyDecrypt(cipherText);
             }
 
@@ -209,15 +288,48 @@ public class EncryptionService : IEncryptionService
     }
 
     /// <summary>
-    /// Bug #68: TryLegacyDecrypt must return the original string (not throw) when legacy data
-    /// cannot be decrypted. Throwing inside Decrypt's try-block was swallowed by the outer catch,
-    /// causing the method to silently return cipherText anyway — but the intent was "Try" (no-throw).
-    /// Returning cipherText allows the caller to display the raw value rather than crashing.
+    /// Attempts to decrypt data in the legacy format: plain AES-CBC with a static IV.
+    /// Static IV = "1234567890123456" (UTF-8). Returns the original string if decryption fails.
     /// </summary>
     private string TryLegacyDecrypt(string cipherText)
     {
-        // Legacy format is no longer supported. Return the ciphertext as-is so the caller
-        // can decide what to do (display placeholder, prompt re-encryption, etc.)
-        return cipherText;
+        try
+        {
+            var cipherBytes = Convert.FromBase64String(cipherText);
+            var staticIv = Encoding.UTF8.GetBytes("1234567890123456");
+
+            using var aes = Aes.Create();
+            aes.Key = _key;
+            aes.IV = staticIv;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+
+            using var ms = new MemoryStream(cipherBytes);
+            using var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
+            using var sr = new StreamReader(cs, Encoding.UTF8);
+            return sr.ReadToEnd();
+        }
+        catch
+        {
+            return cipherText;
+        }
+    }
+
+    public string ComputeDeterministicHash(string normalizedValue, string context)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedValue))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(context))
+        {
+            throw new ArgumentException("Hash context is required.", nameof(context));
+        }
+
+        var payload = Encoding.UTF8.GetBytes($"{context}:{normalizedValue}");
+        using var hmac = new HMACSHA256(_key);
+        var hash = hmac.ComputeHash(payload);
+        return Convert.ToHexString(hash);
     }
 }

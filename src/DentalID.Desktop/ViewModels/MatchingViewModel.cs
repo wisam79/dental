@@ -40,9 +40,6 @@ public partial class MatchingViewModel : ViewModelBase
     private bool _isMatching;
 
     [ObservableProperty]
-    private string _statusMessage = "Load an image to find matches";
-
-    [ObservableProperty]
     private int _matchingProgress;
 
     [ObservableProperty]
@@ -97,6 +94,7 @@ public partial class MatchingViewModel : ViewModelBase
     public MatchingViewModel()
     {
         Title = "Matching Engine (Design)";
+        StatusMessage = "Load an image to find matches";
         _subjectRepo = null!;
         _matchRepo = null!;
         _imageRepo = null!;
@@ -126,6 +124,7 @@ public partial class MatchingViewModel : ViewModelBase
         AiConfiguration aiConfig)
     {
         Title = "Matching Engine";
+        StatusMessage = "Load an image to find matches";
         _subjectRepo = subjectRepo;
         _matchRepo = matchRepo;
         _imageRepo = imageRepo;
@@ -197,80 +196,88 @@ public partial class MatchingViewModel : ViewModelBase
 
         Candidates.Clear();
         MatchingProgress = 0;
-
-        await SafeExecuteAsync(async () =>
+        IsMatching = true;
+        try
         {
-            // 1. Extract Features from Query Image
-            // Uses Stream to ensure file lock safety
-            using var stream = _fileService.OpenRead(QueryImagePath);
-            StatusMessage = "Extracting features from query image...";
-            var (vector, error) = await _pipeline.ExtractFeaturesAsync(stream);
-            MatchingProgress = 20;
-            
-            if (vector == null)
+            await SafeExecuteAsync(async () =>
             {
-                throw new Exception($"Feature Extraction Failed: {error ?? "Unknown Error"}");
-            }
-
-            QueryVector = vector;
-
-            // 2. Run Matching Service
-        // Bug #7 fix: paginate through ALL subjects
-        StatusMessage = "Loading subject database...";
-        var allSubjects = new List<Subject>();
-        int page = 1;
-        List<Subject> batch;
-        do
-        {
-            batch = await _subjectRepo.GetAllAsync(page, MatchingBatchSize);
-            allSubjects.AddRange(batch);
-            page++;
-        } while (batch.Count == MatchingBatchSize);
-        MatchingProgress = 40;
-            
-            // Create probe fingerprint
-            var probe = new DentalFingerprint 
-            { 
-               Code = "PROBE", 
-               FeatureVector = vector 
-            };
-
-            // Run matching (CPU bound, consider Task.Run)
-            StatusMessage = "Matching against subject database...";
-            var matches = await Task.Run(() => _matchingService.FindMatches(probe, allSubjects));
-            MatchingProgress = 80;
-
-            // 3. Persist Query Image & Match Results
-            StatusMessage = "Saving results...";
-            _currentQueryImageId = await SaveQueryImageAsync(QueryImagePath);
-
-            // 4. Update UI & Persist Candidates
-            var topMatches = matches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold) .ToList();
-            
-            foreach (var matchCandidate in topMatches)
-            {
-                // Create Match Record
-                var matchRecord = new Match
+                // 1. Extract Features from Query Image
+                // Uses Stream to ensure file lock safety
+                using var stream = _fileService.OpenRead(QueryImagePath);
+                StatusMessage = "Extracting features from query image...";
+                var (vector, error) = await _pipeline.ExtractFeaturesAsync(stream);
+                MatchingProgress = 20;
+                
+                if (vector == null)
                 {
-                    QueryImageId = _currentQueryImageId,
-                    MatchedSubjectId = matchCandidate.Subject.Id,
-                    ConfidenceScore = matchCandidate.Score,
-                    MatchMethod = "CosineSimilarity",
-                    FeatureSimilarity = matchCandidate.Score,
-                    AlgorithmVersion = "v1.0",
-                    IsConfirmed = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-                
-                var savedMatch = await _matchRepo.AddAsync(matchRecord);
-                matchCandidate.MatchId = savedMatch.Id; // Link back to DTO
-                
-                Candidates.Add(matchCandidate);
-            }
+                    throw new Exception($"Feature Extraction Failed: {error ?? "Unknown Error"}");
+                }
 
-            MatchingProgress = 100;
-            StatusMessage = $"✅ Found {topMatches.Count} matches. Query saved (ID: {_currentQueryImageId}).";
-        }, successMessage: "Matching scan complete");
+                QueryVector = vector;
+
+                // 2. Run Matching Service
+                // Bug #7 fix: paginate through ALL subjects
+                StatusMessage = "Loading subject database...";
+                var allSubjects = new List<Subject>();
+                int page = 1;
+                List<Subject> batch;
+                do
+                {
+                    batch = await _subjectRepo.GetAllAsync(page, MatchingBatchSize);
+                    allSubjects.AddRange(batch);
+                    page++;
+                } while (batch.Count == MatchingBatchSize);
+                MatchingProgress = 40;
+                
+                // Create probe fingerprint
+                var probe = new DentalFingerprint 
+                { 
+                   Code = "PROBE", 
+                   FeatureVector = vector 
+                };
+
+                // Run matching (CPU bound, consider Task.Run)
+                StatusMessage = "Matching against subject database...";
+                var matches = await Task.Run(() => _matchingService.FindMatches(probe, allSubjects));
+                MatchingProgress = 80;
+
+                // 3. Persist Query Image & Match Results
+                StatusMessage = "Saving results...";
+                _currentQueryImageId = await SaveQueryImageAsync(QueryImagePath);
+
+                // 4. Update UI & Persist Candidates
+                var topMatches = matches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold).ToList();
+                
+                foreach (var matchCandidate in topMatches)
+                {
+                    // Create Match Record
+                    var matchRecord = new Match
+                    {
+                        CaseId = SelectedCase?.Id,
+                        QueryImageId = _currentQueryImageId,
+                        MatchedSubjectId = matchCandidate.Subject.Id,
+                        ConfidenceScore = matchCandidate.Score,
+                        MatchMethod = "CosineSimilarity",
+                        FeatureSimilarity = matchCandidate.Score,
+                        AlgorithmVersion = "v1.0",
+                        IsConfirmed = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    
+                    var savedMatch = await _matchRepo.AddAsync(matchRecord);
+                    matchCandidate.MatchId = savedMatch.Id; // Link back to DTO
+                    
+                    Candidates.Add(matchCandidate);
+                }
+
+                MatchingProgress = 100;
+                StatusMessage = $"✅ Found {topMatches.Count} matches. Query saved (ID: {_currentQueryImageId}).";
+            }, successMessage: "Matching scan complete");
+        }
+        finally
+        {
+            IsMatching = false;
+        }
     }
 
     private async Task<int> SaveQueryImageAsync(string path)
@@ -353,10 +360,15 @@ public partial class MatchingViewModel : ViewModelBase
             }
 
             // 2. Update confirmation fields
+            if (SelectedCase != null)
+            {
+                match.CaseId = SelectedCase.Id;
+            }
             match.IsConfirmed = true;
             match.ConfirmedAt = DateTime.UtcNow;
             // match.ConfirmedById = _authService?.GetCurrentUserId(); // TODO: Add Auth
-            match.Notes = $"Confirmed by user at {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            var caseNote = SelectedCase != null ? $" | Case: {SelectedCase.CaseNumber}" : string.Empty;
+            match.Notes = $"Confirmed by user at {DateTime.Now:yyyy-MM-dd HH:mm:ss}{caseNote}";
 
             await _matchRepo.UpdateAsync(match);
 
@@ -368,7 +380,9 @@ public partial class MatchingViewModel : ViewModelBase
                 hash: match.Id.ToString()
             );
 
-            StatusMessage = $"✅ ID CONFIRMED: {SelectedCandidate.Subject.FullName}";
+            StatusMessage = SelectedCase == null
+                ? $"✅ ID CONFIRMED: {SelectedCandidate.Subject.FullName}"
+                : $"✅ ID CONFIRMED: {SelectedCandidate.Subject.FullName} (linked to {SelectedCase.CaseNumber})";
         }, successMessage: "Match confirmed and logged");
     }
 

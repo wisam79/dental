@@ -9,6 +9,8 @@ public class DentalImageRepository : IDentalImageRepository
 {
     private readonly AppDbContext _db;
     private readonly ILoggerService _logger;
+    private const int DefaultPageSize = 50;
+    private const int MaxPageSize = 500;
 
     public DentalImageRepository(AppDbContext db, ILoggerService logger)
     {
@@ -20,12 +22,16 @@ public class DentalImageRepository : IDentalImageRepository
         => await _db.DentalImages.FindAsync(id);
 
     public async Task<List<DentalImage>> GetBySubjectIdAsync(int subjectId, int page = 1, int pageSize = 50)
-        => await _db.DentalImages
+    {
+        (page, pageSize) = NormalizePaging(page, pageSize, DefaultPageSize);
+
+        return await _db.DentalImages
             .Where(d => d.SubjectId == subjectId)
             .OrderByDescending(d => d.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
+    }
 
     public async Task<DentalImage> AddAsync(DentalImage image)
     {
@@ -63,6 +69,14 @@ public class DentalImageRepository : IDentalImageRepository
                 }
             }
         }
+    }
+
+    private static (int Page, int PageSize) NormalizePaging(int page, int pageSize, int defaultPageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = defaultPageSize;
+        if (pageSize > MaxPageSize) pageSize = MaxPageSize;
+        return (page, pageSize);
     }
 }
 

@@ -150,6 +150,20 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
         }
     }
 
+    /// <summary>
+    /// Removes an entity by ID and returns true if found and marked for deletion, false if not found.
+    /// NOTE: Does NOT call SaveChangesAsync — caller must commit via IUnitOfWork.
+    /// </summary>
+    public virtual async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var entity = await GetByIdAsync(id, cancellationToken);
+        if (entity == null)
+            return false;
+
+        Remove(entity);
+        return true;
+    }
+
     #endregion
 
     #region Advanced Methods

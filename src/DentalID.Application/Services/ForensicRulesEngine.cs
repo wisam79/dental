@@ -11,14 +11,32 @@ namespace DentalID.Application.Services;
 /// </summary>
 public class ForensicRulesEngine : IForensicRulesEngine
 {
+    private const float OrphanDedupIouThreshold = 0.35f;
+
     public void ApplyRules(AnalysisResult result)
     {
+        if (result == null)
+            throw new ArgumentNullException(nameof(result));
+
         // Rule 1: Flag Orphans (Pathologies not linked to any tooth)
         if (result.Pathologies == null) return;
-        var orphans = result.Pathologies.Where(p => p.ToothNumber == null || p.ToothNumber == 0).ToList();
+        var orphans = result.Pathologies
+            .Where(p => p != null && (p.ToothNumber == null || p.ToothNumber == 0))
+            .ToList();
         if (orphans.Any())
         {
-            result.Flags.Add($"Warning: {orphans.Count} pathology detection(s) could not be mapped to a specific tooth. Check image manually.");
+            int uniqueOrphanRegions = EstimateUniquePathologyRegions(orphans);
+            if (uniqueOrphanRegions < orphans.Count)
+            {
+                result.Flags.Add(
+                    $"Warning: {uniqueOrphanRegions} unmapped pathology region(s) detected " +
+                    $"({orphans.Count} raw detections collapsed). Check image manually.");
+            }
+            else
+            {
+                result.Flags.Add(
+                    $"Warning: {uniqueOrphanRegions} pathology region(s) could not be mapped to a specific tooth. Check image manually.");
+            }
         }
 
         // Group by Tooth for conflict analysis
@@ -32,25 +50,51 @@ public class ForensicRulesEngine : IForensicRulesEngine
 
             // Rule 2: Implant Supremacy Conflict
             // If a tooth has an "Implant", having "Caries", "RootCanal", or "Filling" is medically highly improbable.
-            bool hasImplant = group.Any(p => p.ClassName == "Implant");
+            bool hasImplant = group.Any(p => IsImplantClass(p.ClassName));
             if (hasImplant)
             {
                 var conflicts = group
-                    .Where(p => p.ClassName == "Caries" || p.ClassName == "RootCanal" || p.ClassName == "Filling" || p.ClassName == "Root Piece" || p.ClassName == "Roots")
+                    .Where(p => IsImplantConflictClass(p.ClassName))
+                    .GroupBy(p => ToDisplayClassName(p.ClassName))
                     .ToList();
                 
                 foreach (var conflict in conflicts)
                 {
-                    result.Flags.Add($"Conflict (Tooth {toothNum}): Detected '{conflict.ClassName}' on a tooth with an Implant. Verify manually.");
+                    string className = conflict.Key;
+                    int count = conflict.Count();
+                    if (count > 1)
+                    {
+                        result.Flags.Add(
+                            $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant " +
+                            $"({count} overlapping detections). Verify manually.");
+                    }
+                    else
+                    {
+                        result.Flags.Add(
+                            $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant. Verify manually.");
+                    }
                 }
             }
             
-            // Bug #29 fix: Rule 3 (Crown+Filling) removed — this is a common clinical scenario,
-            // not a conflict. Flagging it generates forensic noise without actionable value.
+            // Rule 3: Crown + Filling on same tooth — clinically possible but worth noting.
+            // Flagged as an "Observation" (not Conflict) to aid manual review without alarming.
+            bool hasCrown = group.Any(p => IsClass(p.ClassName, "crown"));
+            bool hasFilling = group.Any(p => IsClass(p.ClassName, "filling"));
+            if (hasCrown && hasFilling && !hasImplant)
+            {
+                result.Flags.Add($"Observation (Tooth {toothNum}): Both 'Crown' and 'Filling' detected on the same tooth. Clinically possible — review recommended.");
+            }
         }
 
         // Rule 4: Biological Geometric Constraints (The "Dentist Logic")
         ApplyGeometricConstraints(result);
+
+        // Keep operator-facing alerts concise and de-duplicated.
+        result.Flags = result.Flags
+            .Where(f => !string.IsNullOrWhiteSpace(f))
+            .Distinct(StringComparer.Ordinal)
+            .Take(40)
+            .ToList();
     }
 
     private void ApplyGeometricConstraints(AnalysisResult result)
@@ -149,5 +193,97 @@ public class ForensicRulesEngine : IForensicRulesEngine
                 curr.FdiNumber = expectedFdi;
             }
         }
+    }
+
+    private static int EstimateUniquePathologyRegions(List<DetectedPathology> detections)
+    {
+        if (detections.Count == 0)
+            return 0;
+
+        int unique = 0;
+
+        // Detections with invalid geometry cannot be spatially deduplicated.
+        var invalidGeometry = detections.Where(d => !HasValidBox(d)).ToList();
+        unique += invalidGeometry.Count;
+
+        var validByClass = detections
+            .Where(HasValidBox)
+            .GroupBy(d => NormalizeClassName(d.ClassName));
+
+        foreach (var classGroup in validByClass)
+        {
+            var sorted = classGroup.OrderByDescending(d => d.Confidence).ToList();
+            var suppressed = new bool[sorted.Count];
+
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                if (suppressed[i])
+                    continue;
+
+                unique++;
+                var current = sorted[i];
+
+                for (int j = i + 1; j < sorted.Count; j++)
+                {
+                    if (suppressed[j])
+                        continue;
+
+                    var other = sorted[j];
+                    float iou = ForensicHeuristicsService.CalculateIoU(
+                        current.X, current.Y, current.Width, current.Height,
+                        other.X, other.Y, other.Width, other.Height);
+                    if (iou >= OrphanDedupIouThreshold)
+                    {
+                        suppressed[j] = true;
+                    }
+                }
+            }
+        }
+
+        return unique;
+    }
+
+    private static bool HasValidBox(DetectedPathology pathology)
+    {
+        return pathology.Width > 0 && pathology.Height > 0 &&
+               pathology.Width <= 1 && pathology.Height <= 1 &&
+               pathology.X >= 0 && pathology.Y >= 0 &&
+               pathology.X <= 1 && pathology.Y <= 1;
+    }
+
+    private static bool IsImplantClass(string? className) => IsClass(className, "implant");
+
+    private static bool IsImplantConflictClass(string? className)
+    {
+        var normalized = NormalizeClassName(className);
+        return normalized.Contains("caries", StringComparison.Ordinal) ||
+               normalized.Contains("filling", StringComparison.Ordinal) ||
+               normalized.Contains("root piece", StringComparison.Ordinal) ||
+               normalized.Contains("roots", StringComparison.Ordinal) ||
+               normalized.Contains("root canal", StringComparison.Ordinal) ||
+               normalized.Contains("rootcanal", StringComparison.Ordinal) ||
+               normalized.Contains("root canal obturation", StringComparison.Ordinal);
+    }
+
+    private static bool IsClass(string? className, string normalizedTarget)
+    {
+        return string.Equals(NormalizeClassName(className), normalizedTarget, StringComparison.Ordinal);
+    }
+
+    private static string ToDisplayClassName(string? className)
+    {
+        var normalized = NormalizeClassName(className);
+        return normalized switch
+        {
+            "rootcanal" => "Root Canal",
+            "root canal obturation" => "Root Canal",
+            "root piece" => "Root Piece",
+            _ => string.IsNullOrWhiteSpace(className) ? "Unknown" : className.Trim()
+        };
+    }
+
+    private static string NormalizeClassName(string? className)
+    {
+        return (className ?? string.Empty).Trim().ToLowerInvariant();
     }
 }

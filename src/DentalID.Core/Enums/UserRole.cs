@@ -1,9 +1,8 @@
 namespace DentalID.Core.Enums;
 
 /// <summary>
-/// Defines the roles available in the DentalID system.
-/// NOTE: Authentication is intentionally skipped during development phase.
-/// This enum will be used when login/auth is implemented before production.
+/// Dormant technical-debt enum kept only for backward compatibility.
+/// Runtime authentication/authorization is disabled in no-login mode.
 /// </summary>
 public enum UserRole
 {

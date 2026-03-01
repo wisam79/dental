@@ -15,16 +15,16 @@
             <Ellipse Width="560" Height="560" Canvas.Left="-180" Canvas.Top="-220" Opacity="0.18">
                 <Ellipse.Fill>
                     <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="70%" RadiusY="70%">
-                        <GradientStop Offset="0.0" Color="#5A0078D4"/>
-                        <GradientStop Offset="1.0" Color="#000078D4"/>
+                        <GradientStop Offset="0.0" Color="#2F2F84AE"/>
+                        <GradientStop Offset="1.0" Color="#002F84AE"/>
                     </RadialGradientBrush>
                 </Ellipse.Fill>
             </Ellipse>
             <Ellipse Width="520" Height="520" Canvas.Right="-220" Canvas.Bottom="-220" Opacity="0.12">
                 <Ellipse.Fill>
                     <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="70%" RadiusY="70%">
-                        <GradientStop Offset="0.0" Color="#4A60CDFF"/>
-                        <GradientStop Offset="1.0" Color="#0060CDFF"/>
+                        <GradientStop Offset="0.0" Color="#244D6A7E"/>
+                        <GradientStop Offset="1.0" Color="#004D6A7E"/>
                     </RadialGradientBrush>
                 </Ellipse.Fill>
             </Ellipse>
@@ -32,6 +32,7 @@
 
         <!-- TOP COMMAND BAR (Floating Style) -->
         <Border Grid.Row="0"
+                IsVisible="{Binding IsShellVisible}"
                 Margin="14,12,14,8"
                 Height="54"
                 Background="#CC1B2028"
@@ -41,7 +42,7 @@
             <Grid ColumnDefinitions="Auto, *, Auto">
                 <!-- Branding -->
                 <StackPanel Orientation="Horizontal"
-                             Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"
+                             Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"
                              VerticalAlignment="Center"
                              Spacing="12">
                      <TextBlock Text="DENTAL ID" FontWeight="Bold" FontSize="16" LetterSpacing="2" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="{DynamicResource FontSans}"/>
@@ -55,7 +56,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                               <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                             <TextBlock Text="DENTAL ID" Classes="mono" Foreground="{DynamicResource TextDisabledBrush}" FontSize="12"/>
-                            <PathIcon Data="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Next}" Width="10" Height="10" Foreground="{DynamicResource TextDisabledBrush}"/>
+                            <PathIcon Data="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Next}" Width="10" Height="10" Foreground="{DynamicResource TextDisabledBrush}"/>
                             <TextBlock Text="{Binding CurrentPageTitle}" FontWeight="SemiBold" Foreground="{DynamicResource AccentSecondaryBrush}" FontSize="12"/>
                         </StackPanel>
                     </Border>
@@ -64,14 +65,21 @@
                 <!-- Window Controls & Profile -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
-                            Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,20,0'}"
+                            Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,20,0'}"
                             Spacing="16"
                             VerticalAlignment="Center">
-                    <Button Classes="ghost" ToolTip.Tip="{DynamicResource Str_GlobalSearch}" Padding="8">
-                        <PathIcon Data="{StaticResource IconSearch}" Width="16" Height="16"/>
+                    <Button Command="{Binding ToggleLanguageCommand}"
+                            Classes="ghost"
+                            ToolTip.Tip="{DynamicResource Str_Settings_Language}"
+                            Padding="8">
+                        <PathIcon Data="{StaticResource IconLanguage}" Width="16" Height="16"/>
                     </Button>
-                    <Button Classes="ghost" ToolTip.Tip="{DynamicResource Str_Notifications}" Padding="8">
-                        <PathIcon Data="{StaticResource IconBell}" Width="16" Height="16"/>
+
+                    <Button Command="{Binding ToggleFocusModeCommand}"
+                            Classes="ghost"
+                            ToolTip.Tip="Focus Mode"
+                            Padding="8">
+                        <PathIcon Data="{StaticResource IconContrast}" Width="16" Height="16"/>
                     </Button>
                     
                     <Border Width="1" Height="20" Background="{DynamicResource BorderSubtleBrush}"/>
@@ -89,14 +97,20 @@
         </Border>
 
         <!-- MAIN LAYOUT -->
-        <Grid Grid.Row="1" ColumnDefinitions="92, *" Margin="14,0,14,10">
+        <Grid Grid.Row="1"
+              IsVisible="{Binding IsShellVisible}"
+              Margin="14,0,14,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalColumnWidthConverter.Instance}, ConverterParameter=Start}"/>
+                <ColumnDefinition Width="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalColumnWidthConverter.Instance}, ConverterParameter=End}"/>
+            </Grid.ColumnDefinitions>
              
             <!-- SIDEBAR (Navigation Rail - Left) -->
-            <Border Grid.Column="0"
-                    Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}"
-                    CornerRadius="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredCornerRadiusConverter.Instance}, ConverterParameter='0,12,12,0'}"
+            <Border Grid.Column="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalGridColumnConverter.Instance}, ConverterParameter=Start}"
+                    Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}"
+                    CornerRadius="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredCornerRadiusConverter.Instance}, ConverterParameter='0,12,12,0'}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
-                    BorderThickness="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,1,1,1'}"
+                    BorderThickness="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,1,1,1'}"
                     ClipToBounds="True">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -142,8 +156,8 @@
                                         <Setter Property="Background" Value="#15FFFFFF"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-                                        <Setter Property="BoxShadow" Value="0 8 18 0 #320078D4"/>
+                                        <Setter Property="Background" Value="{DynamicResource NavItemSelectedBrush}"/>
+                                        <Setter Property="BoxShadow" Value="0 8 18 0 #1F2F84AE"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected PathIcon">
                                         <Setter Property="Foreground" Value="White"/>
@@ -207,7 +221,7 @@
             </Border>
 
             <!-- CONTENT AREA (Right) -->
-            <Grid Grid.Column="1">
+            <Grid Grid.Column="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalGridColumnConverter.Instance}, ConverterParameter=End}">
                 <Border Background="{DynamicResource PageBgBrush}"
                         BorderBrush="{DynamicResource BorderSubtleBrush}"
                         BorderThickness="1"
@@ -226,8 +240,17 @@
             </Grid>
         </Grid>
 
+        <!-- BOOT / NO-SHELL MODE -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding IsShellVisible, Converter={x:Static BoolConverters.Not}}"
+                Margin="14,0,14,10"
+                Background="Transparent">
+            <ContentControl Content="{Binding CurrentView}"/>
+        </Border>
+
         <!-- STATUS BAR -->
         <Border Grid.Row="2"
+                IsVisible="{Binding IsShellVisible}"
                 Margin="14,0,14,10"
                 Height="34"
                 Background="#C9151A20"
@@ -252,12 +275,42 @@
                                      Width="60"
                                      Height="2"
                                      VerticalAlignment="Center"
-                                     Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}"
+                                     Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}"
                                      Foreground="{DynamicResource AccentPrimaryBrush}"/>
                         <TextBlock Text="{Binding BusyMessage}" FontSize="10" Foreground="{DynamicResource SuccessBrush}"/>
                      </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- TOAST OVERLAY -->
+        <ItemsControl Grid.RowSpan="3"
+                      ItemsSource="{Binding Toasts}"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Top"
+                      Margin="0,22,22,0"
+                      IsHitTestVisible="True">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="svc:ToastViewModel">
+                    <Border Classes="toast" Margin="0,0,0,8">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                            <TextBlock Text="{Binding Title}" Classes="h3"/>
+                            <Button Grid.Column="1"
+                                    Command="{Binding CloseCommand}"
+                                    Classes="ghost icon"
+                                    Padding="4"
+                                    Width="24" Height="24">
+                                <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12"/>
+                            </Button>
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                                       Text="{Binding Message}"
+                                       Classes="caption"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="320"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </UserControl>

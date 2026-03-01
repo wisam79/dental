@@ -401,21 +401,40 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 
         if (saveSucceeded)
         {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                var subjectsVm = _navigationService.NavigateTo<SubjectsViewModel>();
-                if (subjectsVm == null)
-                {
-                    _logger.LogWarning("[NAV] Save succeeded but navigation to SubjectsViewModel returned null.");
-                    return;
-                }
-
-                if (!string.IsNullOrWhiteSpace(savedSubjectCode))
-                {
-                    _ = subjectsVm.FocusSubjectByCodeAsync(savedSubjectCode);
-                }
-            });
+            NavigateToSavedSubject(savedSubjectCode);
         }
+    }
+
+    private void NavigateToSavedSubject(string? savedSubjectCode)
+    {
+        // Unit tests/headless runs may not have a desktop lifetime or a running UI loop.
+        if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime)
+        {
+            return;
+        }
+
+        void NavigateAndFocus()
+        {
+            var subjectsVm = _navigationService.NavigateTo<SubjectsViewModel>();
+            if (subjectsVm == null)
+            {
+                _logger.LogWarning("[NAV] Save succeeded but navigation to SubjectsViewModel returned null.");
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(savedSubjectCode))
+            {
+                _ = subjectsVm.FocusSubjectByCodeAsync(savedSubjectCode);
+            }
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            NavigateAndFocus();
+            return;
+        }
+
+        Dispatcher.UIThread.Post(NavigateAndFocus);
     }
 
     [RelayCommand]

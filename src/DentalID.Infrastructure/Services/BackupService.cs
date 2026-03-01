@@ -36,8 +36,7 @@ public class BackupService : IBackupService
 
         try
         {
-            // Bug #21 fix: Validate path to prevent SQL injection
-            // VACUUM INTO does not support parameterized queries in SQLite
+            // Bug #21 fix: Validate path to prevent SQL injection (defense in depth)
             if (backupPath.Contains('\'') || backupPath.Contains(';') || backupPath.Contains("--"))
             {
                 throw new ArgumentException("Backup path contains invalid characters.", nameof(backupDirectory));
@@ -45,7 +44,7 @@ public class BackupService : IBackupService
 
             // SQLite specific: VACUUM INTO creates a transaction-consistent backup
             // even if the database is in use (Hot Backup).
-            await _db.Database.ExecuteSqlRawAsync($"VACUUM INTO '{backupPath}'");
+            await _db.Database.ExecuteSqlAsync($"VACUUM INTO {backupPath}");
             
             _logger.LogInformation("Database backup completed successfully.");
             return backupPath;

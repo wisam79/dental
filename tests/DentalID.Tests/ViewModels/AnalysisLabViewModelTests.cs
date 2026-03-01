@@ -89,7 +89,8 @@ public class AnalysisLabViewModelTests
             EstimatedAge = 25
         };
 
-        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<float>()))
+        // Bug fix: IForensicAnalysisService.AnalyzeImageAsync uses double sensitivity (not float)
+        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<double>()))
             .ReturnsAsync(result);
 
         ShowToastMessage? receivedMessage = null;
@@ -110,7 +111,7 @@ public class AnalysisLabViewModelTests
         Assert.Equal(1, _vm.TeethDetectedCount);
         Assert.Equal(25, _vm.EstimatedAge);
         
-        _mockForensic.Verify(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<float>()), Times.Once);
+        _mockForensic.Verify(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<double>()), Times.Once);
     }
 
     [Fact]
@@ -121,8 +122,8 @@ public class AnalysisLabViewModelTests
         _vm.LoadedImagePath = "test.jpg";
         var result = new AnalysisResult { Error = "AI Failure" };
 
-        // AnalyzeImageAsync now takes float sensitivity
-        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<float>()))
+        // Bug fix: IForensicAnalysisService.AnalyzeImageAsync uses double sensitivity (not float)
+        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<double>()))
             .ReturnsAsync(result);
 
         ShowToastMessage? receivedMessage = null;
@@ -155,11 +156,9 @@ public class AnalysisLabViewModelTests
         // Populate current result
         var result = new AnalysisResult { Teeth = new List<DetectedTooth>() };
         
-        // Mock Analyze to return success so we can populate internal state if needed
-        // But since we set CurrentState to Review and we rely on internal _currentAnalysisResult, 
-        // we might need to simulate a successful run first OR expose property.
-        // For this test, we run analysis first to populate state.
-        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<float>()))
+        // Bug fix: IForensicAnalysisService.AnalyzeImageAsync uses double sensitivity (not float)
+        // We run analysis first to populate internal _currentAnalysisResult state.
+        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<double>()))
             .ReturnsAsync(result);
         await _vm.RunAnalysisCommand.ExecuteAsync(null);
 

@@ -156,25 +156,25 @@
                           <Button Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}" CornerRadius="6">
                              <PathIcon Data="{StaticResource IconSettings}" Width="16" Height="16"/>
                              <Button.Flyout>
-                                 <Flyout Placement="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlyoutPlacementConverter.Instance}, ConverterParameter=End}" ShowMode="TransientWithDismissOnPointerMoveAway">
+                                 <Flyout Placement="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlyoutPlacementConverter.Instance}, ConverterParameter=End}" ShowMode="TransientWithDismissOnPointerMoveAway">
                                      <Border Classes="card" Padding="16" Width="220">
                                          <StackPanel Spacing="12">
                                              <TextBlock Text="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                                              
                                              <StackPanel Spacing="4">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconSun}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconSun}" Width="12" Height="12" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Enhance_Bright], Source={x:Static svc:Loc.Instance}}" FontSize="11"/>
-                                                     <TextBlock Text="{Binding WindowCenter, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <TextBlock Text="{Binding WindowCenter, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                  </DockPanel>
                                                  <Slider Value="{Binding WindowCenter}" Minimum="0" Maximum="1" Classes="modern"/>
                                              </StackPanel>
                                              
                                              <StackPanel Spacing="4">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconEye}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconEye}" Width="12" Height="12" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Enhance_Contrast], Source={x:Static svc:Loc.Instance}}" FontSize="11"/>
-                                                     <TextBlock Text="{Binding WindowWidth, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                     <TextBlock Text="{Binding WindowWidth, StringFormat='{}{0:F2}'}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" FlowDirection="LeftToRight" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                  </DockPanel>
                                                  <Slider Value="{Binding WindowWidth}" Minimum="0.5" Maximum="2" Classes="modern"/>
                                              </StackPanel>
@@ -193,7 +193,7 @@
              <Grid Grid.Column="1" Background="#050505" ClipToBounds="True">
                  <!-- Technical Background Grid -->
                  <Grid Opacity="0.1">
-                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
+                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
                          <Path.RenderTransform>
                             <ScaleTransform ScaleX="20" ScaleY="20"/>
                         </Path.RenderTransform>
@@ -229,13 +229,13 @@
                    </Grid>
                   
                   <!-- Overlay Info (Metadata) -->
-                  <Border VerticalAlignment="Top" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" Margin="20" Background="#90000000" CornerRadius="4" Padding="12,8" IsVisible="{Binding IsImageLoaded}" BorderBrush="#30FFFFFF" BorderThickness="1">
+                  <Border VerticalAlignment="Top" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" Margin="20" Background="#90000000" CornerRadius="4" Padding="12,8" IsVisible="{Binding IsImageLoaded}" BorderBrush="#30FFFFFF" BorderThickness="1">
                       <StackPanel Spacing="4">
                           <StackPanel Orientation="Horizontal" Spacing="8">
                               <PathIcon Data="{StaticResource IconFile}" Width="12" Height="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                               <TextBlock Text="{Binding ImageFileName}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
                           </StackPanel>
-                          <TextBlock Text="{Binding [Lab_ImageInfo], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"/>
+                          <TextBlock Text="{Binding [Lab_ImageInfo], Source={x:Static svc:Loc.Instance}}" FontSize="10" Foreground="{DynamicResource TextDisabledBrush}" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"/>
                       </StackPanel>
                   </Border>
 
@@ -258,7 +258,7 @@
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
                           <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1">
                               <StackPanel Spacing="16" HorizontalAlignment="Center" MinWidth="320">
-                                  <Border Width="58" Height="58" CornerRadius="29" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" Background="#130078D4">
+                                  <Border Width="58" Height="58" CornerRadius="29" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" Background="#132F84AE">
                                       <PathIcon Data="{StaticResource IconRefresh}" Width="24" Height="24" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
                                           <PathIcon.RenderTransform>
                                               <RotateTransform Angle="{Binding AnalysisSpinnerAngle}"/>
@@ -364,7 +364,7 @@
                                          <StackPanel>
                                              <Border Background="{DynamicResource SurfaceBgBrush}" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentSecondaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Bio_Profile], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" FontSize="12"/>
                                                  </DockPanel>
                                              </Border>
@@ -394,16 +394,16 @@
                                      <Grid ColumnDefinitions="*,10,*">
                                          <Border Grid.Column="0" Classes="card report-section" Padding="12" MinHeight="108">
                                              <StackPanel Spacing="4" VerticalAlignment="Center">
-                                                 <PathIcon Data="{StaticResource IconTooth}" Width="16" Height="16" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <PathIcon Data="{StaticResource IconTooth}" Width="16" Height="16" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                                  <TextBlock Text="{Binding TeethDetectedCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                 <TextBlock Text="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <TextBlock Text="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
                                          <Border Grid.Column="2" Classes="card report-section" Padding="12" MinHeight="108">
                                              <StackPanel Spacing="4" VerticalAlignment="Center">
-                                                 <PathIcon Data="{StaticResource IconWarning}" Width="16" Height="16" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <PathIcon Data="{StaticResource IconWarning}" Width="16" Height="16" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                                  <TextBlock Text="{Binding PathologiesCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                 <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
+                                                 <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
                                      </Grid>
@@ -411,11 +411,11 @@
                                      <!-- Digital Fingerprint Card -->
                                      <Border Classes="card report-section" Padding="0" IsVisible="{Binding IsAnalysisComplete}">
                                          <StackPanel>
-                                             <Border Background="#160078D4" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="#400078D4" BorderThickness="0,0,0,1">
+                                             <Border Background="#162F84AE" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="#402F84AE" BorderThickness="0,0,0,1">
                                                  <DockPanel>
-                                                     <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                                     <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Fingerprint_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="12"/>
-                                                     <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" HorizontalAlignment="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Center">
+                                                     <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}" VerticalAlignment="Center">
                                                          <TextBlock Text="ID" FontSize="9" FontWeight="Bold" Foreground="White"/>
                                                      </Border>
                                                  </DockPanel>
@@ -463,7 +463,7 @@
                                      <StackPanel Spacing="10">
                                          <DockPanel>
                                              <TextBlock Text="{Binding [Lab_AI_Findings], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" VerticalAlignment="Center"/>
-                                             <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='8,0,0,0'}" VerticalAlignment="Center">
+                                             <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="6,2" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='8,0,0,0'}" VerticalAlignment="Center">
                                                  <TextBlock Text="AI" FontSize="9" FontWeight="Bold" Foreground="White"/>
                                              </Border>
                                          </DockPanel>
@@ -508,7 +508,7 @@
                                          <DataTemplate>
                                              <Border Classes="card" Padding="12" Margin="0,4" BorderBrush="#40D83B01" BorderThickness="1" Background="#10D83B01">
                                                  <Grid ColumnDefinitions="Auto, *">
-                                                     <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource WarningBrush}" Margin="{Binding [IsRtl], Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,2,12,0'}" VerticalAlignment="Top" Width="16" Height="16"/>
+                                                     <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource WarningBrush}" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,2,12,0'}" VerticalAlignment="Top" Width="16" Height="16"/>
                                                      <StackPanel Grid.Column="1" Spacing="4">
                                                          <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
                                                          <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12"/>

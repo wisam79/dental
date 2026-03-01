@@ -16,6 +16,7 @@ public interface ISubjectRepository
     Task AddBatchAsync(IEnumerable<Subject> subjects);
     Task UpdateAsync(Subject subject);
     Task<Subject?> GetByNationalIdAsync(string nationalId);
+    Task<Subject?> GetByFullNameExactAsync(string fullName);
     Task<List<string>> GetExistingSubjectIdsAsync(IEnumerable<string> subjectIds);
     Task<Subject?> FirstOrDefaultAsync(System.Linq.Expressions.Expression<Func<Subject, bool>> predicate);
     Task DeleteAsync(int id);

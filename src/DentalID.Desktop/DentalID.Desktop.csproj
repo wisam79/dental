@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -39,8 +39,20 @@
     <ProjectReference Include="..\DentalID.Application\DentalID.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\..\models\**\*">
-      <Link>models\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <Content Include="..\..\models\teeth_detect.onnx">
+      <Link>models\teeth_detect.onnx</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\models\pathology_detect.onnx">
+      <Link>models\pathology_detect.onnx</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\models\encoder.onnx">
+      <Link>models\encoder.onnx</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\models\genderage.onnx">
+      <Link>models\genderage.onnx</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -48,5 +60,10 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="data\model_integrity.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\model_integrity.json</Link>
+    </None>
   </ItemGroup>
 </Project>
+

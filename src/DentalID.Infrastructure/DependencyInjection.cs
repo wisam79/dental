@@ -51,8 +51,7 @@ public static class DependencyInjection
         services.AddSingleton<IImageIntegrityService, ImageIntegrityService>();
         // IEncryptionService: Singleton — key consistency across the application
         services.AddSingleton<IEncryptionService, EncryptionService>();
-        // IAuthService: Scoped — manages per-session user state
-        services.AddScoped<IAuthService, AuthService>();
+        // Auth runtime is disabled (no-login mode). AuthService remains in codebase as dormant technical debt.
         // IBulkOperationsService: Transient — stateless, uses transient DbContext
         services.AddTransient<IBulkOperationsService, BulkOperationsService>();
         // IAuditService: Transient — stateless, uses transient DbContext

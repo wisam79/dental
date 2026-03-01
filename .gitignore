@@ -23,6 +23,8 @@ publish/
 dentalid.db
 *.db
 data/
+!src/DentalID.Desktop/data/
+!src/DentalID.Desktop/data/model_integrity.json
 
 # NuGet
 .nuget/
@@ -105,3 +107,6 @@ tests/*/bin/Debug/net8.0/data/
 tests/DebugTool/
 tests/BatchXrayTest/
 tests/BatchXrayTest.csx
+
+fdi_audit.csv
+dental.png

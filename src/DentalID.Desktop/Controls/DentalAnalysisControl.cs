@@ -138,6 +138,7 @@ public class DentalAnalysisControl : Control
         public override void Render(DrawingContext context)
         {
             var loc = LocalizationService ?? Loc.Instance; // Fallback to singleton if not bound
+            bool isRtl = loc.IsRtl;
 
             var source = Source;
             if (source == null)
@@ -147,7 +148,7 @@ public class DentalAnalysisControl : Control
                 var text = new FormattedText(
                     loc["Control_NoImage"],
                     CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
+                    isRtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight,
                     Typeface.Default,
                     14,
                     GetBrush("TextMutedBrush", Brushes.Gray)
@@ -204,7 +205,7 @@ public class DentalAnalysisControl : Control
                     var label = tooth.FdiNumber.ToString();
                     var formattedText = new FormattedText(
                         label,
-                        CultureInfo.CurrentCulture,
+                        CultureInfo.InvariantCulture,
                         FlowDirection.LeftToRight,
                         Typeface.Default,
                         12,
@@ -274,13 +275,13 @@ public class DentalAnalysisControl : Control
                         var formattedText = new FormattedText(
                             label,
                             CultureInfo.CurrentCulture,
-                            FlowDirection.LeftToRight,
+                            isRtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight,
                             Typeface.Default,
                             11,
                             textBrush
                         );
 
-                        var labelX = x;
+                        var labelX = isRtl ? x + w - formattedText.Width - 8 : x;
                         var labelY = y + h;
 
                         // Ensure label stays within control bounds

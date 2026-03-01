@@ -64,8 +64,12 @@ class Program
         var heuristicsService = new ForensicHeuristicsService();
         var yoloParser = new YoloDetectionParser(config, aiSettings, fdiService);
         var tensorPrep = new TensorPreparationService();
+        var sessionManager = new DentalID.Application.Services.OnnxSessionManager(config, aiSettings, logger);
+        var teethSvc   = new DentalID.Application.Services.TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, config, aiSettings);
+        var pathSvc    = new DentalID.Application.Services.PathologyDetectionService(sessionManager, yoloParser, tensorPrep, config, aiSettings);
+        var encoderSvc = new DentalID.Application.Services.FeatureEncoderService(sessionManager, tensorPrep, config, logger);
 
-        using var aiService = new OnnxInferenceService(config, aiSettings, logger, bioService, intelligenceService, cacheService, yoloParser, fdiService, heuristicsService, tensorPrep);
+        using var aiService = new OnnxInferenceService(sessionManager, teethSvc, pathSvc, encoderSvc, yoloParser, heuristicsService, intelligenceService, bioService, cacheService, logger);
         
         // Locate models
         string modelsPath = Path.Combine(AppContext.BaseDirectory, "models");

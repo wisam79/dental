@@ -3,6 +3,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
              x:Class="DentalID.Desktop.Views.OdontogramView"
              x:DataType="vm:OdontogramViewModel">
@@ -18,7 +20,7 @@
 
      <Grid ColumnDefinitions="*, 200">
         <!-- Main Chart -->
-        <Border Grid.Column="0" Background="{DynamicResource CardBgBrush}" CornerRadius="12" Padding="16" Margin="0,0,16,0">
+        <Border Grid.Column="0" Background="{DynamicResource CardBgBrush}" CornerRadius="12" Padding="16" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,16,0'}">
             <Grid RowDefinitions="Auto,*,Auto">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
                     <TextBlock Text="{DynamicResource Str_Odo_Title}" FontWeight="SemiBold"/>
@@ -126,7 +128,7 @@
                                 <Grid ColumnDefinitions="24, *">
                                     <Border Width="16" Height="16" CornerRadius="8" 
                                             Background="{Binding Color}" BorderBrush="Gray" BorderThickness="1"/>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <StackPanel Grid.Column="1" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='8,0,0,0'}">
                                         <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12"/>
                                         <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
                                     </StackPanel>

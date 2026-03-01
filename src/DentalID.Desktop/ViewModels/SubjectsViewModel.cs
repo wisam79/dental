@@ -22,13 +22,17 @@ public partial class SubjectsViewModel : ViewModelBase
     private readonly ILoggerService _logger;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
-    [ObservableProperty] private Subject? _selectedSubject;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedSubject))]
+    private Subject? _selectedSubject;
+    [ObservableProperty] private ObservableCollection<DentalImage> _selectedSubjectAnalyses = new();
     [ObservableProperty] private bool _isAddEditDialogOpen;
     [ObservableProperty] private bool _isEditing;
 
     // Form Properties
     [ObservableProperty] [NotifyDataErrorInfo] [Required] private string _formFullName = string.Empty;
-    [ObservableProperty] private string _formGender = string.Empty;
+    [ObservableProperty] private string _formGender = "Unknown";
+    [ObservableProperty] private int _formGenderIndex = 2;
     [ObservableProperty] private DateTimeOffset? _formDateOfBirth;
     [ObservableProperty] private string _formNationalId = string.Empty;
     [ObservableProperty] private string _formContactInfo = string.Empty;
@@ -42,11 +46,33 @@ public partial class SubjectsViewModel : ViewModelBase
 
     public bool HasNextPage => CurrentPage * PageSize < TotalCount;
     public bool HasPreviousPage => CurrentPage > 1;
-    public string PageInfo => $"Page {CurrentPage} of {Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize))}";
+    public string PageInfo => $"{CurrentPage} / {Math.Max(1, (int)Math.Ceiling((double)TotalCount / PageSize))}";
+    public bool HasSelectedSubject => SelectedSubject != null;
+    public int SelectedSubjectAnalysisCount => SelectedSubjectAnalyses.Count;
+    public bool HasSubjectAnalyses => SelectedSubjectAnalysisCount > 0;
+    public bool ShowAnalysesEmptyState => HasSelectedSubject && !HasSubjectAnalyses;
 
     // Partial method hooks for property changes if needed
     partial void OnCurrentPageChanged(int value) => RefreshPagination();
     partial void OnTotalCountChanged(int value) => RefreshPagination();
+    partial void OnSelectedSubjectChanged(Subject? value)
+    {
+        UpdateSelectedSubjectAnalyses(value);
+        OnPropertyChanged(nameof(ShowAnalysesEmptyState));
+    }
+    partial void OnSelectedSubjectAnalysesChanged(ObservableCollection<DentalImage> value)
+    {
+        OnPropertyChanged(nameof(SelectedSubjectAnalysisCount));
+        OnPropertyChanged(nameof(HasSubjectAnalyses));
+        OnPropertyChanged(nameof(ShowAnalysesEmptyState));
+    }
+    partial void OnFormGenderChanged(string value) => FormGenderIndex = ToGenderIndex(value);
+    partial void OnFormGenderIndexChanged(int value) => FormGender = value switch
+    {
+        0 => "Male",
+        1 => "Female",
+        _ => "Unknown"
+    };
 
     private void RefreshPagination()
     {
@@ -67,6 +93,42 @@ public partial class SubjectsViewModel : ViewModelBase
     private async Task InitializeAsync()
     {
         await LoadAsync();
+    }
+
+    public async Task FocusSubjectByCodeAsync(string subjectCode)
+    {
+        var normalized = subjectCode?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            await LoadAsync();
+            return;
+        }
+
+        SearchQuery = normalized;
+        CurrentPage = 1;
+
+        await SafeExecuteAsync(async () =>
+        {
+            var exact = await _readRepo.GetBySubjectIdAsync(normalized);
+            if (exact != null)
+            {
+                Subjects = new ObservableCollection<Subject> { exact };
+                TotalCount = 1;
+                SelectedSubject = exact;
+                _logger.LogInformation($"[SUBJECTS] Focused exact subject by SubjectId='{normalized}'");
+                RefreshPagination();
+                return;
+            }
+
+            await LoadAsyncCore();
+
+            if (Subjects.Count == 1 && SelectedSubject == null)
+            {
+                SelectedSubject = Subjects[0];
+            }
+
+            _logger.LogWarning($"[SUBJECTS] Exact SubjectId='{normalized}' not found. Fallback search returned {Subjects.Count} rows.");
+        });
     }
 
     private async Task LoadAsync()
@@ -126,7 +188,7 @@ public partial class SubjectsViewModel : ViewModelBase
         if (SelectedSubject == null) return;
         IsEditing = true;
         FormFullName = SelectedSubject.FullName;
-        FormGender = SelectedSubject.Gender ?? "";
+        FormGender = Subject.NormalizeGenderCode(SelectedSubject.Gender);
         FormDateOfBirth = SelectedSubject.DateOfBirth.HasValue
             ? new DateTimeOffset(SelectedSubject.DateOfBirth.Value, TimeSpan.Zero)
             : null;
@@ -145,23 +207,11 @@ public partial class SubjectsViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveSubject()
     {
-        ValidateAllProperties();
-        if (HasErrors)
+        FormFullName = FormFullName?.Trim() ?? string.Empty;
+        ValidateProperty(FormFullName, nameof(FormFullName));
+        if (HasErrors || string.IsNullOrWhiteSpace(FormFullName))
         {
-            var errors = new List<string>();
-            if (!string.IsNullOrWhiteSpace(GetErrors(nameof(FormFullName)).FirstOrDefault()?.ErrorMessage))
-                errors.Add("Full name is required");
-            if (!string.IsNullOrWhiteSpace(GetErrors(nameof(FormDateOfBirth)).FirstOrDefault()?.ErrorMessage))
-                errors.Add("Valid date of birth is required");
-            if (!string.IsNullOrWhiteSpace(GetErrors(nameof(FormGender)).FirstOrDefault()?.ErrorMessage))
-                errors.Add("Gender is required");
-            if (!string.IsNullOrWhiteSpace(GetErrors(nameof(FormNationalId)).FirstOrDefault()?.ErrorMessage))
-                errors.Add("Valid national ID is required");
-            if (!string.IsNullOrWhiteSpace(GetErrors(nameof(FormContactInfo)).FirstOrDefault()?.ErrorMessage))
-                errors.Add("Valid contact info is required");
-
-            var errorMessage = string.Join("\n", errors);
-            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Validation Error", errorMessage, ToastType.Warning));
+            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Validation Error", "Full name is required", ToastType.Warning));
             return;
         }
 
@@ -172,15 +222,18 @@ public partial class SubjectsViewModel : ViewModelBase
             // IsEditing could be stale or changed. Using a local copy ensures the correct
             // value is used in the Toast notification.
             bool wasEditing = IsEditing;
+            var normalizedNationalId = NormalizeOptionalField(FormNationalId);
+            var normalizedContactInfo = NormalizeOptionalField(FormContactInfo);
+            var normalizedNotes = NormalizeOptionalField(FormNotes);
 
             using var scope = _scopeFactory.CreateScope();
             var repo = scope.ServiceProvider.GetRequiredService<ISubjectRepository>();
 
             // Check for duplicate national ID
-            if (!string.IsNullOrWhiteSpace(FormNationalId))
+            if (!string.IsNullOrWhiteSpace(normalizedNationalId))
             {
-                var existingSubject = await repo.GetByNationalIdAsync(FormNationalId);
-                if (existingSubject != null && (!IsEditing || existingSubject.Id != SelectedSubject?.Id))
+                var existingSubject = await repo.GetByNationalIdAsync(normalizedNationalId);
+                if (existingSubject != null && (!wasEditing || existingSubject.Id != SelectedSubject?.Id))
                 {
                     WeakReferenceMessenger.Default.Send(new ShowToastMessage(
                         "Duplicate National ID", 
@@ -190,7 +243,7 @@ public partial class SubjectsViewModel : ViewModelBase
                 }
             }
 
-            if (IsEditing)
+            if (wasEditing)
             {
                 if (SelectedSubject == null)
                 {
@@ -202,12 +255,13 @@ public partial class SubjectsViewModel : ViewModelBase
                 var subjectToUpdate = await repo.GetByIdAsync(SelectedSubject.Id);
                 if (subjectToUpdate != null)
                 {
+                    var normalizedGender = ToGenderCode(FormGenderIndex);
                     subjectToUpdate.FullName = FormFullName;
-                    subjectToUpdate.Gender = string.IsNullOrWhiteSpace(FormGender) ? null : FormGender;
+                    subjectToUpdate.Gender = normalizedGender;
                     subjectToUpdate.DateOfBirth = FormDateOfBirth?.DateTime;
-                    subjectToUpdate.NationalId = string.IsNullOrWhiteSpace(FormNationalId) ? null : FormNationalId;
-                    subjectToUpdate.ContactInfo = string.IsNullOrWhiteSpace(FormContactInfo) ? null : FormContactInfo;
-                    subjectToUpdate.Notes = string.IsNullOrWhiteSpace(FormNotes) ? null : FormNotes;
+                    subjectToUpdate.NationalId = normalizedNationalId;
+                    subjectToUpdate.ContactInfo = normalizedContactInfo;
+                    subjectToUpdate.Notes = normalizedNotes;
                     
                     await repo.UpdateAsync(subjectToUpdate);
                     _logger?.LogInformation($"Subject updated: {subjectToUpdate.FullName} ({subjectToUpdate.SubjectId})");
@@ -215,15 +269,16 @@ public partial class SubjectsViewModel : ViewModelBase
             }
             else
             {
+                var normalizedGender = ToGenderCode(FormGenderIndex);
                 var subject = new Subject
                 {
                     SubjectId = $"SUB-{Guid.NewGuid():N}",
                     FullName = FormFullName,
-                    Gender = string.IsNullOrWhiteSpace(FormGender) ? null : FormGender,
+                    Gender = normalizedGender,
                     DateOfBirth = FormDateOfBirth?.DateTime,
-                    NationalId = string.IsNullOrWhiteSpace(FormNationalId) ? null : FormNationalId,
-                    ContactInfo = string.IsNullOrWhiteSpace(FormContactInfo) ? null : FormContactInfo,
-                    Notes = string.IsNullOrWhiteSpace(FormNotes) ? null : FormNotes,
+                    NationalId = normalizedNationalId,
+                    ContactInfo = normalizedContactInfo,
+                    Notes = normalizedNotes,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -275,34 +330,96 @@ public partial class SubjectsViewModel : ViewModelBase
 
      private async Task LoadAsyncCore()
      {
-         // Use the Read Repo (Transient but likely shared for view lifecycle or just used for reading)
+         var selectedId = SelectedSubject?.Id;
+         var query = SearchQuery?.Trim() ?? string.Empty;
          List<Subject> list;
-         if (string.IsNullOrWhiteSpace(SearchQuery))
+         if (string.IsNullOrWhiteSpace(query))
          {
              list = await _readRepo.GetAllAsync(CurrentPage, PageSize);
              TotalCount = await _readRepo.GetCountAsync();
          }
          else
          {
-             list = await _readRepo.SearchAsync(SearchQuery, CurrentPage, PageSize);
-             TotalCount = await _readRepo.GetSearchCountAsync(SearchQuery);
-         }
-         
-         Subjects = new ObservableCollection<Subject>(list);
+             list = await _readRepo.SearchAsync(query, CurrentPage, PageSize);
+             TotalCount = await _readRepo.GetSearchCountAsync(query);
 
+             // Defensive fallback: if count says records exist but the page is empty,
+             // attempt exact SubjectId lookup so the grid is not left blank.
+             if (list.Count == 0 && TotalCount > 0)
+             {
+                 var exact = await _readRepo.GetBySubjectIdAsync(query);
+                 if (exact != null)
+                 {
+                     list = new List<Subject> { exact };
+                     TotalCount = 1;
+                     _logger.LogWarning($"[SUBJECTS] Search mismatch for query='{query}'. Using exact SubjectId fallback.");
+                 }
+             }
+         }
+
+         Subjects = new ObservableCollection<Subject>(list);
+         if (selectedId.HasValue)
+         {
+             SelectedSubject = Subjects.FirstOrDefault(s => s.Id == selectedId.Value);
+         }
+         else if (Subjects.Count > 0)
+         {
+             SelectedSubject = Subjects[0];
+         }
+         else
+         {
+             SelectedSubject = null;
+         }
+
+         _logger.LogInformation($"[SUBJECTS] Load completed. Query='{query}', Page={CurrentPage}, Rows={Subjects.Count}, Total={TotalCount}");
          OnPropertyChanged(nameof(HasPreviousPage));
          OnPropertyChanged(nameof(HasNextPage));
          OnPropertyChanged(nameof(PageInfo));
      }
 
+    private void UpdateSelectedSubjectAnalyses(Subject? subject)
+    {
+        var analyses = subject?.DentalImages?
+            .OrderByDescending(i => i.UploadedAt)
+            .ToList() ?? new List<DentalImage>();
+
+        SelectedSubjectAnalyses = new ObservableCollection<DentalImage>(analyses);
+        OnPropertyChanged(nameof(HasSelectedSubject));
+        OnPropertyChanged(nameof(SelectedSubjectAnalysisCount));
+        OnPropertyChanged(nameof(HasSubjectAnalyses));
+        OnPropertyChanged(nameof(ShowAnalysesEmptyState));
+    }
+
     private void ClearForm()
     {
         FormFullName = string.Empty;
-        FormGender = string.Empty;
+        FormGender = "Unknown";
         FormDateOfBirth = null;
         FormNationalId = string.Empty;
         FormContactInfo = string.Empty;
         FormNotes = string.Empty;
+    }
+
+    private static int ToGenderIndex(string? rawGender) => Subject.NormalizeGenderCode(rawGender) switch
+    {
+        "Male" => 0,
+        "Female" => 1,
+        _ => 2
+    };
+
+    private static string ToGenderCode(int index) => index switch
+    {
+        0 => "Male",
+        1 => "Female",
+        _ => "Unknown"
+    };
+
+    private static string? NormalizeOptionalField(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return value.Trim();
     }
 }
 

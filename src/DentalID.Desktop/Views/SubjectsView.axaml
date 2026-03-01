@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DentalID.Desktop.ViewModels"
+             xmlns:svc="using:DentalID.Desktop.Services"
+             xmlns:conv="using:DentalID.Desktop.Converters"
              x:Class="DentalID.Desktop.Views.SubjectsView"
              x:DataType="vm:SubjectsViewModel">
 
@@ -21,14 +23,36 @@
                 <TextBlock Classes="h1"
                            Text="{DynamicResource Str_Nav_Subjects}"
                            Margin="0,0,0,4"/>
-                <StackPanel Orientation="Horizontal" Spacing="16">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border Classes="badge badge-info">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource IconSubjects}"
+                                      Width="12" Height="12"
+                                      Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                            <TextBlock Classes="caption">
+                                <Run Text="{Binding TotalCount}" FontWeight="SemiBold"/>
+                                <Run Text=" "/>
+                                <Run Text="{DynamicResource Str_Subj_Registered}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="badge"
+                            Background="#15FFFFFF"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1">
+                        <TextBlock Classes="caption">
+                            <Run Text="{DynamicResource Str_Subj_Selected}"/>
+                            <Run Text="{Binding SelectedSubject.SubjectId, TargetNullValue='-'}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                IsVisible="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <PathIcon Data="{StaticResource IconSubjects}"
                                   Width="12" Height="12"
                                   Foreground="{DynamicResource AccentPrimaryBrush}"/>
                         <TextBlock Classes="caption">
-                            <Run Text="{Binding TotalCount}"/>
-                            <Run Text=" subjects registered"/>
+                            <Run Text="{DynamicResource Str_Subj_History_Count}"/>
+                            <Run Text="{Binding SelectedSubjectAnalysisCount}" FontWeight="SemiBold"/>
                         </TextBlock>
                     </StackPanel>
                 </StackPanel>
@@ -53,20 +77,27 @@
             <Grid ColumnDefinitions="*,Auto">
 
                 <!-- Search -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox Text="{Binding SearchQuery}"
+                <Grid ColumnDefinitions="*,Auto"
+                      ColumnSpacing="8"
+                      MaxWidth="560"
+                      HorizontalAlignment="Left">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding SearchQuery}"
                              Watermark="{DynamicResource Str_Subj_SearchPlaceholder}"
-                             Width="300" Height="36"
+                             MinWidth="220"
+                             Height="36"
+                             HorizontalAlignment="Stretch"
                              Classes="search"/>
-                    <Button Command="{Binding SearchCommand}"
+                    <Button Grid.Column="1"
+                            Command="{Binding SearchCommand}"
                             Classes="ghost"
                             Height="36" Width="36"
                             Padding="8"
-                            ToolTip.Tip="Search">
+                            ToolTip.Tip="{DynamicResource Str_Action_Search}">
                         <PathIcon Data="{StaticResource IconSearch}"
                                   Width="15" Height="15"/>
                     </Button>
-                </StackPanel>
+                </Grid>
 
                 <!-- Refresh -->
                 <Button Grid.Column="1"
@@ -76,50 +107,216 @@
             </Grid>
         </Border>
 
-        <!-- ══════ DATA GRID ══════ -->
-        <Border Grid.Row="2"
-                Classes="card"
-                Padding="0"
-                ClipToBounds="True">
-            <DataGrid ItemsSource="{Binding Subjects}"
-                      SelectedItem="{Binding SelectedSubject}"
-                      AutoGenerateColumns="False"
-                      CanUserReorderColumns="True"
-                      CanUserSortColumns="True"
-                      CanUserResizeColumns="True"
-                      IsReadOnly="True"
-                      SelectionMode="Single">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_ID}"
-                                        Binding="{Binding SubjectId}"
-                                        Width="Auto" MinWidth="120"/>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Name}"
-                                        Binding="{Binding FullName}"
-                                        Width="*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Gender}"
-                                        Binding="{Binding Gender}"
-                                        Width="Auto" MinWidth="80"/>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_DOB}"
-                                        Binding="{Binding DateOfBirth, StringFormat='{}{0:yyyy-MM-dd}'}"
-                                        Width="Auto" MinWidth="100"/>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_NatID}"
-                                        Binding="{Binding NationalId}"
-                                        Width="Auto" MinWidth="120"/>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_DentalCode}"
-                                        Binding="{Binding LatestDentalCode}"
-                                        Width="Auto" MinWidth="150">
-                        <DataGridTextColumn.CellTheme>
-                            <ControlTheme TargetType="DataGridCell">
-                                <Setter Property="FontFamily" Value="{DynamicResource FontMono}"/>
-                            </ControlTheme>
-                        </DataGridTextColumn.CellTheme>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Created}"
-                                        Binding="{Binding CreatedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
-                                        Width="Auto" MinWidth="140"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <!-- ══════ DATA GRID + ANALYSIS HISTORY ══════ -->
+        <Grid Grid.Row="2">
+            <Grid ColumnDefinitions="2.1*,12,1*">
+                <Border Grid.Column="0"
+                        Classes="card"
+                        Padding="0"
+                        ClipToBounds="True">
+                    <Grid>
+                        <DataGrid ItemsSource="{Binding Subjects}"
+                                  SelectedItem="{Binding SelectedSubject}"
+                                  AutoGenerateColumns="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="True"
+                                  CanUserResizeColumns="True"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  RowHeight="44"
+                                  ColumnHeaderHeight="38"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_ID}"
+                                                    Binding="{Binding SubjectId}"
+                                                    Width="2*" MinWidth="180"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Name}"
+                                                    Binding="{Binding FullName}"
+                                                    Width="2*" MinWidth="160"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Gender}"
+                                                    Binding="{Binding Gender, Converter={x:Static vm:GenderCodeToDisplayConverter.Instance}}"
+                                                    Width="0.9*" MinWidth="90"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Analyses}"
+                                                    Binding="{Binding DentalImages.Count}"
+                                                    Width="0.8*" MinWidth="85"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_Col_Created}"
+                                                    Binding="{Binding CreatedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                                    Width="1.4*" MinWidth="160"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding Subjects.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
+                                Background="#80000000"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                                <PathIcon Data="{StaticResource IconSubjects}" Width="26" Height="26" Foreground="{DynamicResource TextDisabledBrush}"/>
+                                <TextBlock Text="{DynamicResource Str_Subj_Empty_List}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Classes="card" Padding="12">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*">
+                    <TextBlock Text="{DynamicResource Str_Subj_History_Title}" Classes="h2"/>
+
+                    <Border Grid.Row="1"
+                            Margin="0,8,0,10"
+                            Background="{DynamicResource SurfaceFloatingBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,8">
+                        <StackPanel Spacing="4">
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}">
+                                <Run Text="{DynamicResource Str_Subj_History_Subject}"/>
+                                <Run Text="{Binding SelectedSubject.FullName, TargetNullValue='-'}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}">
+                                <Run Text="{DynamicResource Str_Subj_History_Count}"/>
+                                <Run Text="{Binding SelectedSubjectAnalysisCount}" FontWeight="Bold"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}">
+                                <Run Text="{DynamicResource Str_Subj_Col_Gender}"/>
+                                <Run Text=": "/>
+                                <Run Text="{Binding SelectedSubject.Gender, Converter={x:Static vm:GenderCodeToDisplayConverter.Instance}, TargetNullValue='-'}"
+                                     FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Grid.Row="2"
+                          ColumnDefinitions="*,*"
+                          RowDefinitions="Auto,Auto"
+                          ColumnSpacing="8"
+                          RowSpacing="8"
+                          IsVisible="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Border Grid.Row="0" Grid.Column="0"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Str_Subj_Detail_ID}" Classes="caption"/>
+                                <TextBlock Text="{Binding SelectedSubject.SubjectId, TargetNullValue='-'}"
+                                           FontFamily="{DynamicResource FontMono}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="0" Grid.Column="1"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Str_Subj_Detail_DOB}" Classes="caption"/>
+                                <TextBlock Text="{Binding SelectedSubject.DateOfBirth, StringFormat='{}{0:yyyy-MM-dd}', TargetNullValue='-'}"
+                                           FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="0"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Str_Subj_Detail_NatID}" Classes="caption"/>
+                                <TextBlock Text="{Binding SelectedSubject.NationalId, TargetNullValue='-'}"
+                                           FontFamily="{DynamicResource FontMono}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Str_Subj_Detail_Code}" Classes="caption"/>
+                                <TextBlock Text="{Binding SelectedSubject.LatestDentalCode, TargetNullValue='N/A'}"
+                                           FontFamily="{DynamicResource FontMono}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="2"
+                            Padding="14,12"
+                            Margin="0,0,0,8"
+                            Background="{DynamicResource SurfaceFloatingBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            IsVisible="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNull}}">
+                        <TextBlock Text="{DynamicResource Str_Subj_Empty_Select}"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </Border>
+
+                    <Grid Grid.Row="3">
+                        <DataGrid ItemsSource="{Binding SelectedSubjectAnalyses}"
+                                  AutoGenerateColumns="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="True"
+                                  CanUserResizeColumns="True"
+                                  IsReadOnly="True"
+                                  SelectionMode="Single"
+                                  RowHeight="40"
+                                  ColumnHeaderHeight="34"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_History_Col_Date}"
+                                                    Binding="{Binding UploadedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
+                                                    Width="1.6*" MinWidth="140"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_History_Col_Type}"
+                                                    Binding="{Binding ImageType}"
+                                                    Width="1.1*" MinWidth="100"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_History_Col_Code}"
+                                                    Binding="{Binding FingerprintCode}"
+                                                    Width="2*" MinWidth="160"/>
+                                <DataGridTextColumn Header="{DynamicResource Str_Subj_History_Col_Score}"
+                                                    Binding="{Binding UniquenessScore, StringFormat='{}{0:F2}'}"
+                                                    Width="0.8*" MinWidth="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Border IsVisible="{Binding ShowAnalysesEmptyState}"
+                                Background="#66000000"
+                                CornerRadius="8"
+                                Margin="2">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                <PathIcon Data="{StaticResource IconAnalysis}" Width="20" Height="20"
+                                          Foreground="{DynamicResource TextDisabledBrush}"/>
+                                <TextBlock Text="{DynamicResource Str_Subj_History_Empty}"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border IsVisible="{Binding IsBusy}"
+                    Background="#7A000000"
+                    CornerRadius="10"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Margin="2">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MinWidth="240">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="White"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center"/>
+                    <ProgressBar IsIndeterminate="True"
+                                 Height="6"
+                                 Classes="thick"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- ══════ PAGINATION & ROW ACTIONS ══════ -->
         <Border Grid.Row="3"
@@ -148,7 +345,7 @@
                             VerticalAlignment="Center">
                     <TextBlock Classes="caption"
                                VerticalAlignment="Center"
-                               Margin="0,0,8,0">
+                               Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}">
                         <Run Text="{DynamicResource Str_Subj_Total}"/>
                         <Run Text="{Binding TotalCount}" FontWeight="SemiBold"/>
                     </TextBlock>
@@ -158,7 +355,7 @@
                             Width="32" Height="32"
                             Padding="6"
                             IsEnabled="{Binding HasPreviousPage}">
-                        <PathIcon Data="{StaticResource IconArrowLeft}" Width="12" Height="12"/>
+                        <PathIcon Data="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Prev}" Width="12" Height="12"/>
                     </Button>
 
                     <TextBlock Text="{Binding PageInfo}"
@@ -170,7 +367,7 @@
                             Width="32" Height="32"
                             Padding="6"
                             IsEnabled="{Binding HasNextPage}">
-                        <PathIcon Data="{StaticResource IconArrowRight}" Width="12" Height="12"/>
+                        <PathIcon Data="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Next}" Width="12" Height="12"/>
                     </Button>
                 </StackPanel>
             </Grid>
@@ -194,7 +391,7 @@
                                 Command="{Binding CloseDialogCommand}"
                                 Classes="ghost icon"
                                 Padding="6">
-                            <PathIcon Data="{StaticResource IconArrowRight}" Width="14" Height="14"
+                            <PathIcon Data="{StaticResource IconClose}" Width="14" Height="14"
                                       Foreground="{DynamicResource TextMutedBrush}"/>
                         </Button>
                     </Grid>
@@ -214,9 +411,10 @@
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label"
                                    Text="{DynamicResource Str_Subj_Dialog_Gender}"/>
-                        <ComboBox SelectedItem="{Binding FormGender}" Width="200">
+                        <ComboBox SelectedIndex="{Binding FormGenderIndex, Mode=TwoWay}" Width="200">
                             <ComboBoxItem Content="{DynamicResource Str_Subj_Dialog_Male}"/>
                             <ComboBoxItem Content="{DynamicResource Str_Subj_Dialog_Female}"/>
+                            <ComboBoxItem Content="{DynamicResource Str_Subj_Dialog_Unknown}"/>
                         </ComboBox>
                     </StackPanel>
 
@@ -251,7 +449,7 @@
                     <!-- Dialog actions -->
                     <StackPanel Orientation="Horizontal"
                                 Spacing="10"
-                                HorizontalAlignment="Right">
+                                HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=End}">
                         <Button Content="{DynamicResource Str_Cancel}"
                                 Command="{Binding CloseDialogCommand}"
                                 Classes="ghost"

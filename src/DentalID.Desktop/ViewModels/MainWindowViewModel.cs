@@ -15,12 +15,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly INavigationService _navigation;
     private readonly IToastService _toastService;
     private readonly ILoggerService? _logger;
+    private string _currentPageLocKey = "Nav_Subjects";
 
     public ObservableCollection<ToastViewModel> Toasts => _toastService.Toasts;
 
 
     [ObservableProperty]
     private ViewModelBase _currentView;
+    
+    private bool _suppressNavSelectionHandling;
 
     private int _selectedNavIndex;
     public int SelectedNavIndex
@@ -30,6 +33,9 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedNavIndex, value))
             {
+                if (_suppressNavSelectionHandling)
+                    return;
+
                 _logger?.LogInformation($"[NAV] SelectedNavIndex SET to value={value}, _navigation={_navigation != null}");
                 OnSelectedNavIndexChanged(value);
             }
@@ -37,7 +43,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    private string _currentPageTitle = "الرئيسية";
+    private string _currentPageTitle = string.Empty;
 
     [ObservableProperty]
     private bool _isAdmin;
@@ -46,7 +52,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _currentUserName = "Unknown";
 
     [ObservableProperty]
-    private bool _isShellVisible = true;
+    private bool _isShellVisible;
 
     [ObservableProperty]
     private bool _isFocusMode = false;
@@ -58,10 +64,19 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ToggleLanguage()
+    {
+        var next = Loc.Instance.CurrentLanguage == "ar" ? "en" : "ar";
+        Loc.Instance.SwitchLanguage(next);
+
+        var title = next == "ar" ? "اللغة" : "Language";
+        var message = next == "ar" ? "تم التبديل إلى العربية." : "Switched to English.";
+        _toastService.Show(title, message, ToastType.Info);
+    }
+
+    [RelayCommand]
     private void NavigateToSubjects()
     {
-        _navigation?.NavigateTo<SubjectsViewModel>();
-        CurrentPageTitle = "سجل المرضى";
         SelectedNavIndex = 0;
     }
 
@@ -69,16 +84,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void NavigateToAnalysisLab()
     {
         _logger?.LogInformation("[CMD] NavigateToAnalysisLab command executed");
-        _navigation?.NavigateTo<AnalysisLabViewModel>();
-        CurrentPageTitle = "مختبر التحليل";
         SelectedNavIndex = 1;
     }
 
     [RelayCommand]
     private void NavigateToMatching()
     {
-        _navigation?.NavigateTo<MatchingViewModel>();
-        CurrentPageTitle = "المطابقة";
         SelectedNavIndex = 2;
     }
 
@@ -108,7 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _navigation.CurrentViewChanged += OnCurrentViewChanged;
         
         Loc.Instance.LanguageChanged += OnLanguageChanged;
-        // UpdateStrings(); // Removed
+        UpdateStrings();
 
         // Research Mode: Default to Research User (admin status should be determined by authentication)
         CurrentUserName = "Researcher";
@@ -117,7 +128,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Navigate to Subjects by default (Data Management)
         _navigation.NavigateTo<SubjectsViewModel>();
         _currentView = _navigation.CurrentView;
-        SelectedNavIndex = 0;
+        SyncShellForCurrentView(_currentView);
 
         // Register for global toast messages
         WeakReferenceMessenger.Default.Register<ShowToastMessage>(this, (r, m) =>
@@ -134,25 +145,23 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
     private string _busyMessage = "Ready";
 
     private void OnLanguageChanged(object? sender, string e)
     {
-        // UpdateStrings();
+        UpdateStrings();
     }
 
     private void UpdateStrings()
     {
         Title = Loc.Instance["App_TitleFull"];
-        // CurrentPageTitle = Loc.Instance[_currentPageKey];
+        SetCurrentPageFromLocalizationKey(_currentPageLocKey);
     }
 
     private void OnCurrentViewChanged(object? sender, ViewModelBase viewModel)
     {
         CurrentView = viewModel;
+        SyncShellForCurrentView(viewModel);
     }
 
     private void OnSelectedNavIndexChanged(int value)
@@ -177,18 +186,18 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 case 0:
                     _navigation.NavigateTo<SubjectsViewModel>();
-                    CurrentPageTitle = "سجل المرضى";
+                    SetCurrentPageFromLocalizationKey("Nav_Subjects");
                     _logger?.LogInformation("[NAV] Navigated to Subjects");
                     break;
                 case 1:
                     _logger?.LogInformation("[NAV] Navigating to AnalysisLabViewModel...");
                     _navigation.NavigateTo<AnalysisLabViewModel>();
-                    CurrentPageTitle = "مختبر التحليل";
+                    SetCurrentPageFromLocalizationKey("Nav_AnalysisLab");
                     _logger?.LogInformation("[NAV] Navigated to Analysis Lab");
                     break;
                 case 2:
                     _navigation.NavigateTo<MatchingViewModel>();
-                    CurrentPageTitle = "المطابقة";
+                    SetCurrentPageFromLocalizationKey("Nav_Matching");
                     _logger?.LogInformation("[NAV] Navigated to Matching");
                     break;
                 default:
@@ -210,9 +219,50 @@ public partial class MainWindowViewModel : ViewModelBase
         if (value == 0) // Settings Selected
         {
             _navigation.NavigateTo<SettingsViewModel>();
-            CurrentPageTitle = "الإعدادات";
+            SetCurrentPageFromLocalizationKey("Nav_Settings");
             SelectedNavIndex = -1; // Deselect main nav
         }
+    }
+
+    private void SyncShellForCurrentView(ViewModelBase viewModel)
+    {
+        switch (viewModel)
+        {
+            case SubjectsViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_Subjects");
+                SetSelectedNavIndexSilently(0);
+                SettingsNavIndex = -1;
+                break;
+            case AnalysisLabViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_AnalysisLab");
+                SetSelectedNavIndexSilently(1);
+                SettingsNavIndex = -1;
+                break;
+            case MatchingViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_Matching");
+                SetSelectedNavIndexSilently(2);
+                SettingsNavIndex = -1;
+                break;
+            case SettingsViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_Settings");
+                SetSelectedNavIndexSilently(-1);
+                if (SettingsNavIndex != 0)
+                    SettingsNavIndex = 0;
+                break;
+        }
+    }
+
+    private void SetCurrentPageFromLocalizationKey(string key)
+    {
+        _currentPageLocKey = key;
+        CurrentPageTitle = Loc.Instance[key];
+    }
+
+    private void SetSelectedNavIndexSilently(int index)
+    {
+        _suppressNavSelectionHandling = true;
+        SelectedNavIndex = index;
+        _suppressNavSelectionHandling = false;
     }
     [RelayCommand]
     private void Minimize()

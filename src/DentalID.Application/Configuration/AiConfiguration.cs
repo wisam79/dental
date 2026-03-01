@@ -64,14 +64,26 @@ public class ThresholdSettings
 
     /// <summary>
     /// Confidence threshold for teeth detection.
-    /// Reduced to 0.35 to improve recall on low-contrast images.
+    /// Balanced for panoramic X-rays to reduce false positives.
     /// </summary>
-    public float TeethThreshold { get; set; } = 0.25f;
+    public float TeethThreshold { get; set; } = 0.35f;
 
     /// <summary>
     /// Minimum cosine similarity score to consider a subject a match.
     /// </summary>
     public float MatchSimilarityThreshold { get; set; } = 0.50f;
+
+    /// <summary>
+    /// Baseline cosine score considered "background similarity" for encoder vectors.
+    /// Scores below this are mapped to zero after calibration.
+    /// </summary>
+    public float MatchCalibrationFloor { get; set; } = 0.78f;
+
+    /// <summary>
+    /// Non-linear calibration factor for vector similarity.
+    /// Higher values make near-floor scores decay faster.
+    /// </summary>
+    public float MatchCalibrationGamma { get; set; } = 1.8f;
 
     /// <summary>
     /// IoU threshold for Non-Maximum Suppression (NMS).
@@ -128,11 +140,14 @@ public class FdiMappingSettings
 {
     /// <summary>
     /// Maps model output class indices to FDI tooth numbers.
-    /// Alphabetically sorted labels from metadata: 
-    /// 0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 3, 30, 31, 4, 46, 5, 6, 7, 8, 9
+    /// Standard permanent dentition ordering:
+    /// 11..18, 21..28, 31..38, 41..48
     /// </summary>
     public int[] ClassMap { get; set; } = 
     {
-        0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 3, 30, 31, 4, 46, 5, 6, 7, 8, 9
+        11, 12, 13, 14, 15, 16, 17, 18,
+        21, 22, 23, 24, 25, 26, 27, 28,
+        31, 32, 33, 34, 35, 36, 37, 38,
+        41, 42, 43, 44, 45, 46, 47, 48
     };
 }
