@@ -15,7 +15,7 @@ using DentalID.Desktop.Services;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class SubjectsViewModel : ViewModelBase
+public partial class SubjectsViewModel : ViewModelBase, IDisposable
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ISubjectRepository _readRepo;
@@ -208,10 +208,10 @@ public partial class SubjectsViewModel : ViewModelBase
     private async Task SaveSubject()
     {
         FormFullName = FormFullName?.Trim() ?? string.Empty;
-        ValidateProperty(FormFullName, nameof(FormFullName));
+        ValidateAllProperties();
         if (HasErrors || string.IsNullOrWhiteSpace(FormFullName))
         {
-            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Validation Error", "Full name is required", ToastType.Warning));
+            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Validation Error", "Please correct validation errors.", ToastType.Warning));
             return;
         }
 
@@ -318,7 +318,25 @@ public partial class SubjectsViewModel : ViewModelBase
             using var scope = _scopeFactory.CreateScope();
             var repo = scope.ServiceProvider.GetRequiredService<ISubjectRepository>();
 
-            await repo.DeleteAsync(SelectedSubject.Id);
+            var subjectCode = SelectedSubject.SubjectId;
+            var subjectIdValue = SelectedSubject.Id;
+            await repo.DeleteAsync(subjectIdValue);
+            
+            if (!string.IsNullOrWhiteSpace(subjectCode))
+            {
+                try
+                {
+                    var secureDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DentalEvidence", subjectCode);
+                    if (System.IO.Directory.Exists(secureDir))
+                    {
+                        System.IO.Directory.Delete(secureDir, recursive: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning($"Failed to delete physical evidence directory for subject {subjectCode}, Error: {ex.Message}");
+                }
+            }
             SelectedSubject = null;
             await LoadAsyncCore();
             WeakReferenceMessenger.Default.Send(new ShowToastMessage(
@@ -421,5 +439,7 @@ public partial class SubjectsViewModel : ViewModelBase
 
         return value.Trim();
     }
-}
+    public void Dispose() { CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this); }}
+
+
 

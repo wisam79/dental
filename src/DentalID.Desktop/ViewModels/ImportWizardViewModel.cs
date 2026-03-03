@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DentalID.Core.Entities;
@@ -17,7 +18,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class ImportWizardViewModel : ViewModelBase
+public partial class ImportWizardViewModel : ViewModelBase, IDisposable
 {
     private readonly IDataImportService _importService;
 
@@ -84,8 +85,11 @@ public partial class ImportWizardViewModel : ViewModelBase
                 return;
             }
 
-            using var stream = File.OpenRead(SelectedFilePath);
-            _allRecords = await _importService.ParseCsvAsync(stream);
+            _allRecords = await Task.Run(async () => 
+            {
+                using var stream = File.OpenRead(SelectedFilePath);
+                return await _importService.ParseCsvAsync(stream);
+            });
             
             if (_allRecords.Any())
             {
@@ -122,6 +126,19 @@ public partial class ImportWizardViewModel : ViewModelBase
     private async Task ExecuteImport()
     {
         if (Mappings == null || !_allRecords.Any()) return;
+
+        bool hasErrors = false;
+        foreach (var map in Mappings)
+        {
+            map.Validate();
+            if (map.HasErrors) hasErrors = true;
+        }
+
+        if (hasErrors)
+        {
+            WeakReferenceMessenger.Default.Send(new ShowToastMessage("Mapping Error", "Please map all required columns.", ToastType.Error));
+            return;
+        }
 
         ImportProgress = 0;
         ImportStatus = "Preparing to import...";
@@ -210,16 +227,36 @@ public partial class ImportWizardViewModel : ViewModelBase
          StatusMessage = "Select a CSV file to begin.";
          ImportLog = string.Empty;
      }
+
+    public void Dispose()
+    {
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
 }
 
-public partial class ColumnMappingViewModel : ObservableObject
+public partial class ColumnMappingViewModel : ObservableValidator
 {
     public string DisplayName { get; }
     public string TargetProperty { get; }
     public List<string> SourceColumns { get; }
     public bool IsRequired { get; }
 
-    [ObservableProperty] private string _selectedSourceColumn = string.Empty;
+    [ObservableProperty]
+    [NotifyDataErrorInfo]
+    [CustomValidation(typeof(ColumnMappingViewModel), nameof(ValidateMapping))]
+    private string _selectedSourceColumn = string.Empty;
+
+    public static ValidationResult? ValidateMapping(string value, ValidationContext context)
+    {
+        if (context.ObjectInstance is ColumnMappingViewModel vm)
+        {
+            if (vm.IsRequired && string.IsNullOrWhiteSpace(value))
+            {
+                return new ValidationResult("This field is required.");
+            }
+        }
+        return ValidationResult.Success;
+    }
 
     public ColumnMappingViewModel(string display, string target, List<string> sources, bool required = false)
     {
@@ -228,6 +265,11 @@ public partial class ColumnMappingViewModel : ObservableObject
         SourceColumns = new List<string> { "" }; // Empty option
         SourceColumns.AddRange(sources);
         IsRequired = required;
+    }
+
+    public void Validate()
+    {
+        ValidateAllProperties();
     }
 
     public void AutoMap()
@@ -242,3 +284,6 @@ public partial class ColumnMappingViewModel : ObservableObject
         if (match != null) SelectedSourceColumn = match;
     }
 }
+
+
+

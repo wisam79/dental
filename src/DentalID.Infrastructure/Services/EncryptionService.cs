@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.Versioning;
 using DentalID.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 
@@ -15,8 +16,11 @@ namespace DentalID.Infrastructure.Services;
 public class EncryptionService : IEncryptionService
 {
     private readonly byte[] _key;
+    private readonly byte[] _aesKey;
+    private readonly byte[] _hmacKey;
     private const int IvSize = 16;     // AES block size
     private const int HmacSize = 32;   // SHA-256 digest size
+
 
     public EncryptionService(IConfiguration configuration)
     {
@@ -30,6 +34,8 @@ public class EncryptionService : IEncryptionService
                 if (keyBytes.Length == 32)
                 {
                     _key = keyBytes;
+                    _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
+                    _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
                     return;
                 }
             }
@@ -39,6 +45,8 @@ public class EncryptionService : IEncryptionService
         // 2. Try to load OS-protected key from local storage
         if (TryLoadKeyFromStorage(out _key))
         {
+            _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
+            _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
             return;
         }
 
@@ -56,6 +64,9 @@ public class EncryptionService : IEncryptionService
                     _key = legacyKeyBytes;
                     // Migrate to OS-protected storage and stop using appsettings
                     SaveKeyToStorage(_key);
+                    
+                    _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
+                    _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
                     return;
                 }
             }
@@ -69,6 +80,10 @@ public class EncryptionService : IEncryptionService
             rng.GetBytes(_key);
         }
         SaveKeyToStorage(_key);
+        
+        // Derive specific operational keys from the master key
+        _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
+        _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
     }
 
     private bool TryLoadKeyFromStorage(out byte[] key)
@@ -84,7 +99,21 @@ public class EncryptionService : IEncryptionService
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                     System.Runtime.InteropServices.OSPlatform.Windows))
             {
-                key = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.LocalMachine);
+                if (TryUnprotectWindows(protectedBytes, DataProtectionScope.CurrentUser, out key) &&
+                    key.Length == 32)
+                {
+                    return true;
+                }
+
+                if (TryUnprotectWindows(protectedBytes, DataProtectionScope.LocalMachine, out key) &&
+                    key.Length == 32)
+                {
+                    // Migrate legacy LocalMachine scope to per-user scope.
+                    TryMigrateWindowsKeyProtection(key);
+                    return true;
+                }
+
+                return false;
             }
             else
             {
@@ -124,28 +153,53 @@ public class EncryptionService : IEncryptionService
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                     System.Runtime.InteropServices.OSPlatform.Windows))
             {
-                dataToWrite = ProtectedData.Protect(key, null, DataProtectionScope.LocalMachine);
+                dataToWrite = ProtectedData.Protect(key, null, DataProtectionScope.CurrentUser);
+                File.WriteAllBytes(keyPath, dataToWrite);
             }
             else
             {
-                // Non-Windows: store raw key bytes, rely on file system permissions (chmod 600)
-                dataToWrite = key;
-                // Attempt to set restrictive permissions (Linux/macOS)
-                TrySetRestrictiveFilePermissions(keyPath);
-            }
-
-            File.WriteAllBytes(keyPath, dataToWrite);
-
-            // Set restrictive permissions after write on non-Windows
-            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
-                    System.Runtime.InteropServices.OSPlatform.Windows))
-            {
-                TrySetRestrictiveFilePermissions(keyPath);
+                // Non-Windows: secure permissions directly upon creation
+                var options = new FileStreamOptions
+                {
+                    Mode = FileMode.Create,
+                    Access = FileAccess.Write,
+                    Share = FileShare.None,
+                    UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite
+                };
+                using var fs = new FileStream(keyPath, options);
+                fs.Write(key);
             }
         }
         catch (Exception ex)
         {
             throw new CryptographicException("Failed to persist encryption key to secure storage.", ex);
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool TryUnprotectWindows(byte[] protectedBytes, DataProtectionScope scope, out byte[] key)
+    {
+        try
+        {
+            key = ProtectedData.Unprotect(protectedBytes, null, scope);
+            return true;
+        }
+        catch
+        {
+            key = Array.Empty<byte>();
+            return false;
+        }
+    }
+
+    private void TryMigrateWindowsKeyProtection(byte[] key)
+    {
+        try
+        {
+            SaveKeyToStorage(key);
+        }
+        catch
+        {
+            // Continue with loaded key even if migration fails.
         }
     }
 
@@ -186,6 +240,8 @@ public class EncryptionService : IEncryptionService
         if (rawKey == null || rawKey.Length != 32)
             throw new ArgumentException("Key must be exactly 32 bytes (256-bit AES).", nameof(rawKey));
         _key = rawKey;
+        _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
+        _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
     }
 
     public string Encrypt(string plainText)
@@ -193,7 +249,7 @@ public class EncryptionService : IEncryptionService
         if (string.IsNullOrEmpty(plainText)) return plainText;
 
         using var aes = Aes.Create();
-        aes.Key = _key;
+        aes.Key = _aesKey;
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;
         aes.GenerateIV(); // Random IV for each encryption
@@ -215,7 +271,7 @@ public class EncryptionService : IEncryptionService
 
         // Compute HMAC over IV+Ciphertext (Encrypt-then-MAC)
         byte[] hmac;
-        using (var hmacSha = new HMACSHA256(_key))
+        using (var hmacSha = new HMACSHA256(_hmacKey))
         {
             hmac = hmacSha.ComputeHash(payload);
         }
@@ -257,7 +313,7 @@ public class EncryptionService : IEncryptionService
             Buffer.BlockCopy(fullBytes, 0, payload, 0, payload.Length);
 
             byte[] computedHmac;
-            using (var hmacSha = new HMACSHA256(_key))
+            using (var hmacSha = new HMACSHA256(_hmacKey))
             {
                 computedHmac = hmacSha.ComputeHash(payload);
             }
@@ -265,12 +321,12 @@ public class EncryptionService : IEncryptionService
             if (!CryptographicOperations.FixedTimeEquals(computedHmac, storedHmac))
             {
                 // HMAC mismatch — possible tampering or legacy data format
-                return TryLegacyDecrypt(cipherText);
+                throw new CryptographicException("HMAC verification failed. Data might be tampered or corrupted.");
             }
 
             // Decrypt
             using var aes = Aes.Create();
-            aes.Key = _key;
+            aes.Key = _aesKey;
             aes.IV = iv;
             aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.PKCS7;
@@ -282,8 +338,8 @@ public class EncryptionService : IEncryptionService
         }
         catch
         {
-            // If all decryption fails, return original (might be plaintext or legacy)
-            return cipherText;
+            // Fall back to legacy decryption if modern format fails
+            return TryLegacyDecrypt(cipherText);
         }
     }
 
@@ -299,7 +355,7 @@ public class EncryptionService : IEncryptionService
             var staticIv = Encoding.UTF8.GetBytes("1234567890123456");
 
             using var aes = Aes.Create();
-            aes.Key = _key;
+            aes.Key = _aesKey;
             aes.IV = staticIv;
             aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.PKCS7;
@@ -311,6 +367,7 @@ public class EncryptionService : IEncryptionService
         }
         catch
         {
+            // Legacy decryption also failed — return original cipherText as-is
             return cipherText;
         }
     }
@@ -328,7 +385,7 @@ public class EncryptionService : IEncryptionService
         }
 
         var payload = Encoding.UTF8.GetBytes($"{context}:{normalizedValue}");
-        using var hmac = new HMACSHA256(_key);
+        using var hmac = new HMACSHA256(_hmacKey);
         var hash = hmac.ComputeHash(payload);
         return Convert.ToHexString(hash);
     }

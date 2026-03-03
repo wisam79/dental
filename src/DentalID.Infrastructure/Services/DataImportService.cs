@@ -149,7 +149,7 @@ public class DataImportService : IDataImportService
                 {
                     try
                     {
-                        await _subjectRepo.AddAsync(subject);
+                        await _subjectRepo.AddAsync(subject).ConfigureAwait(false);
                         result.SuccessCount++;
                     }
                     catch (Exception ex)
@@ -190,13 +190,15 @@ public class DataImportService : IDataImportService
         
         foreach (var subDir in subDirs)
         {
+            Subject? subject = null;
+            bool isNewSubject = false;
+            int successfulImages = 0;
             try
             {
                 string subjectName = Path.GetFileName(subDir);
                 
                 // Bug #27 fix: Check for existing subject by name to prevent duplicates
                 var existingSubject = await _subjectRepo.GetByFullNameExactAsync(subjectName);
-                Subject subject;
 
                 if (existingSubject != null)
                 {
@@ -209,9 +211,11 @@ public class DataImportService : IDataImportService
                     {
                         FullName = subjectName,
                         SubjectId = $"IMP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 4)}",
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
-                    await _subjectRepo.AddAsync(subject);
+                    await _subjectRepo.AddAsync(subject).ConfigureAwait(false);
+                    isNewSubject = true;
                 }
 
                 // Process Images
@@ -232,7 +236,7 @@ public class DataImportService : IDataImportService
 
                         var fileName = Path.GetFileName(imgPath);
                         var destPath = GetUniqueDestinationPath(secureDir, fileName);
-                        File.Move(imgPath, destPath);
+                        File.Copy(imgPath, destPath);
                         finalPath = destPath;
                     }
 
@@ -245,13 +249,46 @@ public class DataImportService : IDataImportService
                         IsProcessed = false
                     };
                     
-                    await _imageRepo.AddAsync(dentalImage);
+                    try 
+                    {
+                        await _imageRepo.AddAsync(dentalImage).ConfigureAwait(false);
+                        if (moveFiles && finalPath != imgPath)
+                        {
+                            try { File.Delete(imgPath); } catch { /* Ignore source cleanup errors */ }
+                        }
+                        successfulImages++;
+                    }
+                    catch
+                    {
+                        if (moveFiles && finalPath != imgPath && File.Exists(finalPath))
+                        {
+                            try { File.Delete(finalPath); } catch { /* Ignore rollback cleanup errors */ }
+                        }
+                        throw;
+                    }
                 }
 
-                result.SuccessCount++;
+                if (successfulImages > 0)
+                {
+                    result.SuccessCount++;
+                }
+                else
+                {
+                    if (isNewSubject && subject != null && subject.Id > 0)
+                    {
+                        try { await _subjectRepo.DeleteAsync(subject.Id).ConfigureAwait(false); } catch { }
+                    }
+
+                    result.ErrorCount++;
+                    result.Errors.Add($"Skipped folder {Path.GetFileName(subDir)}: no supported images were imported.");
+                }
             }
             catch (Exception ex)
             {
+                if (isNewSubject && subject != null && subject.Id > 0 && successfulImages == 0)
+                {
+                    try { await _subjectRepo.DeleteAsync(subject.Id).ConfigureAwait(false); } catch { }
+                }
                 result.Errors.Add($"Failed to import folder {Path.GetFileName(subDir)}: {ex.Message}");
                 result.ErrorCount++;
             }
@@ -277,6 +314,7 @@ public class DataImportService : IDataImportService
         return candidate;
     }
 }
+
 
 
 

@@ -5,6 +5,7 @@
              xmlns:conv="using:DentalID.Desktop.Converters"
              xmlns:local="using:DentalID.Desktop.Views"
              xmlns:controls="using:DentalID.Desktop.Controls"
+             xmlns:viewcontrols="using:DentalID.Desktop.Views.Controls"
              x:Class="DentalID.Desktop.Views.AnalysisLabView"
              xmlns:core="using:DentalID.Core.Entities"
              x:DataType="vm:AnalysisLabViewModel">
@@ -18,9 +19,22 @@
             <Setter Property="Margin" Value="0,0,14,0"/>
             <Setter Property="Padding" Value="6,10"/>
         </Style>
+        <Style Selector="TabControl.report-tabs TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        </Style>
         <Style Selector="TabControl.report-tabs TabItem:selected">
             <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
             <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="TabControl.report-tabs TabItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="10,8"/>
+        </Style>
+        <Style Selector="TabControl.report-tabs TabItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlaySubtleBrush}"/>
+        </Style>
+        <Style Selector="TabControl.report-tabs TabItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
         </Style>
 
         <Style Selector="Border.report-section">
@@ -60,13 +74,41 @@
             <Setter Property="LineHeight" Value="28"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
+
+        <Style Selector="Button.lab-tool">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.lab-tool:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+        </Style>
+
+        <Style Selector="ToggleButton.lab-tool">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="ToggleButton.lab-tool:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto, *" Background="{DynamicResource SurfaceDeepBrush}">
 
         <!-- ═══════════════════════════════════════════ -->
         <!-- 1. TOP BAR: CONTEXT & PRIMARY ACTIONS -->
-        <Border Grid.Row="0" Height="50" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="16,0">
+        <Border Grid.Row="0" Height="58" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="16,4">
             <Grid ColumnDefinitions="Auto, *, Auto">
                 
                 <!-- Left: Title -->
@@ -76,7 +118,7 @@
                 </StackPanel>
 
                 <!-- Center: Search (Simplified) -->
-                <Grid Grid.Column="1" Margin="40,8" MaxWidth="600">
+                <Grid Grid.Column="1" Margin="32,10" MaxWidth="640">
                     <Border CornerRadius="6" Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                         <Grid ColumnDefinitions="Auto, *">
                             <PathIcon Data="{StaticResource IconSearch}" Margin="10,0" Width="14" Height="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -95,6 +137,18 @@
 
                 <!-- Right: Analysis Actions -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border IsVisible="{Binding IsIdle, Converter={x:Static BoolConverters.Not}}"
+                            Background="{DynamicResource OverlayHoverBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,5"
+                            MaxWidth="200">
+                        <TextBlock Text="{Binding StatusMessage, FallbackValue=Ready}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Border>
                     <Button Command="{Binding BrowseImageCommand}" Classes="outline" CornerRadius="4" Padding="12,6" IsEnabled="{Binding !IsAnalyzing}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14"/>
@@ -118,19 +172,24 @@
         </Border>
 
         <!-- MAIN LAYOUT -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, 390">
+        <Grid Grid.Row="1" ColumnSpacing="10" Margin="8,6,8,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="390" MinWidth="320" MaxWidth="500"/>
+            </Grid.ColumnDefinitions>
             
              <!-- 2. LEFT STRIP: TOOLS (Floating Palette Style) -->
-             <Grid Grid.Column="0" Width="60" Background="{DynamicResource SurfaceBgBrush}">
-                 <Border Background="{DynamicResource SurfaceElevatedBrush}" Margin="8,16" CornerRadius="8" VerticalAlignment="Top" BoxShadow="0 4 8 0 #40000000">
+             <Grid Grid.Column="0" Width="64" Background="Transparent">
+                 <Border Background="{DynamicResource SurfaceElevatedBrush}" Margin="0,16,0,16" CornerRadius="10" VerticalAlignment="Stretch" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                      <StackPanel Spacing="4" Margin="0,8">
-                         <Button Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Enhance_Reset], Source={x:Static svc:Loc.Instance}}" Click="OnResetZoom" CornerRadius="6">
+                         <Button Classes="lab-tool" ToolTip.Tip="{Binding [Lab_Enhance_Reset], Source={x:Static svc:Loc.Instance}}" Click="OnResetZoom">
                              <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16"/>
                          </Button>
                          
                          <Border Height="1" Background="{DynamicResource BorderSubtleBrush}" Margin="8,4" Opacity="0.5"/>
                          
-                         <ToggleButton IsChecked="{Binding ShowTeethOverlay}" Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" CornerRadius="6">
+                         <ToggleButton IsChecked="{Binding ShowTeethOverlay}" Classes="lab-tool" ToolTip.Tip="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}">
                              <PathIcon Data="{StaticResource IconTooth}" Width="20" Height="20"/>
                              <ToggleButton.Styles>
                                 <Style Selector="ToggleButton:checked">
@@ -140,7 +199,7 @@
                             </ToggleButton.Styles>
                          </ToggleButton>
                          
-                         <ToggleButton IsChecked="{Binding ShowPathosOverlay}" Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_DetectedPathologies], Source={x:Static svc:Loc.Instance}}" CornerRadius="6">
+                         <ToggleButton IsChecked="{Binding ShowPathosOverlay}" Classes="lab-tool" ToolTip.Tip="{Binding [Lab_DetectedPathologies], Source={x:Static svc:Loc.Instance}}">
                              <PathIcon Data="{StaticResource IconWarning}" Width="20" Height="20"/>
                               <ToggleButton.Styles>
                                 <Style Selector="ToggleButton:checked">
@@ -153,7 +212,7 @@
                          <Border Height="1" Background="{DynamicResource BorderSubtleBrush}" Margin="8,4" Opacity="0.5"/>
                          
                          <!-- Advanced Tools -->
-                          <Button Classes="ghost" Width="40" Height="40" ToolTip.Tip="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}" CornerRadius="6">
+                          <Button Classes="lab-tool" ToolTip.Tip="{Binding [Lab_Enhance_Title], Source={x:Static svc:Loc.Instance}}">
                              <PathIcon Data="{StaticResource IconSettings}" Width="16" Height="16"/>
                              <Button.Flyout>
                                  <Flyout Placement="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToFlyoutPlacementConverter.Instance}, ConverterParameter=End}" ShowMode="TransientWithDismissOnPointerMoveAway">
@@ -190,7 +249,7 @@
              </Grid>
 
              <!-- 3. CENTER: IMMERSIVE CANVAS -->
-             <Grid Grid.Column="1" Background="#050505" ClipToBounds="True">
+             <Grid Grid.Column="1" Background="#050505" ClipToBounds="True" Margin="0,16,0,16">
                  <!-- Technical Background Grid -->
                  <Grid Opacity="0.1">
                     <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
@@ -201,32 +260,36 @@
                  </Grid>
                  
                   <!-- Empty State (Idle) -->
-                  <Border IsVisible="{Binding IsIdle}" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="2" CornerRadius="16" Padding="60,40" Opacity="0.7">
-                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
-                          <Border Width="80" Height="80" CornerRadius="40" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                              <PathIcon Data="{StaticResource IconFolderOpen}" Width="32" Height="32" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Border IsVisible="{Binding IsIdle}" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="2" CornerRadius="16" Padding="60,40" Opacity="0.8">
+                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
+                          <Border Width="90" Height="90" CornerRadius="45" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                              <PathIcon Data="{StaticResource IconFolderOpen}" Width="36" Height="36" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                           </Border>
-                          <StackPanel HorizontalAlignment="Center" Spacing="4">
-                              <TextBlock Text="{Binding [Lab_DropZone], Source={x:Static svc:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                              <TextBlock Text="{Binding [Lab_UploadHint], Source={x:Static svc:Loc.Instance}}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                          <StackPanel HorizontalAlignment="Center" Spacing="8">
+                              <TextBlock Text="{Binding [Lab_DropZone], Source={x:Static svc:Loc.Instance}}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
+                              <TextBlock Text="{Binding [Lab_UploadHint], Source={x:Static svc:Loc.Instance}}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" TextAlignment="Center"/>
                           </StackPanel>
+                          <Button Command="{Binding BrowseImageCommand}" Classes="primary" Padding="32,12" CornerRadius="8" HorizontalAlignment="Center">
+                              <StackPanel Orientation="Horizontal" Spacing="10">
+                                  <PathIcon Data="{StaticResource IconFolderOpen}" Width="16" Height="16"/>
+                                  <TextBlock Text="{Binding [Lab_BrowseImage], Source={x:Static svc:Loc.Instance}}" FontSize="14" FontWeight="Bold"/>
+                              </StackPanel>
+                          </Button>
                       </StackPanel>
                   </Border>
 
                    <!-- Viewer -->
-                   <Grid Name="ZoomContainer" IsVisible="{Binding IsImageLoaded}"
-                         PointerWheelChanged="OnZoom"
-                         PointerPressed="OnPanStart"
-                         PointerMoved="OnPanMove"
-                         PointerReleased="OnPanEnd">
-                       <controls:DentalAnalysisControl Name="AnalysisControl"
-                           Source="{Binding LoadedImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                           Teeth="{Binding DetectedTeeth}"
-                           Pathologies="{Binding DetectedPathologies}"
-                           ShowTeeth="{Binding ShowTeethOverlay}"
-                           ShowPathologies="{Binding ShowPathosOverlay}"
-                           LocalizationService="{Binding LocalizationService}" />
-                   </Grid>
+                   <viewcontrols:AdvancedImageViewer x:Name="AdvancedViewer" IsVisible="{Binding IsImageLoaded}">
+                       <viewcontrols:AdvancedImageViewer.InnerContent>
+                           <controls:DentalAnalysisControl Name="AnalysisControl"
+                               Source="{Binding LoadedImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                               Teeth="{Binding DetectedTeeth}"
+                               Pathologies="{Binding DetectedPathologies}"
+                               ShowTeeth="{Binding ShowTeethOverlay}"
+                               ShowPathologies="{Binding ShowPathosOverlay}"
+                               LocalizationService="{Binding LocalizationService}" />
+                       </viewcontrols:AdvancedImageViewer.InnerContent>
+                   </viewcontrols:AdvancedImageViewer>
                   
                   <!-- Overlay Info (Metadata) -->
                   <Border VerticalAlignment="Top" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" Margin="20" Background="#90000000" CornerRadius="4" Padding="12,8" IsVisible="{Binding IsImageLoaded}" BorderBrush="#30FFFFFF" BorderThickness="1">
@@ -242,9 +305,9 @@
                   <!-- Loading Overlay -->
                   <Border IsVisible="{Binding IsLoadingImage}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#80000000">
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
-                           <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                           <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                                <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                   <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{DynamicResource AccentSecondaryBrush}"/>
+                                   <Border Classes="shimmer" Width="200" Height="4" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
                                        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                    </StackPanel>
@@ -256,10 +319,10 @@
                   <!-- Analysis Progress Overlay (Glass) -->
                   <Border IsVisible="{Binding IsAnalyzing}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#80000000">
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
-                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1">
+                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1">
                               <StackPanel Spacing="16" HorizontalAlignment="Center" MinWidth="320">
-                                  <Border Width="58" Height="58" CornerRadius="29" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" Background="#132F84AE">
-                                      <PathIcon Data="{StaticResource IconRefresh}" Width="24" Height="24" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                                  <Border Classes="pulse-accent" Width="64" Height="64" CornerRadius="32" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" Background="#132F84AE">
+                                      <PathIcon Data="{StaticResource IconRefresh}" Width="28" Height="28" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
                                           <PathIcon.RenderTransform>
                                               <RotateTransform Angle="{Binding AnalysisSpinnerAngle}"/>
                                           </PathIcon.RenderTransform>
@@ -291,7 +354,7 @@
                   <!-- Error State Overlay -->
                   <Border IsVisible="{Binding IsError}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#80000000">
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
-                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="1">
+                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="1">
                               <StackPanel Spacing="16" HorizontalAlignment="Center">
                                   <Border Width="56" Height="56" CornerRadius="28" Background="#20FF4444">
                                       <PathIcon Data="{StaticResource IconWarning}" Width="28" Height="28" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -314,14 +377,14 @@
                   <!-- Saving State Overlay -->
                   <Border IsVisible="{Binding IsSaving}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#80000000">
                       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
-                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BoxShadow="0 8 32 0 #50000000" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
-                              <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                  <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="{DynamicResource SuccessBrush}"/>
-                                  <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                      <TextBlock Text="Saving Evidence..." Foreground="{DynamicResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                      <TextBlock Text="Encrypting and storing to database" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" HorizontalAlignment="Center"/>
-                                  </StackPanel>
-                              </StackPanel>
+                          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="32" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                               <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                   <Border Classes="shimmer" Width="200" Height="4" Margin="0,0,0,8"/>
+                                   <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                       <TextBlock Text="Saving Evidence..." Foreground="{DynamicResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                       <TextBlock Text="Encrypting and storing to database" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" HorizontalAlignment="Center"/>
+                                   </StackPanel>
+                               </StackPanel>
                           </Border>
                       </StackPanel>
                   </Border>
@@ -329,9 +392,12 @@
 
              <!-- 4. RIGHT PANEL: RESULTS & REPORT -->
              <Border Grid.Column="2"
+                     Margin="0,16,0,16"
+                     CornerRadius="12"
+                     ClipToBounds="True"
                      Background="{DynamicResource SurfaceElevatedBrush}"
                      BorderBrush="{DynamicResource BorderSubtleBrush}"
-                     BorderThickness="1,0,0,0">
+                     BorderThickness="1">
                  <Grid RowDefinitions="Auto,*,Auto">
                      <Border Grid.Row="0"
                              Padding="16,14"
@@ -371,18 +437,20 @@
                                              <Grid ColumnDefinitions="*,10,*" Margin="12">
                                                  <Border Grid.Column="0" Classes="metric-tile">
                                                      <StackPanel Spacing="2">
-                                                         <TextBlock Text="{Binding EstimatedAge, FallbackValue='--'}" Classes="metric-value"/>
+                                                         <TextBlock IsVisible="{Binding IsAnalysisComplete}" Text="{Binding EstimatedAge, FallbackValue='--'}" Classes="metric-value"/>
+                                                         <viewcontrols:SkeletonLoader IsVisible="{Binding IsAnalysisComplete, Converter={x:Static BoolConverters.Not}}" Height="28" Width="40" HorizontalAlignment="Left" CornerRadius="4"/>
                                                          <TextBlock Text="{Binding [Lab_EstAge], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
                                                      </StackPanel>
                                                  </Border>
                                                  <Border Grid.Column="2" Classes="metric-tile">
                                                      <StackPanel Spacing="2">
-                                                         <TextBlock Text="{Binding EstimatedGender, FallbackValue='--'}"
+                                                         <TextBlock IsVisible="{Binding IsAnalysisComplete}" Text="{Binding EstimatedGender, FallbackValue='--'}"
                                                                     Classes="metric-value"
                                                                     FontSize="26"
                                                                     LineHeight="32"
                                                                     MaxWidth="140"
                                                                     TextWrapping="Wrap"/>
+                                                         <viewcontrols:SkeletonLoader IsVisible="{Binding IsAnalysisComplete, Converter={x:Static BoolConverters.Not}}" Height="28" Width="70" HorizontalAlignment="Left" CornerRadius="4" Margin="0,2,0,2"/>
                                                          <TextBlock Text="{Binding [Lab_Gender], Source={x:Static svc:Loc.Instance}}" Classes="metric-label"/>
                                                      </StackPanel>
                                                  </Border>
@@ -395,14 +463,16 @@
                                          <Border Grid.Column="0" Classes="card report-section" Padding="12" MinHeight="108">
                                              <StackPanel Spacing="4" VerticalAlignment="Center">
                                                  <PathIcon Data="{StaticResource IconTooth}" Width="16" Height="16" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
-                                                 <TextBlock Text="{Binding TeethDetectedCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <TextBlock IsVisible="{Binding IsAnalysisComplete}" Text="{Binding TeethDetectedCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <viewcontrols:SkeletonLoader IsVisible="{Binding IsAnalysisComplete, Converter={x:Static BoolConverters.Not}}" Height="40" Width="40" HorizontalAlignment="Left" CornerRadius="4"/>
                                                  <TextBlock Text="{Binding [Lab_Stats_Teeth], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
                                          <Border Grid.Column="2" Classes="card report-section" Padding="12" MinHeight="108">
                                              <StackPanel Spacing="4" VerticalAlignment="Center">
                                                  <PathIcon Data="{StaticResource IconWarning}" Width="16" Height="16" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}"/>
-                                                 <TextBlock Text="{Binding PathologiesCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <TextBlock IsVisible="{Binding IsAnalysisComplete}" Text="{Binding PathologiesCount}" Classes="metric-value" FontSize="36" LineHeight="40" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                 <viewcontrols:SkeletonLoader IsVisible="{Binding IsAnalysisComplete, Converter={x:Static BoolConverters.Not}}" Height="40" Width="40" HorizontalAlignment="Left" CornerRadius="4"/>
                                                  <TextBlock Text="{Binding [Lab_Stats_Flags], Source={x:Static svc:Loc.Instance}}" Classes="metric-label" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" TextAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalTextAlignmentConverter.Instance}, ConverterParameter=Start}"/>
                                              </StackPanel>
                                          </Border>
@@ -537,7 +607,7 @@
 
         <!-- 5. SAVE DIALOG OVERLAY -->
         <Border Grid.RowSpan="2" IsVisible="{Binding IsSaveDialogOpen}" Background="#80000000" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <Border Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Width="450" VerticalAlignment="Center" HorizontalAlignment="Center" BoxShadow="0 8 32 0 #60000000">
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Width="450" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <Grid RowDefinitions="Auto, *">
                     <!-- Header -->
                     <Border Grid.Row="0" Padding="20,16" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">

@@ -26,7 +26,7 @@ public class BackupService : IBackupService
             Directory.CreateDirectory(backupDirectory);
         }
 
-        var fileName = $"dentalid_backup_{DateTime.Now:yyyyMMdd_HHmmss}.db";
+        var fileName = $"dentalid_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.db";
         var backupPath = Path.Combine(backupDirectory, fileName);
         
         // Ensure path is absolute for SQLite
@@ -56,3 +56,4 @@ public class BackupService : IBackupService
         }
     }
 }
+

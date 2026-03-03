@@ -9,7 +9,46 @@
              x:Class="DentalID.Desktop.Views.MainView"
              x:DataType="vm:MainWindowViewModel">
 
-    <Grid RowDefinitions="Auto, *, Auto" Background="#101216">
+    <UserControl.Styles>
+        <Style Selector="Button.titlebar-btn">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.titlebar-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.titlebar-close:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ErrorBrush}"/>
+            <Setter Property="TextElement.Foreground" Value="White"/>
+        </Style>
+
+        <Style Selector="Button.sidebar-nav">
+            <Setter Property="Width" Value="72"/>
+            <Setter Property="Height" Value="72"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style Selector="Button.sidebar-utility">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="{DynamicResource OverlaySubtleBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Button.sidebar-utility:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto" Background="{DynamicResource SurfaceBgBrush}">
         <!-- Ambient background layers -->
         <Canvas IsHitTestVisible="False" ClipToBounds="True">
             <Ellipse Width="560" Height="560" Canvas.Left="-180" Canvas.Top="-220" Opacity="0.18">
@@ -30,68 +69,39 @@
             </Ellipse>
         </Canvas>
 
-        <!-- TOP COMMAND BAR (Floating Style) -->
+        <!-- Custom Title Bar -->
         <Border Grid.Row="0"
-                IsVisible="{Binding IsShellVisible}"
-                Margin="14,12,14,8"
-                Height="54"
-                Background="#CC1B2028"
+                Margin="12,8,12,6"
+                Height="36"
+                CornerRadius="10"
+                Background="{DynamicResource SurfaceElevatedBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
-                CornerRadius="12">
-            <Grid ColumnDefinitions="Auto, *, Auto">
-                <!-- Branding -->
-                <StackPanel Orientation="Horizontal"
-                             Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='20,0,0,0'}"
-                             VerticalAlignment="Center"
-                             Spacing="12">
-                     <TextBlock Text="DENTAL ID" FontWeight="Bold" FontSize="16" LetterSpacing="2" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="{DynamicResource FontSans}"/>
-                     <Border Height="16" Width="1" Background="{DynamicResource BorderSubtleBrush}"/>
-                     <TextBlock Text="FORENSIC SUITE" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Opacity="0.7" FontFamily="{DynamicResource FontSans}"/>
+                PointerPressed="OnTitleBarPointerPressed">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,0">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Image Source="/Assets/Brand/dental.png" Width="14" Height="14"/>
+                    <TextBlock Text="DentalID" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 </StackPanel>
 
-                <!-- Breadcrumbs / Status -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Border Background="#18FFFFFF" CornerRadius="6" Padding="12,5" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                              <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                            <TextBlock Text="DENTAL ID" Classes="mono" Foreground="{DynamicResource TextDisabledBrush}" FontSize="12"/>
-                            <PathIcon Data="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToArrowGeometryConverter.Instance}, ConverterParameter=Next}" Width="10" Height="10" Foreground="{DynamicResource TextDisabledBrush}"/>
-                            <TextBlock Text="{Binding CurrentPageTitle}" FontWeight="SemiBold" Foreground="{DynamicResource AccentSecondaryBrush}" FontSize="12"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding CurrentPageTitle}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           FontSize="11"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextTrimming="CharacterEllipsis"/>
 
-                <!-- Window Controls & Profile -->
-                <StackPanel Grid.Column="2"
-                            Orientation="Horizontal"
-                            Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,20,0'}"
-                            Spacing="16"
-                            VerticalAlignment="Center">
-                    <Button Command="{Binding ToggleLanguageCommand}"
-                            Classes="ghost"
-                            ToolTip.Tip="{DynamicResource Str_Settings_Language}"
-                            Padding="8">
-                        <PathIcon Data="{StaticResource IconLanguage}" Width="16" Height="16"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Classes="titlebar-btn" Command="{Binding MinimizeCommand}" ToolTip.Tip="Minimize">
+                        <PathIcon Data="{StaticResource IconMinus}" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
-
-                    <Button Command="{Binding ToggleFocusModeCommand}"
-                            Classes="ghost"
-                            ToolTip.Tip="Focus Mode"
-                            Padding="8">
-                        <PathIcon Data="{StaticResource IconContrast}" Width="16" Height="16"/>
+                    <Button Classes="titlebar-btn" Command="{Binding MaximizeCommand}" ToolTip.Tip="Maximize">
+                        <PathIcon Data="M 3,3 L 13,3 L 13,13 L 3,13 Z M 5,5 L 11,5 L 11,11 L 5,11 Z" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
-                    
-                    <Border Width="1" Height="20" Background="{DynamicResource BorderSubtleBrush}"/>
-                    
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SurfaceElevatedBrush}" ClipToBounds="True" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                             <PathIcon Data="{StaticResource IconUser}" Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        </Border>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentUserName}" FontSize="12" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </StackPanel>
+                    <Button Classes="titlebar-btn titlebar-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close">
+                        <PathIcon Data="{StaticResource IconClose}" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -108,40 +118,49 @@
             <!-- SIDEBAR (Navigation Rail - Left) -->
             <Border Grid.Column="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalGridColumnConverter.Instance}, ConverterParameter=Start}"
                     Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,12,0'}"
-                    CornerRadius="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredCornerRadiusConverter.Instance}, ConverterParameter='0,12,12,0'}"
+                    Width="88"
+                    CornerRadius="14"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
-                    BorderThickness="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,1,1,1'}"
+                    BorderThickness="1"
+                    Background="{DynamicResource SurfaceElevatedBrush}"
                     ClipToBounds="True">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#F012161D" Offset="0"/>
-                        <GradientStop Color="#F00B0E13" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
                 <Grid RowDefinitions="Auto, *, Auto">
-                    
-                    <!-- Branding Mark (Top) -->
-                    <Border Height="60" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                        <Image Source="/Assets/Brand/dental.png"
-                               Width="30"
-                               Height="30"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Stretch="Uniform"/>
+
+                    <!-- Branding -->
+                    <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="8,10">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <Border Width="44" Height="44" CornerRadius="12" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" Background="{DynamicResource SurfaceFloatingBrush}">
+                                <Image Source="/Assets/Brand/dental.png"
+                                       Width="24"
+                                       Height="24"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Stretch="Uniform"/>
+                            </Border>
+                            <TextBlock Text="DENTAL"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       LetterSpacing="1"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Border Background="{DynamicResource OverlayHoverBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="6,4" Width="72">
+                                <TextBlock Text="{Binding CurrentPageTitle}" FontSize="9" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
                     </Border>
 
                     <!-- Navigation Items -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
-                        <StackPanel Spacing="16" Margin="0,20">
-                            
+                        <StackPanel Spacing="12" Margin="0,14,0,14">
+
                             <ListBox x:Name="NavListBox" SelectedIndex="{Binding SelectedNavIndex, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Width" Value="48"/>
-                                        <Setter Property="Height" Value="48"/>
-                                        <Setter Property="Margin" Value="0,4"/>
-                                        <Setter Property="CornerRadius" Value="8"/>
+                                        <Setter Property="Width" Value="74"/>
+                                        <Setter Property="Height" Value="76"/>
+                                        <Setter Property="Margin" Value="0,3"/>
+                                        <Setter Property="CornerRadius" Value="10"/>
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="Cursor" Value="Hand"/>
@@ -153,13 +172,15 @@
                                         </Setter>
                                     </Style>
                                     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="#15FFFFFF"/>
+                                        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
                                         <Setter Property="Background" Value="{DynamicResource NavItemSelectedBrush}"/>
-                                        <Setter Property="BoxShadow" Value="0 8 18 0 #1F2F84AE"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected PathIcon">
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected TextBlock">
                                         <Setter Property="Foreground" Value="White"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:pressed /template/ ContentPresenter">
@@ -168,54 +189,89 @@
                                 </ListBox.Styles>
 
                                 <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Subjects}">
-                                    <Button Command="{Binding NavigateToSubjectsCommand}" Classes="nav-button" Padding="0">
-                                        <PathIcon Data="{StaticResource IconSubjects}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                    <Button Command="{Binding NavigateToSubjectsCommand}" Classes="sidebar-nav">
+                                        <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconSubjects}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource Str_Nav_Subjects}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        </StackPanel>
                                     </Button>
                                 </ListBoxItem>
                                 <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Analysis}">
-                                    <Button Command="{Binding NavigateToAnalysisLabCommand}" Classes="nav-button" Padding="0">
-                                        <PathIcon Data="{StaticResource IconAnalysis}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                    <Button Command="{Binding NavigateToAnalysisLabCommand}" Classes="sidebar-nav">
+                                        <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconAnalysis}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource Str_Nav_Analysis}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        </StackPanel>
                                     </Button>
                                 </ListBoxItem>
                                 <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Matching}">
-                                    <Button Command="{Binding NavigateToMatchingCommand}" Classes="nav-button" Padding="0">
-                                        <PathIcon Data="{StaticResource IconMatching}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                    <Button Command="{Binding NavigateToMatchingCommand}" Classes="sidebar-nav">
+                                        <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconMatching}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource Str_Nav_Matching}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        </StackPanel>
                                     </Button>
                                 </ListBoxItem>
                             </ListBox>
 
-                            <Border Height="1" Width="30" Background="{DynamicResource BorderSubtleBrush}" Opacity="0.3"/>
-                            
-                            <!-- Settings Logic (Separate ListBox for better control) -->
-                             <ListBox SelectedIndex="{Binding SettingsNavIndex}" Background="Transparent" BorderThickness="0">
+                            <Border Height="1" Width="54" Background="{DynamicResource BorderSubtleBrush}" Opacity="0.45"/>
+
+                            <ListBox SelectedIndex="{Binding SettingsNavIndex}" Background="Transparent" BorderThickness="0">
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Width" Value="48"/>
-                                        <Setter Property="Height" Value="48"/>
-                                        <Setter Property="CornerRadius" Value="8"/>
+                                        <Setter Property="Width" Value="74"/>
+                                        <Setter Property="Height" Value="76"/>
+                                        <Setter Property="CornerRadius" Value="10"/>
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                     </Style>
-                                     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="#15FFFFFF"/>
+                                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="{DynamicResource NavItemSelectedBrush}"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected PathIcon">
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected TextBlock">
+                                        <Setter Property="Foreground" Value="White"/>
                                     </Style>
                                 </ListBox.Styles>
-                                 <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Settings}">
-                                    <PathIcon Data="{StaticResource IconSettings}" Width="20" Height="20" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Settings}">
+                                    <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconSettings}" Width="20" Height="20" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{DynamicResource Str_Nav_Settings}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
                                 </ListBoxItem>
                             </ListBox>
 
                         </StackPanel>
                     </ScrollViewer>
-                    
-                    <!-- Sidebar Footer (System Status) -->
-                    <StackPanel Grid.Row="2" Margin="0,0,0,20" HorizontalAlignment="Center">
-                        <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" ToolTip.Tip="{DynamicResource Str_SystemOnline}">
-                            <Border.Effect>
-                                <BlurEffect Radius="4"/>
-                            </Border.Effect>
+
+                    <!-- Footer -->
+                    <StackPanel Grid.Row="2" Margin="0,8,0,12" Spacing="10" HorizontalAlignment="Center">
+                        <Border Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="6,4" Width="74">
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding CurrentUserName}" FontSize="9" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="48"/>
+                            </StackPanel>
                         </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <Button Classes="sidebar-utility" Command="{Binding ToggleLanguageCommand}" ToolTip.Tip="{DynamicResource Str_Settings_Language}">
+                                <PathIcon Data="{StaticResource IconLanguage}" Width="14" Height="14"/>
+                            </Button>
+                            <Button Classes="sidebar-utility" Command="{Binding ToggleFocusModeCommand}" ToolTip.Tip="Focus Mode">
+                                <PathIcon Data="{StaticResource IconContrast}" Width="14" Height="14"/>
+                            </Button>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource SuccessBrush}" ToolTip.Tip="{DynamicResource Str_SystemOnline}"/>
+                            <TextBlock Text="Online" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -234,7 +290,9 @@
                          </Grid>
                          
                          <!-- Main Content -->
-                         <ContentControl Content="{Binding CurrentView}" Margin="8"/>
+                         <ContentControl x:Name="MainContentHost"
+                                         Content="{Binding CurrentContent}"
+                                         Margin="8"/>
                      </Grid>
                 </Border>
             </Grid>
@@ -245,7 +303,8 @@
                 IsVisible="{Binding IsShellVisible, Converter={x:Static BoolConverters.Not}}"
                 Margin="14,0,14,10"
                 Background="Transparent">
-            <ContentControl Content="{Binding CurrentView}"/>
+            <ContentControl x:Name="BootContentHost"
+                            Content="{Binding CurrentContent}"/>
         </Border>
 
         <!-- STATUS BAR -->
@@ -253,7 +312,7 @@
                 IsVisible="{Binding IsShellVisible}"
                 Margin="14,0,14,10"
                 Height="34"
-                Background="#C9151A20"
+                Background="{DynamicResource OverlayStrongBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
                 CornerRadius="10">
@@ -270,13 +329,12 @@
                      </StackPanel>
                      <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="{DynamicResource Str_Status_Label}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextDisabledBrush}"/>
-                        <ProgressBar IsIndeterminate="True"
-                                     IsVisible="{Binding IsBusy}"
-                                     Width="60"
-                                     Height="2"
-                                     VerticalAlignment="Center"
-                                     Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}"
-                                     Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                        <Border IsVisible="{Binding IsBusy}"
+                                Classes="shimmer"
+                                Width="60"
+                                Height="4"
+                                VerticalAlignment="Center"
+                                Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}"/>
                         <TextBlock Text="{Binding BusyMessage}" FontSize="10" Foreground="{DynamicResource SuccessBrush}"/>
                      </StackPanel>
                 </StackPanel>
@@ -292,21 +350,31 @@
                       IsHitTestVisible="True">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="svc:ToastViewModel">
-                    <Border Classes="toast" Margin="0,0,0,8">
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
-                            <TextBlock Text="{Binding Title}" Classes="h3"/>
-                            <Button Grid.Column="1"
-                                    Command="{Binding CloseCommand}"
-                                    Classes="ghost icon"
-                                    Padding="4"
-                                    Width="24" Height="24">
-                                <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12"/>
-                            </Button>
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
-                                       Text="{Binding Message}"
-                                       Classes="caption"
-                                       TextWrapping="Wrap"
-                                       MaxWidth="320"/>
+                    <Border Classes="toast" Margin="0,0,0,8" ClipToBounds="True" Padding="0">
+                        <Grid>
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" Margin="16,12,16,16">
+                                <TextBlock Text="{Binding Title}" Classes="h3"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding CloseCommand}"
+                                        Classes="ghost icon"
+                                        Padding="4"
+                                        Width="24" Height="24">
+                                    <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12"/>
+                                </Button>
+                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                                           Text="{Binding Message}"
+                                           Classes="caption"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="320"/>
+                                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                        Content="Undo"
+                                        Command="{Binding UndoCommand}"
+                                        IsVisible="{Binding HasUndo}"
+                                        Classes="outline"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,8,0,0" Padding="12,4" FontSize="11" Height="24"/>
+                            </Grid>
+                            <ProgressBar Value="{Binding Progress}" Maximum="100" Height="2" VerticalAlignment="Bottom" Foreground="{DynamicResource AccentPrimaryBrush}" Background="Transparent" CornerRadius="0"/>
                         </Grid>
                     </Border>
                 </DataTemplate>

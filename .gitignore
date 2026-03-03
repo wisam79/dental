@@ -40,7 +40,6 @@ artifacts/
 *.cache
 *.aps
 *.ncb
-*.opendb
 *.sdf
 *.cachefile
 *.VC.db
@@ -52,9 +51,6 @@ artifacts/
 *.sln.iml
 
 # User-specific files
-*.rsuser
-*.suo
-*.user
 *.userosscache
 *.sln.docstates
 
@@ -96,9 +92,6 @@ TestResolveViewModel.cs
 # Panoramic dataset images (large dataset - store externally)
 Panoramic Dental Xray Dataset/
 
-# Published output
-publish.ps1
-
 # Benchmark results
 src/DentalID.Benchmark/benchmark_results_*.csv
 
@@ -108,5 +101,20 @@ tests/DebugTool/
 tests/BatchXrayTest/
 tests/BatchXrayTest.csx
 
+# Miscellaneous project files
 fdi_audit.csv
 dental.png
+publish.ps1
+
+# Project-specific temp/debug artifacts (never commit these)
+startup_crash.txt
+build_log.txt
+out.txt
+out_fdiasas.html
+check_onnx.cs
+scripts/compare_output/
+scripts/__pycache__/
+scripts/model_diagnostics_debug*/
+scripts/model_diagnostics_report*.json
+scripts/compare_models.py
+scripts/inspect_annotations.py

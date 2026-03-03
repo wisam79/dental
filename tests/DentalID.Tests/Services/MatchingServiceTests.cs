@@ -64,4 +64,5 @@ public class MatchingServiceTests
         Assert.Equal(0, scoreOrthogonal, 0.001);
         Assert.Equal(1.0, scoreIdentical, 0.001);
     }
+
 }

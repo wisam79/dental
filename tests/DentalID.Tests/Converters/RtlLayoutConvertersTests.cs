@@ -60,18 +60,23 @@ public class RtlLayoutConvertersTests
     {
         var converter = BoolToArrowGeometryConverter.Instance;
 
-        var prevLtr = converter.Convert(false, typeof(object), "Prev", CultureInfo.InvariantCulture)?.ToString();
-        var prevRtl = converter.Convert(true, typeof(object), "Prev", CultureInfo.InvariantCulture)?.ToString();
-        var nextLtr = converter.Convert(false, typeof(object), "Next", CultureInfo.InvariantCulture)?.ToString();
-        var nextRtl = converter.Convert(true, typeof(object), "Next", CultureInfo.InvariantCulture)?.ToString();
+        var prevLtr = converter.Convert(false, typeof(object), "Prev", CultureInfo.InvariantCulture);
+        var prevRtl = converter.Convert(true, typeof(object), "Prev", CultureInfo.InvariantCulture);
+        var nextLtr = converter.Convert(false, typeof(object), "Next", CultureInfo.InvariantCulture);
+        var nextRtl = converter.Convert(true, typeof(object), "Next", CultureInfo.InvariantCulture);
 
-        prevLtr.Should().NotBeNullOrWhiteSpace();
-        prevRtl.Should().NotBeNullOrWhiteSpace();
-        nextLtr.Should().NotBeNullOrWhiteSpace();
-        nextRtl.Should().NotBeNullOrWhiteSpace();
+        prevLtr.Should().NotBeNull("Fallback string should have parsed to Geometry");
+        prevRtl.Should().NotBeNull();
+        nextLtr.Should().NotBeNull();
+        nextRtl.Should().NotBeNull();
         prevLtr.Should().NotBe(prevRtl);
         nextLtr.Should().NotBe(nextRtl);
-        prevLtr.Should().Be(nextRtl);
-        prevRtl.Should().Be(nextLtr);
+        prevLtr?.ToString().Should().Be(nextRtl?.ToString());
+        prevRtl?.ToString().Should().Be(nextLtr?.ToString());
     }
 }
+
+
+
+
+

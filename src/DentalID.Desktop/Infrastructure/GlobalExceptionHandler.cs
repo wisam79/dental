@@ -64,10 +64,27 @@ INNER EXCEPTION:
             {
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    // In a real scenario, show a dialog. For now, specific Debug output.
                     System.Diagnostics.Debug.WriteLine("[CRITICAL] Application Crashed. Log saved to: " + crashLogPath);
-                    // Safe Shutdown
-                    desktop.Shutdown(-1);
+                    var errorWindow = new Avalonia.Controls.Window
+                    {
+                        Title = "Critical Error",
+                        Content = new Avalonia.Controls.TextBlock 
+                        { 
+                            Text = $"The application encountered a critical error and must close.\nLog saved to: {crashLogPath}\nError: {ex.Message}", 
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap, 
+                            Margin = new Avalonia.Thickness(20) 
+                        },
+                        Width = 500,
+                        Height = 200,
+                        WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterScreen,
+                        Topmost = true
+                    };
+                    
+                    errorWindow.Closed += (s, e) => desktop.Shutdown(-1);
+                    errorWindow.Show();
+                    
+                    // Fallback shutdown if window is ignored
+                    System.Threading.Tasks.Task.Delay(10000).ContinueWith(_ => Dispatcher.UIThread.Post(() => desktop.Shutdown(-1)));
                 });
             }
             else

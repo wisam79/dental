@@ -34,10 +34,10 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Feature extraction: SAM encoder → mean-pool [1,256,64,64] → float[256]
+    // Feature extraction: SAM encoder → mean-pool [1,256,64,64] → float[1024 deep features] + float[160 spatial features]
     // ─────────────────────────────────────────────────────────────────────────
 
-    public (float[]? vector, string? error) ExtractFeatures(SKBitmap bitmap)
+    public (float[]? vector, string? error) ExtractFeatures(SKBitmap bitmap, IEnumerable<DetectedTooth>? detections = null)
     {
         if (_session.Encoder == null) return (null, "Encoder model not loaded");
         try
@@ -58,7 +58,11 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
             int quadH = h / 2;
             int quadW = w / 2;
             int quadSpatialCount = quadH * quadW;
-            var vector = new float[channels * 4];
+            
+            // 1024 floats for SAM Deep Features + 160 floats for Spatial Geometry (32 teeth * 5 floats: conf,x,y,w,h)
+            int expectedDeepFeatures = channels * 4;
+            int totalFeatures = expectedDeepFeatures + 160; 
+            var vector = new float[totalFeatures];
 
             unsafe
             {
@@ -100,9 +104,55 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
                     }
                 }
             }
+
+            // Append Spatial Features
+            if (detections != null)
+            {
+                AppendSpatialGeometry(vector, expectedDeepFeatures, detections);
+            }
+
             return (vector, null);
         }
-        catch (Exception ex) { return (null, ex.Message); }
+        catch (Exception ex) 
+        { 
+            _logger.LogError(ex, "Failed to extract features.");
+            return (null, ex.Message); 
+        }
+    }
+
+    private static void AppendSpatialGeometry(float[] vector, int offset, IEnumerable<DetectedTooth> detections)
+    {
+        // Standard 32 adult teeth
+        int[] fdiKeys = {
+            18, 17, 16, 15, 14, 13, 12, 11,
+            21, 22, 23, 24, 25, 26, 27, 28,
+            48, 47, 46, 45, 44, 43, 42, 41,
+            31, 32, 33, 34, 35, 36, 37, 38
+        };
+
+        var toothDict = detections.Where(t => t.FdiNumber > 0).GroupBy(t => t.FdiNumber).ToDictionary(g => g.Key, g => g.First());
+
+        for (int i = 0; i < fdiKeys.Length; i++)
+        {
+            int baseIndex = offset + (i * 5);
+            if (toothDict.TryGetValue(fdiKeys[i], out var tooth))
+            {
+                vector[baseIndex + 0] = tooth.Confidence;
+                vector[baseIndex + 1] = tooth.X;
+                vector[baseIndex + 2] = tooth.Y;
+                vector[baseIndex + 3] = tooth.Width;
+                vector[baseIndex + 4] = tooth.Height;
+            }
+            else
+            {
+                // Missing or undetected tooth - fill with zeros
+                vector[baseIndex + 0] = 0f;
+                vector[baseIndex + 1] = 0f;
+                vector[baseIndex + 2] = 0f;
+                vector[baseIndex + 3] = 0f;
+                vector[baseIndex + 4] = 0f;
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

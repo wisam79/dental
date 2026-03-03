@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.Messaging;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class SettingsViewModel : ViewModelBase
+public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private int _selectedThemeIndex;
@@ -150,4 +150,7 @@ public partial class SettingsViewModel : ViewModelBase
             _settingsService.Save();
         }
     }
-}
+    public void Dispose() { CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this); }}
+
+
+

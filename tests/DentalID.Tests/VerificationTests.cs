@@ -74,7 +74,8 @@ namespace DentalID.Tests
             var teethSvc = new TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, aiConfig, aiSettings);
             var pathSvc  = new PathologyDetectionService(sessionManager, yoloParser, tensorPrep, aiConfig, aiSettings);
             var encoderSvc = new FeatureEncoderService(sessionManager, tensorPrep, aiConfig, new Infrastructure.Services.LogService());
-            var service = new OnnxInferenceService(sessionManager, teethSvc, pathSvc, encoderSvc, yoloParser, heuristicsService, intelligence, bio, cache, new Infrastructure.Services.LogService());
+            var samSvc = new SamSegmentationService(sessionManager, new Microsoft.Extensions.Logging.Abstractions.NullLogger<SamSegmentationService>());
+            var service = new OnnxInferenceService(sessionManager, teethSvc, pathSvc, encoderSvc, samSvc, yoloParser, heuristicsService, intelligence, bio, cache, new Infrastructure.Services.LogService());
             
             await service.InitializeAsync(modelsDir);
 

@@ -174,25 +174,25 @@ public class YoloDetectionParserTests
     }
 
     [Fact]
-    public void ParseTeethDetections_ShouldCapResultsTo32()
+    public void ParseTeethDetections_ShouldCapResultsTo52()
     {
         var config = new AiConfiguration
         {
-            FdiMapping = new FdiMappingSettings { ClassMap = Enumerable.Range(11, 40).ToArray() },
+            FdiMapping = new FdiMappingSettings { ClassMap = Enumerable.Range(11, 60).ToArray() },
             Thresholds = new ThresholdSettings { TeethThreshold = 0.4f }
         };
         var parser = new YoloDetectionParser(config, new AiSettings { IouThreshold = 0.5f }, _mockFdiService.Object);
         _mockFdiService.Setup(s => s.RefineFdiNumbering(It.IsAny<List<DetectedTooth>>()))
             .Returns((List<DetectedTooth> list) => list);
 
-        var detections = Enumerable.Range(0, 40)
-            .Select(i => (i, 0.9f, 20f + (i * 15f), 300f, 12f, 30f))
+        var detections = Enumerable.Range(0, 60)
+            .Select(i => (i, 0.9f, 20f + (i * 10f), 300f, 12f, 30f))
             .ToList();
 
-        var tensor = CreateYoloOutput(40, 40, detections);
+        var tensor = CreateYoloOutput(60, 60, detections);
         var result = parser.ParseTeethDetections(tensor, 640, 1, 0, 0, 0.5f);
 
-        result.Should().HaveCount(32);
+        result.Should().HaveCount(52);
     }
 
     [Fact]

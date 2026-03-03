@@ -207,4 +207,33 @@ public class MatchingServiceEdgeCaseTests
 
         scoreById["EXACT"].Should().BeGreaterThan(0.95);
     }
+
+    [Fact]
+    public void FindMatches_ShouldIgnoreMalformedAnalysisJson_AndFallbackToSubjectVector()
+    {
+        float[] probeVector = { 1.0f, 0.0f, 0.0f };
+        byte[] candidateBytes = new byte[probeVector.Length * sizeof(float)];
+        Buffer.BlockCopy(probeVector, 0, candidateBytes, 0, candidateBytes.Length);
+
+        var candidate = new Subject
+        {
+            SubjectId = "SUB-MALFORMED",
+            FeatureVector = candidateBytes,
+            DentalImages = new List<DentalImage>
+            {
+                new DentalImage
+                {
+                    AnalysisResults = "{ malformed json",
+                    FingerprintCode = null
+                }
+            }
+        };
+
+        var probe = new DentalFingerprint { FeatureVector = probeVector };
+
+        var results = _service.FindMatches(probe, new[] { candidate });
+
+        results.Should().HaveCount(1);
+        results[0].Subject.Should().Be(candidate);
+    }
 }

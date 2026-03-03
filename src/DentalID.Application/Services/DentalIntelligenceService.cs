@@ -59,8 +59,31 @@ public class DentalIntelligenceService : IDentalIntelligenceService
         string narrative = GenerateExpertNarrative(result, healthScore);
         result.SmartInsights.Add("📋 " + narrative);
         
-        // --- PHASE 7: CLINICAL DECISION SUPPORT ---
-        // 9. Urgency & Prognosis
+        // --- PHASE 7: FORENSIC SUPER INTELLIGENCE ---
+        // 9. Demographic & Socioeconomic Profiling
+        AnalyzeSocioeconomicProfile(result);
+        
+        // 10. Advanced Trauma vs. Decay Analysis
+        AnalyzeMechanismOfInjury(result);
+        
+        // 11. Arch Morphology
+        AnalyzeArchMorphology(result);
+        
+        // 12. Unique Forensic Fingerprint (Rarity Index)
+        ExtractForensicFingerprint(result);
+
+        // --- PHASE 8: MEDICAL & FORENSIC AUXILIARY ALGORITHMS ---
+        // 13. WHO DMFT Index
+        CalculateDmftIndex(result);
+        
+        // 14. Mandibular Canine Index (MCI) for Sex Determination
+        CalculateMandibularCanineIndex(result);
+        
+        // 15. International Charting Translation
+        TranslateInternationalCharting(result);
+
+        // --- PHASE 9: CLINICAL DECISION SUPPORT ---
+        // 16. Urgency & Prognosis
         AnalyzeClinicalUrgency(result);
 
         // 10. Referrals
@@ -136,7 +159,7 @@ public class DentalIntelligenceService : IDentalIntelligenceService
         // Fallacy #7 Fix: Implants functionally replace missing teeth — count them toward present teeth.
         // Without this offset, a patient with 5 implants would be penalized for "missing" 5 teeth
         // even though they have full functional dentition via implants.
-        int implantCount = result.Pathologies.Count(p => p.ClassName.Contains("Implant"));
+        int implantCount = result.Pathologies.Count(p => p.ClassName.Contains("Implant") && !wisdoms.Contains(p.ToothNumber ?? 0));
         int effectivePresent = Math.Min(28, presentStandard + implantCount);
         // Bug #9 Fix: Use Math.Max(0, ...) to prevent missingStandard from going negative.
         // This happened when the AI detected more teeth than the standard 28 (possible with retained
@@ -365,7 +388,12 @@ public class DentalIntelligenceService : IDentalIntelligenceService
              
              // Bug #15 Fix: Use modulo arithmetic instead of string.EndsWith("8").
              // EndsWith("8") is fragile and locale-sensitive; FDI wisdom teeth always have units digit == 8.
-             if (toothPathologies.Count == 0 && tooth.FdiNumber % 10 != 8) continue; // Skip healthy non-wisdom teeth
+             if (toothPathologies.Count == 0)
+             {
+                 if (tooth.FdiNumber % 10 == 8)
+                     plan.Add($"Tooth {tooth.FdiNumber}: Erupted Wisdom Tooth (Monitor)");
+                 continue;
+             }
              
              foreach (var path in toothPathologies)
              {
@@ -435,13 +463,15 @@ public class DentalIntelligenceService : IDentalIntelligenceService
 
         int[] pairs = { 18, 28, 13, 23, 48, 38, 43, 33 };
 
-        // Check Upper Wisdoms
-        if (teeth.Contains(18) && !teeth.Contains(28)) result.SmartInsights.Add("Asymmetry: Right Upper Wisdom (18) present, Left (28) missing.");
-        if (!teeth.Contains(18) && teeth.Contains(28)) result.SmartInsights.Add("Asymmetry: Left Upper Wisdom (28) present, Right (18) missing.");
-
-        // Check Canines (Key for forensics)
-        if (teeth.Contains(13) ^ teeth.Contains(23)) 
-             result.SmartInsights.Add($"Asymmetry: Upper Canines unmatched ({(teeth.Contains(13) ? "13 only" : "23 only")}).");
+        for (int i = 0; i < pairs.Length; i += 2)
+        {
+            int right = pairs[i];
+            int left = pairs[i + 1];
+            if (teeth.Contains(right) && !teeth.Contains(left))
+                result.SmartInsights.Add($"Asymmetry: Right tooth ({right}) present, Left ({left}) missing.");
+            else if (!teeth.Contains(right) && teeth.Contains(left))
+                result.SmartInsights.Add($"Asymmetry: Left tooth ({left}) present, Right ({right}) missing.");
+        }
     }
 
     private void AnalyzeOcclusion(AnalysisResult result)
@@ -660,10 +690,12 @@ public class DentalIntelligenceService : IDentalIntelligenceService
         var crowns = result.Pathologies.Where(p => p.ClassName.Contains("Crown", StringComparison.OrdinalIgnoreCase)).ToList();
 
         int implantCrowns = 0;
+        var usedCrowns = new HashSet<DetectedPathology>();
         foreach (var implant in implants)
         {
             foreach (var crown in crowns)
             {
+                if (usedCrowns.Contains(crown)) continue;
                 // Check if X-coordinates align and crown is vertically adjacent/overlapping.
                 bool horizontalAlign = (Math.Max(implant.X, crown.X) < Math.Min(implant.X + implant.Width, crown.X + crown.Width));
                 bool verticalAdjacent = Math.Abs(crown.Y + crown.Height - implant.Y) < (implant.Height * 0.7f) || 
@@ -673,6 +705,7 @@ public class DentalIntelligenceService : IDentalIntelligenceService
                 if (horizontalAlign && verticalAdjacent)
                 {
                     implantCrowns++;
+                    usedCrowns.Add(crown);
                     break; // Move to the next implant, this one has a crown
                 }
             }
@@ -683,4 +716,258 @@ public class DentalIntelligenceService : IDentalIntelligenceService
              result.SmartInsights.Add($"Prosthodontics: Confirmed {implantCrowns} Implant-Supported Crown(s) via spatial coupling. High-value restorative status.");
         }
     }
+
+    private void AnalyzeSocioeconomicProfile(AnalysisResult result)
+    {
+        // Infer socioeconomic access to care based on treatment complexity vs disease burden
+        int implants = result.Pathologies.Count(p => p.ClassName.Contains("Implant", StringComparison.OrdinalIgnoreCase));
+        int crowns = result.Pathologies.Count(p => p.ClassName.Contains("Crown", StringComparison.OrdinalIgnoreCase));
+        int endo = result.Pathologies.Count(p => p.ClassName.Contains("Root Canal", StringComparison.OrdinalIgnoreCase) || p.ClassName.Contains("Root Canal Obturation", StringComparison.OrdinalIgnoreCase));
+        
+        int caries = result.Pathologies.Count(p => p.ClassName.Contains("Caries", StringComparison.OrdinalIgnoreCase));
+        int roots = result.Pathologies.Count(p => p.ClassName.Contains("Root Piece", StringComparison.OrdinalIgnoreCase));
+        int lesions = result.Pathologies.Count(p => p.ClassName.Contains("Periapical", StringComparison.OrdinalIgnoreCase) || p.ClassName.Contains("Lesion", StringComparison.OrdinalIgnoreCase));
+
+        int majorRestorations = implants + (crowns / 2) + endo; // Implants carry high weight
+        int activeDisease = caries + roots + (lesions * 2);
+
+        if (implants >= 2 || (majorRestorations >= 4 && activeDisease <= 2))
+        {
+            result.SmartInsights.Add("📊 Socioeconomic Profile: Advanced restorative continuum detected (Implants/Crowns). Indicates sustained access to high-tier professional dental care and likely higher socioeconomic status.");
+        }
+        else if (activeDisease >= 6 && majorRestorations == 0)
+        {
+            result.SmartInsights.Add("📊 Socioeconomic Profile: High burden of active, untreated disease with no evidence of complex restorative care. Suggests limited access to routine dental services or severe neglect.");
+        }
+        else if (result.Pathologies.Count(p => p.ClassName.Contains("Filling", StringComparison.OrdinalIgnoreCase)) > 4 && activeDisease < 3)
+        {
+            result.SmartInsights.Add("📊 Socioeconomic Profile: Moderate/Standard care history. Routine maintenance evident via multiple functional fillings without advanced complex prosthetics.");
+        }
+    }
+
+    private void AnalyzeMechanismOfInjury(AnalysisResult result)
+    {
+        // Differentiate blunt force trauma from biological tooth loss/fracture
+        var anteriorTeethFDI = new HashSet<int> { 11, 12, 21, 22, 31, 32, 41, 42 };
+        
+        var missingAnterior = anteriorTeethFDI.Where(fdi => !result.Teeth.Any(t => t.FdiNumber == fdi)).ToList();
+        var brokenAnterior = result.Pathologies.Where(p => p.ToothNumber.HasValue && anteriorTeethFDI.Contains(p.ToothNumber.Value) && p.ClassName.Contains("Root Piece", StringComparison.OrdinalIgnoreCase)).ToList();
+        
+        if (missingAnterior.Count == 0 && brokenAnterior.Count == 0) return; // No anterior damage
+
+        bool generalizedBoneLoss = result.Pathologies.Any(p => p.ClassName.Contains("Bone Loss", StringComparison.OrdinalIgnoreCase));
+        int posteriorCaries = result.Pathologies.Count(p => p.ToothNumber.HasValue && !anteriorTeethFDI.Contains(p.ToothNumber.Value) && p.ClassName.Contains("Caries", StringComparison.OrdinalIgnoreCase));
+
+        int damagedFrontTeeth = missingAnterior.Count + brokenAnterior.Count;
+
+        if (damagedFrontTeeth >= 2 && !generalizedBoneLoss && posteriorCaries <= 2)
+        {
+            // Missing/Broken front teeth in an otherwise healthy mouth = Trauma
+            result.SmartInsights.Add($"🚑 Mechanism of Injury: High probability of Maxillofacial Trauma. Loss or fracture of {damagedFrontTeeth} anterior teeth without commensurate generalized periodontal disease or rampant caries strongly suggests a blunt force event.");
+        }
+        else if (damagedFrontTeeth > 0 && (generalizedBoneLoss || posteriorCaries > 4))
+        {
+            // Missing/Broken front teeth in a diseased mouth = Biology
+            result.SmartInsights.Add($"🦠 Mechanism of Injury: Anterior tooth loss/fracture is consistent with generalized biological breakdown (Severe Caries/Periodontitis) rather than acute trauma.");
+        }
+    }
+
+    private void AnalyzeArchMorphology(AnalysisResult result)
+    {
+        // Must have Left and Right Canines and Molars to measure arch shape
+        var canines = result.Teeth.Where(t => t.FdiNumber == 13 || t.FdiNumber == 23).OrderBy(t => t.X).ToList();
+        var molars = result.Teeth.Where(t => t.FdiNumber == 16 || t.FdiNumber == 26).OrderBy(t => t.X).ToList();
+
+        if (canines.Count == 2 && molars.Count == 2)
+        {
+            float interCanineDistance = Math.Abs(canines[1].X - canines[0].X);
+            float interMolarDistance = Math.Abs(molars[1].X - molars[0].X);
+            
+            if (interMolarDistance > 0)
+            {
+                float ratio = interCanineDistance / interMolarDistance;
+                
+                // V-Shaped Arch: Canines are close together compared to molars
+                // U-Shaped (Square) Arch: Canines are relatively far apart, closer to molar width
+                if (ratio < 0.60f)
+                {
+                    result.SmartInsights.Add("📐 Arch Morphology: Tapered / V-Shaped Maxillary Arch. (Anthropological trait marker)");
+                }
+                else if (ratio > 0.82f)
+                {
+                    result.SmartInsights.Add("📐 Arch Morphology: Square / U-Shaped Maxillary Arch. (Anthropological trait marker)");
+                }
+                else
+                {
+                    result.SmartInsights.Add("📐 Arch Morphology: Ovoid Maxillary Arch (Standard).");
+                }
+            }
+        }
+    }
+
+    private void ExtractForensicFingerprint(AnalysisResult result)
+    {
+        var anomalies = new List<string>();
+        
+        // 1. Rare Missing Patterns (e.g. missing central incisors or first molars is rare compared to wisdom teeth)
+        var present = result.Teeth.Select(t => t.FdiNumber).ToHashSet();
+        if (!present.Contains(11) && !present.Contains(21)) anomalies.Add("Agenesis/Loss of both Maxillary Central Incisors (11, 21)");
+        if (!present.Contains(36) && present.Contains(37)) anomalies.Add("Missing Left Mandibular First Molar (36) while Second (37) is present");
+        if (!present.Contains(46) && present.Contains(47)) anomalies.Add("Missing Right Mandibular First Molar (46) while Second (47) is present");
+        
+        // 2. High-value specific treatments
+        var implants = result.Pathologies.Where(p => p.ClassName.Contains("Implant", StringComparison.OrdinalIgnoreCase)).Where(p => p.ToothNumber.HasValue).Select(p => p.ToothNumber!.Value).ToList();
+        if (implants.Count > 0)
+        {
+            anomalies.Add($"Titanium Endosseous Implants at loci: {string.Join(", ", implants)}");
+        }
+
+        var rctTeeth = result.Pathologies.Where(p => p.ClassName.Contains("Root Canal", StringComparison.OrdinalIgnoreCase) || p.ClassName.Contains("Root Canal Obturation", StringComparison.OrdinalIgnoreCase)).Where(p => p.ToothNumber.HasValue).Select(p => p.ToothNumber!.Value).ToList();
+        if (rctTeeth.Count > 0)
+        {
+            anomalies.Add($"Radiopaque Endodontic Obturations at loci: {string.Join(", ", rctTeeth)}");
+        }
+        
+        // 3. Ectopic / Abnormal Eruptions (From Impaction flag or Spatial)
+        foreach(var t in result.Teeth.Where(t => t.Width > t.Height * 1.5f && t.FdiNumber % 10 >= 1 && t.FdiNumber % 10 <= 7))
+        {
+            anomalies.Add($"Severe horizontal impaction / ectopic eruption of non-wisdom tooth ({t.FdiNumber})");
+        }
+        
+        if (anomalies.Count > 0)
+        {
+            // Select the top 2 rarest/most distinctive string markers
+            var topIdentifiers = anomalies.Take(3).ToList();
+            result.SmartInsights.Add($"🔍 FORENSIC FINGERPRINT (Primary Match Identifiers):");
+            foreach(var id in topIdentifiers)
+            {
+                result.SmartInsights.Add($"  • {id}");
+            }
+        }
+        else
+        {
+            result.SmartInsights.Add($"🔍 FORENSIC FINGERPRINT: Standard dentition map. Rely on exact restoration geometries for matching.");
+        }
+    }
+
+    private void CalculateDmftIndex(AnalysisResult result)
+    {
+        // WHO DMFT (Decayed, Missing, Filled Teeth) 
+        // Focuses on the 28 adult teeth (excluding 18, 28, 38, 48 and supernumeraries)
+        
+        var adultFdi = result.Teeth.Where(t => t.FdiNumber % 10 >= 1 && t.FdiNumber % 10 <= 7).Select(t => t.FdiNumber).ToHashSet();
+        
+        // D (Decayed): Teeth with active Aries
+        int decayed = result.Pathologies
+            .Where(p => p.ClassName.Contains("Caries", StringComparison.OrdinalIgnoreCase) && p.ToothNumber.HasValue && p.ToothNumber.GetValueOrDefault() % 10 >= 1 && p.ToothNumber.GetValueOrDefault() % 10 <= 7)
+            .Select(p => p.ToothNumber)
+            .Distinct()
+            .Count();
+
+        // M (Missing): 28 - Present
+        int missing = Math.Max(0, 28 - adultFdi.Count);
+
+        // F (Filled): Teeth with Fillings or Crowns
+        int filled = result.Pathologies
+            .Where(p => (p.ClassName.Contains("Filling", StringComparison.OrdinalIgnoreCase) || p.ClassName.Contains("Crown", StringComparison.OrdinalIgnoreCase)) && p.ToothNumber.HasValue && p.ToothNumber.GetValueOrDefault() % 10 >= 1 && p.ToothNumber.GetValueOrDefault() % 10 <= 7)
+            .Select(p => p.ToothNumber)
+            .Distinct()
+            .Count();
+
+        int dmftScore = decayed + missing + filled;
+
+        result.SmartInsights.Add($"🌍 WHO DMFT Index: D:{decayed} M:{missing} F:{filled} (Total: {dmftScore}). Standardized epidemiological forensic marker.");
+    }
+
+    private void CalculateMandibularCanineIndex(AnalysisResult result)
+    {
+        // MCI (Mandibular Canine Index) for Biometric Sex Determination
+        var leftCanine = result.Teeth.FirstOrDefault(t => t.FdiNumber == 33);
+        var rightCanine = result.Teeth.FirstOrDefault(t => t.FdiNumber == 43);
+
+        if (leftCanine != null && rightCanine != null)
+        {
+            // Calculate average mesiodistal width of both canines
+            float avgCanineWidth = (leftCanine.Width + rightCanine.Width) / 2.0f;
+            
+            // Calculate Inter-Canine Distance (center to center)
+            float leftCenter = leftCanine.X + (leftCanine.Width / 2);
+            float rightCenter = rightCanine.X + (rightCanine.Width / 2);
+            float interCanineDistance = Math.Abs(leftCenter - rightCenter);
+
+            if (interCanineDistance > 0)
+            {
+                float mci = avgCanineWidth / interCanineDistance;
+                
+                // Typical cut-off based on Rao et al. (0.274 for Indian population, universally ~0.27)
+                // > 0.274 leans Male (larger canines relative to arch width)
+                // < 0.274 leans Female
+                string sexEstimate = mci > 0.274f ? "Male (MCI > 0.274)" : "Female (MCI < 0.274)";
+                
+                result.SmartInsights.Add($"⚧ Biometric Sex Estimate (MCI): {sexEstimate}. Calculated MCI Ratio: {mci:F3}. (Triangulate with AI Network Output).");
+            }
+        }
+    }
+
+    private void TranslateInternationalCharting(AnalysisResult result)
+    {
+        // Extract 3 most critical pathologies for translation
+        var criticalPathologies = result.Pathologies
+            .Where(p => p.ToothNumber.HasValue)
+            .OrderByDescending(p => p.Confidence)
+            .Take(3)
+            .ToList();
+
+        if (criticalPathologies.Count > 0)
+        {
+            var translations = new List<string>();
+            foreach(var p in criticalPathologies)
+            {
+                int fdi = p.ToothNumber!.Value;
+                int universal = FdiToUniversal(fdi);
+                string palmer = FdiToPalmer(fdi);
+                
+                string condition = p.ClassName.Replace(" ", "");
+                translations.Add($"{condition} @ FDI:{fdi} | UN:{universal} | Palmer:{palmer}");
+            }
+            
+            result.SmartInsights.Add($"🌐 Interpol / NCIC Interpolation Data:");
+            foreach(var str in translations)
+            {
+                result.SmartInsights.Add($"  • {str}");
+            }
+        }
+    }
+
+    private static int FdiToUniversal(int fdi)
+    {
+        // UNS: 1-32, starting Upper Right Wisdom (18 FDI) across to Upper Left (28 FDI), then Lower Left (38 FDI) to Lower Right (48 FDI)
+        int quad = fdi / 10;
+        int tooth = fdi % 10;
+
+        return quad switch
+        {
+            1 => 9 - tooth,       // 18 -> 1, 11 -> 8
+            2 => 8 + tooth,       // 21 -> 9, 28 -> 16
+            3 => 25 - tooth,      // 38 -> 17, 31 -> 24
+            4 => 24 + tooth,      // 41 -> 25, 48 -> 32
+            _ => 0
+        };
+    }
+
+    private static string FdiToPalmer(int fdi)
+    {
+        int quad = fdi / 10;
+        int tooth = fdi % 10;
+        
+        return quad switch
+        {
+            1 => $"UR{tooth}", // Upper Right
+            2 => $"UL{tooth}", // Upper Left
+            3 => $"LL{tooth}", // Lower Left
+            4 => $"LR{tooth}", // Lower Right
+            _ => "?"
+        };
+    }
 }
+

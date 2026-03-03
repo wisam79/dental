@@ -17,6 +17,15 @@
     <SolidColorBrush x:Key="PageBgBrush"          Color="#F6F8FA"/>
     <SolidColorBrush x:Key="SidebarBgBrush"       Color="#E8FFFFFF"/> <!-- 91% opacity white -->
 
+    <!-- ── Overlays & Shadows ────────────────────────────── -->
+    <SolidColorBrush x:Key="OverlayHoverBrush"    Color="#0F000000"/>
+    <SolidColorBrush x:Key="OverlayPressedBrush"  Color="#1A000000"/>
+    <SolidColorBrush x:Key="OverlaySubtleBrush"   Color="#08000000"/>
+    <SolidColorBrush x:Key="OverlayStrongBrush"   Color="#80000000"/>
+    <SolidColorBrush x:Key="OverlayModerateBrush" Color="#66000000"/>
+    <SolidColorBrush x:Key="ShadowBrush"          Color="#20000000"/>
+    <SolidColorBrush x:Key="NeonGlowBrush"        Color="#400969DA"/>
+
     <!-- ── Accent Colors ─────────────────────────────────── -->
     <Color x:Key="AccentPrimaryColor">#0969DA</Color>
     <SolidColorBrush x:Key="AccentPrimaryBrush"        Color="#0969DA"/> <!-- GitHub Blue -->

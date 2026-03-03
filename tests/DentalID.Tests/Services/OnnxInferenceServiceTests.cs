@@ -28,6 +28,7 @@ public class OnnxInferenceServiceTests
     private readonly Mock<IFeatureEncoderService>     _mockEncoder;
     private readonly Mock<IYoloDetectionParser>       _mockYolo;
     private readonly Mock<IForensicHeuristicsService> _mockHeuristics;
+    private readonly Mock<ISamSegmentationService>    _mockSam;
 
     public OnnxInferenceServiceTests()
     {
@@ -42,6 +43,7 @@ public class OnnxInferenceServiceTests
         _mockEncoder      = new Mock<IFeatureEncoderService>();
         _mockYolo         = new Mock<IYoloDetectionParser>();
         _mockHeuristics   = new Mock<IForensicHeuristicsService>();
+        _mockSam          = new Mock<ISamSegmentationService>();
 
         // Default plumbing
         _mockSession.Setup(s => s.InferenceLock).Returns(new SemaphoreSlim(1, 1));
@@ -59,6 +61,7 @@ public class OnnxInferenceServiceTests
         _mockTeeth.Object,
         _mockPath.Object,
         _mockEncoder.Object,
+        _mockSam.Object,
         _mockYolo.Object,
         _mockHeuristics.Object,
         _mockIntelligence.Object,
@@ -76,6 +79,7 @@ public class OnnxInferenceServiceTests
             _mockTeeth.Object,
             _mockPath.Object,
             _mockEncoder.Object,
+            _mockSam.Object,
             _mockYolo.Object,
             _mockHeuristics.Object,
             _mockIntelligence.Object,
@@ -93,6 +97,7 @@ public class OnnxInferenceServiceTests
             _mockTeeth.Object,
             _mockPath.Object,
             _mockEncoder.Object,
+            _mockSam.Object,
             _mockYolo.Object,
             _mockHeuristics.Object,
             _mockIntelligence.Object,
@@ -109,18 +114,43 @@ public class OnnxInferenceServiceTests
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
         var cachedResult = new AnalysisResult
         {
-            Teeth = new List<DetectedTooth> { new DetectedTooth { FdiNumber = 11 } }
+            Teeth = new List<DetectedTooth> { new DetectedTooth { FdiNumber = 11 } },
+            ProcessingTimeMs = 123
         };
 
+        _mockSession.Setup(s => s.IsReady).Returns(true);
         _mockIntegrity.Setup(x => x.ComputeHash(It.IsAny<Stream>())).Returns("dummy_hash");
         _mockCache.Setup(x => x.Exists("analysis_dummy_hash")).Returns(true);
         _mockCache.Setup(x => x.Get<AnalysisResult>("analysis_dummy_hash")).Returns(cachedResult);
 
         var result = await service.AnalyzeImageAsync(stream);
 
-        Assert.Same(cachedResult, result);
+        Assert.NotSame(cachedResult, result);
         _mockCache.Verify(x => x.Get<AnalysisResult>("analysis_dummy_hash"), Times.Once);
         Assert.Equal(0, result.ProcessingTimeMs);
+        Assert.Equal(123, cachedResult.ProcessingTimeMs);
+    }
+
+    [Fact]
+    public async Task AnalyzeImageAsync_ReturnsCachedResult_ForNonSeekableInputStream()
+    {
+        var service = CreateService();
+        using var stream = new NonSeekableReadStream(new byte[] { 1, 2, 3, 4 });
+        var cachedResult = new AnalysisResult
+        {
+            Teeth = new List<DetectedTooth> { new DetectedTooth { FdiNumber = 26 } }
+        };
+
+        _mockSession.Setup(s => s.IsReady).Returns(true);
+        _mockIntegrity.Setup(x => x.ComputeHash(It.IsAny<Stream>())).Returns("non_seek_hash");
+        _mockCache.Setup(x => x.Exists("analysis_non_seek_hash")).Returns(true);
+        _mockCache.Setup(x => x.Get<AnalysisResult>("analysis_non_seek_hash")).Returns(cachedResult);
+
+        var result = await service.AnalyzeImageAsync(stream);
+
+        Assert.NotNull(result);
+        Assert.Single(result.Teeth);
+        Assert.Equal(26, result.Teeth[0].FdiNumber);
     }
 
     [Fact]
@@ -132,7 +162,7 @@ public class OnnxInferenceServiceTests
         // No IntegrityService → skip cache check, go straight to lock + ready check
         var noIntegrityService = new OnnxInferenceService(
             _mockSession.Object, _mockTeeth.Object, _mockPath.Object, _mockEncoder.Object,
-            _mockYolo.Object, _mockHeuristics.Object, _mockIntelligence.Object,
+            _mockSam.Object, _mockYolo.Object, _mockHeuristics.Object, _mockIntelligence.Object,
             _mockBiometric.Object, _mockCache.Object, _mockLogger.Object);
 
         using var stream = CreateTestBitmapStream();
@@ -150,5 +180,41 @@ public class OnnxInferenceServiceTests
         bmp.Encode(ms, SKEncodedImageFormat.Png, 100);
         ms.Position = 0;
         return ms;
+    }
+
+    private sealed class NonSeekableReadStream : Stream
+    {
+        private readonly Stream _inner;
+
+        public NonSeekableReadStream(byte[] data)
+        {
+            _inner = new MemoryStream(data);
+        }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() => _inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 }

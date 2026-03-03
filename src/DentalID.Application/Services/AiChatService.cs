@@ -280,7 +280,7 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
-            var responseJson = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<OpenAiResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             return new AiChatResponse
@@ -315,7 +315,7 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
-            var responseJson = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<AnthropicResponse>(responseJson);
             
             return new AiChatResponse
@@ -350,7 +350,7 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             
-            var responseJson = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<OllamaResponse>(responseJson);
             
             return new AiChatResponse
@@ -388,7 +388,7 @@ Provide accurate, clinically relevant responses. Always cite specific findings f
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
             
             response.EnsureSuccessStatusCode();
-            var responseJson = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var result = JsonSerializer.Deserialize<GrokResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
             return new AiChatResponse

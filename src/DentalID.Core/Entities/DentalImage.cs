@@ -17,8 +17,21 @@ public class DentalImage : AuditableEntity
     public string? Quadrant { get; set; }
     public DateTime? CaptureDate { get; set; }
     public double? QualityScore { get; set; }
+    private string? _analysisResults;
     /// <summary>JSON-serialized analysis results from AI models.</summary>
-    public string? AnalysisResults { get; set; }
+    public string? AnalysisResults 
+    { 
+        get => _analysisResults; 
+        set 
+        { 
+            if (_analysisResults != value) 
+            {
+                _analysisResults = value;
+                _parsedAnalysisResults = null; // Invalidate cache when raw JSON string is updated
+            }
+        } 
+    }
+    private DentalID.Core.DTOs.AnalysisResult? _parsedAnalysisResults;
 
     /// <summary>
     /// Strongly-typed wrapper for AnalysisResults JSON.
@@ -29,19 +42,21 @@ public class DentalImage : AuditableEntity
     {
         get
         {
+            if (_parsedAnalysisResults != null) return _parsedAnalysisResults;
             if (string.IsNullOrEmpty(AnalysisResults)) return null;
             try 
             {
-                return System.Text.Json.JsonSerializer.Deserialize<DentalID.Core.DTOs.AnalysisResult>(AnalysisResults);
+                _parsedAnalysisResults = System.Text.Json.JsonSerializer.Deserialize<DentalID.Core.DTOs.AnalysisResult>(AnalysisResults);
+                return _parsedAnalysisResults;
             }
-            // Bug #5 fix: Catch only JsonException; other exceptions (OOM, etc.) should propagate
-            catch (System.Text.Json.JsonException)
+            catch (System.Text.Json.JsonException ex)
             {
-                return null;
+                throw new InvalidOperationException("Evidence corruption detected: Analysis results JSON is malformed.", ex);
             }
         }
         set
         {
+            _parsedAnalysisResults = value;
             if (value == null) AnalysisResults = null;
             else AnalysisResults = System.Text.Json.JsonSerializer.Serialize(value);
         }
@@ -67,6 +82,8 @@ public class DentalImage : AuditableEntity
     // Navigation properties
     public Subject Subject { get; set; } = null!;
     public ICollection<Match> QueryMatches { get; set; } = new List<Match>();
+
+    public byte[]? FeatureVectorBlob { get; set; }
 
     /// <summary>
     /// In-memory feature vector. Populated from AnalysisResults or external storage.

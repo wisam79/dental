@@ -103,9 +103,12 @@ public class SubjectsViewModelTests
     public async Task SaveSubject_ShouldHandleErrors_Gracefully()
     {
         // Arrange
+        // Reset messenger to ensure clean state for this test
+        WeakReferenceMessenger.Default.Reset();
+        
         _viewModel.OpenAddDialogCommand.Execute(null);
         _viewModel.FormFullName = "Error Prone";
-        _viewModel.FormNationalId = "TEST-NATIONAL-ID"; // Set national ID so the check is triggered
+        _viewModel.FormNationalId = "TEST-NATIONAL-ID"; // Set national id so the check is triggered
 
         // Mock GetByNationalIdAsync to return null (no existing subject) so the code proceeds to AddAsync
         _mockRepo.Setup(r => r.GetByNationalIdAsync(It.IsAny<string>()))
@@ -118,6 +121,9 @@ public class SubjectsViewModelTests
 
         // Act
         await _viewModel.SaveSubjectCommand.ExecuteAsync(null);
+        
+        // Small delay to ensure async message delivery completes
+        await Task.Delay(50);
 
         // Assert
         Assert.NotNull(receivedMessage);
@@ -132,6 +138,9 @@ public class SubjectsViewModelTests
 
         _mockRepo.Verify(r => r.AddAsync(It.IsAny<Subject>()), Times.Once);
         _mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Subject>()), Times.Never);
+        
+        // Cleanup
+        WeakReferenceMessenger.Default.Unregister<ShowToastMessage>(this);
     }
     [Fact]
     public async Task DeleteSubject_ShouldDelete_WhenExecuted()

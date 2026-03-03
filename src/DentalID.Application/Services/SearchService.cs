@@ -44,7 +44,7 @@ public class SearchService : ISearchService
         query = ApplySubjectSorting(query, parameters);
 
         // Get total count
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync().ConfigureAwait(false);
 
         // Apply pagination
         var items = await query
@@ -94,7 +94,7 @@ public class SearchService : ISearchService
         query = ApplyDentalImageSorting(query, parameters);
 
         // Get total count
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync().ConfigureAwait(false);
 
         // Apply pagination
         var items = await query
@@ -147,7 +147,7 @@ public class SearchService : ISearchService
         query = ApplyCaseSorting(query, parameters);
 
         // Get total count
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync().ConfigureAwait(false);
 
         // Apply pagination
         var items = await query
@@ -196,7 +196,7 @@ public class SearchService : ISearchService
         query = ApplyMatchSorting(query, parameters);
 
         // Get total count
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync().ConfigureAwait(false);
 
         // Apply pagination
         var items = await query

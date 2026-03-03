@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
@@ -21,6 +21,8 @@ public abstract partial class ViewModelBase : ObservableValidator
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    private int _isExecuting;
+
     /// <summary>
     /// Safely executes an async action with error handling and busy state management.
     /// </summary>
@@ -36,13 +38,13 @@ public abstract partial class ViewModelBase : ObservableValidator
         string? errorTitle = null,
         string? successTitle = null)
     {
-        if (IsBusy) return;
+        if (System.Threading.Interlocked.CompareExchange(ref _isExecuting, 1, 0) == 1) return;
 
         IsBusy = true;
         StatusMessage = "Processing...";
         try
         {
-            await action();
+            await action().ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(successMessage))
             {
                 WeakReferenceMessenger.Default.Send(new ShowToastMessage(successTitle ?? "Success", successMessage, ToastType.Success));
@@ -59,6 +61,8 @@ public abstract partial class ViewModelBase : ObservableValidator
         finally
         {
             IsBusy = false;
+            System.Threading.Interlocked.Exchange(ref _isExecuting, 0);
         }
     }
 }
+

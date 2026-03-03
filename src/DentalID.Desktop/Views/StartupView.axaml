@@ -271,8 +271,7 @@
                                          Maximum="100"
                                          Height="8"
                                          CornerRadius="4"
-                                         Foreground="{DynamicResource AccentPrimaryBrush}"
-                                         Background="{DynamicResource BorderSubtleBrush}" />
+                                         Foreground="{DynamicResource AccentPrimaryBrush}" />
                         </StackPanel>
                     </Border>
 
@@ -342,8 +341,9 @@
                                                 Padding="8,3">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <PathIcon Data="{StaticResource IconRefresh}"
-                                                          Width="9"
-                                                          Height="9"
+                                                          Width="11"
+                                                          Height="11"
+                                                          Classes="pulse-accent"
                                                           Foreground="{DynamicResource AccentSecondaryBrush}"
                                                           IsVisible="{Binding TeethShowLoadingIcon}" />
                                                 <PathIcon Data="{StaticResource IconCheckCircle}"
@@ -403,8 +403,9 @@
                                                 Padding="8,3">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <PathIcon Data="{StaticResource IconRefresh}"
-                                                          Width="9"
-                                                          Height="9"
+                                                          Width="11"
+                                                          Height="11"
+                                                          Classes="pulse-accent"
                                                           Foreground="{DynamicResource AccentSecondaryBrush}"
                                                           IsVisible="{Binding PathologyShowLoadingIcon}" />
                                                 <PathIcon Data="{StaticResource IconCheckCircle}"
@@ -464,8 +465,9 @@
                                                 Padding="8,3">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <PathIcon Data="{StaticResource IconRefresh}"
-                                                          Width="9"
-                                                          Height="9"
+                                                          Width="11"
+                                                          Height="11"
+                                                          Classes="pulse-accent"
                                                           Foreground="{DynamicResource AccentSecondaryBrush}"
                                                           IsVisible="{Binding EncoderShowLoadingIcon}" />
                                                 <PathIcon Data="{StaticResource IconCheckCircle}"

@@ -98,4 +98,62 @@ public class BiometricServiceTests
         
         Assert.InRange(similarity, 0.0, 1.0);
     }
+
+    [Fact]
+    public void CalculateSimilarity_ShouldPenalizeMissingTeethInRecord()
+    {
+        // Represents Bug #16 fix: Union-based comparison instead of Intersect.
+        // A fingerprint with 5 teeth vs 1 tooth should not be a perfect match 1.0.
+        var fp1 = _service.ParseFingerprintCode("11:H-12:H-13:H-14:H-15:H");
+        var fp2 = _service.ParseFingerprintCode("11:H");
+        
+        var similarity = _service.CalculateSimilarity(fp1, fp2);
+        
+        // With Union logic, Cosine SIM = 4 / (sqrt(20) * sqrt(4)) = 0.447
+        // If it were Intersect logic, Cosine SIM would be 1.0
+        Assert.True(similarity < 0.5, $"Expected similarity < 0.5, but was {similarity}");
+    }
+
+    [Fact]
+    public void GenerateFingerprint_RootCanal_ShouldContributeToUniquenessScore()
+    {
+        // Root canal obturation is a unique, high-scoring dental feature.
+        var teeth = new List<DetectedTooth> { new() { FdiNumber = 36 } };
+        var pathologies = new List<DetectedPathology>
+        {
+            new() { ClassName = "Root canal obturation", ToothNumber = 36 }
+        };
+
+        var fp = _service.GenerateFingerprint(teeth, pathologies);
+
+        Assert.Contains("36:R", fp.Code);
+        Assert.True(fp.UniquenessScore > 0, "Root canal should contribute uniqueness");
+    }
+
+    [Fact]
+    public void GenerateFingerprint_UnknownTooth_ShouldNotCrash()
+    {
+        // A tooth with FDI=0 or unknown should be handled safely.
+        var teeth = new List<DetectedTooth>
+        {
+            new() { FdiNumber = 0 }, // unknown / out of range
+            new() { FdiNumber = 11 } // normal
+        };
+        var pathologies = new List<DetectedPathology>();
+
+        // Should not throw
+        var fp = _service.GenerateFingerprint(teeth, pathologies);
+
+        Assert.NotNull(fp);
+        Assert.NotNull(fp.Code);
+    }
+
+    [Fact]
+    public void ParseFingerprintCode_EmptyString_ShouldReturnEmptyFingerprint()
+    {
+        var fp = _service.ParseFingerprintCode(string.Empty);
+
+        Assert.NotNull(fp);
+        Assert.Equal(0, fp.UniquenessScore);
+    }
 }

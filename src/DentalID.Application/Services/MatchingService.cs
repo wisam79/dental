@@ -47,6 +47,23 @@ public class MatchingService : IMatchingService
 
         if (vectorA.Length == 0) return 0;
 
+        // Spatial Hybrid Matching (1184 length = 1024 Deep Features + 160 Spatial Features)
+        if (vectorA.Length == 1184)
+        {
+            double deepSim = ComputeRawCosineSimilarity(vectorA.Slice(0, 1024), vectorB.Slice(0, 1024));
+            double spatialSim = ComputeRawCosineSimilarity(vectorA.Slice(1024, 160), vectorB.Slice(1024, 160));
+            
+            // Blend: 75% Deep Visual Identity + 25% Precise Geographic Match
+            // If the spatial similarity is very low, it drags down the score significantly.
+            return (deepSim * 0.75) + (Math.Max(0, spatialSim) * 0.25);
+        }
+
+        return ComputeRawCosineSimilarity(vectorA, vectorB);
+    }
+
+    private static double ComputeRawCosineSimilarity(ReadOnlySpan<float> vectorA, ReadOnlySpan<float> vectorB)
+    {
+
         // SIMD-accelerated path using Vector<T> (AVX/SSE via JIT)
         int vectorSize = Vector<float>.Count;
         var dotProductVec = Vector<float>.Zero;
@@ -115,6 +132,8 @@ public class MatchingService : IMatchingService
     {
         if (criteria == null) return candidates;
 
+        var today = DateTime.UtcNow;
+
         return candidates.Where(c =>
         {
             // Gender filter (allow Unknowns to pass through)
@@ -128,7 +147,6 @@ public class MatchingService : IMatchingService
             // Age filter
             if (c.DateOfBirth.HasValue)
             {
-                var today = DateTime.UtcNow;
                 var age = today.Year - c.DateOfBirth.Value.Year;
                 if (c.DateOfBirth.Value.Date > today.AddYears(-age)) age--;
 
@@ -241,13 +259,22 @@ public class MatchingService : IMatchingService
         float[]? candidateVector,
         VectorCenteringContext? centeringContext)
     {
-        // 1. Direct vector matching (highest accuracy)
+        // 1. Prioritize direct image-specific vector matching
+        float[]? imgVector = img.FeatureVector
+            ?? DecodeFeatureVector(img.FeatureVectorBlob)
+            ?? TryGetParsedFeatureVector(img);
+        if (probe.FeatureVector != null && imgVector != null)
+        {
+            return ScoreVectorMatch(probe.FeatureVector, imgVector, centeringContext);
+        }
+
+        // 2. Next, check fallback to subject-level aggregate vector
         if (probe.FeatureVector != null && candidateVector != null)
         {
             return ScoreVectorMatch(probe.FeatureVector, candidateVector, centeringContext);
         }
 
-        // 2. Fallback: code-based matching for legacy records
+        // 3. Fallback: code-based matching for legacy records
         if (!string.IsNullOrEmpty(img.FingerprintCode))
         {
             var candidateFp = _biometricService.ParseFingerprintCode(img.FingerprintCode);
@@ -256,6 +283,15 @@ public class MatchingService : IMatchingService
         }
 
         return (0, 0, null);
+    }
+
+    private static float[]? TryGetParsedFeatureVector(DentalImage image)
+    {
+        try
+        {
+            return image.ParsedAnalysisResults?.FeatureVector;
+        }
+        catch (InvalidOperationException) { return null; }
     }
 
     private (double score, double rawScore, double? centeredScore) ScoreVectorMatch(
@@ -437,3 +473,5 @@ public class MatchingService : IMatchingService
         return Math.Clamp(Math.Pow(scaled, CenteredScoreGamma), 0.0, 1.0);
     }
 }
+
+

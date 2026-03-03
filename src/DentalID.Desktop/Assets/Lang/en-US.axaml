@@ -138,6 +138,7 @@
     <system:String x:Key="Str_Odo_Pathology">Pathology</system:String>
     <system:String x:Key="Str_Odo_Reset">Reset</system:String>
     <system:String x:Key="Str_Odo_Title">Odontogram</system:String>
+    <system:String x:Key="Str_Odo_UpperJaw">Upper Jaw</system:String>
     <system:String x:Key="Str_Pathology_Caries">Pathology Caries</system:String>
     <system:String x:Key="Str_Pathology_Crown">Pathology Crown</system:String>
     <system:String x:Key="Str_Pathology_Filling">Pathology Filling</system:String>

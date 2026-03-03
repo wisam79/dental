@@ -18,6 +18,7 @@ public class NavigationService : INavigationService
 {
     private readonly IServiceProvider _serviceProvider;
     private ViewModels.ViewModelBase _currentView = null!;
+    private IServiceScope? _currentScope;
 
     public NavigationService(IServiceProvider serviceProvider)
     {
@@ -31,14 +32,6 @@ public class NavigationService : INavigationService
         {
             if (_currentView != value)
             {
-                // Memory Leak Fix: Dispose the old view if it implements IDisposable
-                if (_currentView is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                    var logger = _serviceProvider.GetService<ILoggerService>();
-                    logger?.LogInformation($"[NAV] Disposed resources for {_currentView.GetType().Name}");
-                }
-
                 _currentView = value;
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] NavigationService: CurrentView changed to {value?.GetType().Name}");
                 var loggerSvc = _serviceProvider.GetService<ILoggerService>();
@@ -58,10 +51,18 @@ public class NavigationService : INavigationService
         try
         {
             System.Diagnostics.Debug.WriteLine($"[DEBUG] NavigationService.NavigateTo<{typeof(TViewModel).Name}>()");
-            var viewModel = _serviceProvider.GetRequiredService<TViewModel>();
+            
+            // Memory Leak Fix: Dispose the previous scope and its Transient ViewModels
+            _currentScope?.Dispose();
+            
+            // Create a new scope for the incoming View
+            _currentScope = _serviceProvider.CreateScope();
+            
+            var viewModel = _currentScope.ServiceProvider.GetRequiredService<TViewModel>();
             System.Diagnostics.Debug.WriteLine($"[DEBUG] ViewModel resolved: {viewModel?.GetType().Name ?? "NULL"}");
             var logger = _serviceProvider.GetService<ILoggerService>();
-            logger?.LogInformation($"[NAV] NavigateTo: Resolved {typeof(TViewModel).Name}");
+            logger?.LogInformation($"[NAV] NavigateTo: Resolved {typeof(TViewModel).Name} in new scope");
+            
             CurrentView = viewModel!;
             return viewModel;
         }
@@ -70,9 +71,8 @@ public class NavigationService : INavigationService
             System.Diagnostics.Debug.WriteLine($"[ERROR] NavigationService.NavigateTo<{typeof(TViewModel).Name}>() failed: {ex.Message}");
             var logger = _serviceProvider.GetService<ILoggerService>();
             logger?.LogError(ex, $"[NAV] NavigateTo<{typeof(TViewModel).Name}>() failed: {ex.Message}");
-            // Do not rethrow to prevent crash
             System.Diagnostics.Debug.WriteLine($"[ERROR] Full exception: {ex}");
-            return null;
+            throw; // Fixed silent failure bug
         }
     }
 }

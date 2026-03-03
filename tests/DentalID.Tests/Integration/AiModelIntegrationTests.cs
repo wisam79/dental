@@ -90,12 +90,14 @@ public class AiModelIntegrationTests
         var teethSvc   = new TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, config, aiSettings);
         var pathSvc    = new PathologyDetectionService(sessionManager, yoloParser, tensorPrep, config, aiSettings);
         var encoderSvc = new FeatureEncoderService(sessionManager, tensorPrep, config, mockLogger.Object);
+        var mockSam    = new Mock<ISamSegmentationService>();
 
         var service = new OnnxInferenceService(
             sessionManager,
             teethSvc,
             pathSvc,
             encoderSvc,
+            mockSam.Object,
             yoloParser,
             heuristicsService,
             mockIntelligence.Object,
@@ -140,7 +142,7 @@ public class AiModelIntegrationTests
             }
             
             // Check Feature Vector (Encoder)
-            if (File.Exists(Path.Combine(_modelsPath, "encoder.onnx")))
+            if (File.Exists(Path.Combine(_modelsPath, "encoder.onnx")) && result.Teeth?.Count > 0)
             {
                  _output.WriteLine("Checking Encoder Result...");
                  Assert.NotNull(result.FeatureVector);

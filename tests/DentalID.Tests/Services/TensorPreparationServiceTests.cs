@@ -72,4 +72,47 @@ public class TensorPreparationServiceTests
         tensor[0, 1, 50, 50].Should().Be(0);
         tensor[0, 2, 50, 50].Should().Be(255);
     }
+
+    [Fact]
+    public void PrepareDetectionTensor_SquareImage_ShouldHaveZeroPadding()
+    {
+        // A 640×640 input scaled to a 640 target should have no letterboxing at all.
+        using var bmp = new SKBitmap(640, 640);
+
+        var (tensor, scale, padX, padY) = _service.PrepareDetectionTensor(bmp, 640);
+
+        scale.Should().Be(1.0f);
+        padX.Should().Be(0);
+        padY.Should().Be(0);
+        tensor.Dimensions.ToArray().Should().Equal(1, 3, 640, 640);
+    }
+
+    [Fact]
+    public void PrepareDetectionTensor_WhitePixel_ShouldBeNormalized_1()
+    {
+        // A pure-white image's pixels should be normalized to exactly 1.0.
+        using var bmp = new SKBitmap(640, 640);
+        using (var canvas = new SKCanvas(bmp)) canvas.Clear(SKColors.White);
+
+        var (tensor, _, _, _) = _service.PrepareDetectionTensor(bmp, 640);
+
+        // Sample center pixel – all three RGB channels should be 1.0f
+        tensor[0, 0, 320, 320].Should().Be(1.0f);
+        tensor[0, 1, 320, 320].Should().Be(1.0f);
+        tensor[0, 2, 320, 320].Should().Be(1.0f);
+    }
+
+    [Fact]
+    public void PrepareDetectionTensor_BlackPixel_ShouldBeNormalized_0()
+    {
+        // A pure-black image's pixels should be normalized to exactly 0.0.
+        using var bmp = new SKBitmap(640, 640);
+        using (var canvas = new SKCanvas(bmp)) canvas.Clear(SKColors.Black);
+
+        var (tensor, _, _, _) = _service.PrepareDetectionTensor(bmp, 640);
+
+        tensor[0, 0, 320, 320].Should().Be(0.0f);
+        tensor[0, 1, 320, 320].Should().Be(0.0f);
+        tensor[0, 2, 320, 320].Should().Be(0.0f);
+    }
 }

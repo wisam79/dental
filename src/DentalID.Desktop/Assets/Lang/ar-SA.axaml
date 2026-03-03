@@ -81,6 +81,7 @@
     
     <!-- Odontogram -->
     <system:String x:Key="Str_Odo_Title">المخطط السني</system:String>
+    <system:String x:Key="Str_Odo_UpperJaw">الفك العلوي</system:String>
     <system:String x:Key="Str_Odo_Reset">إعادة تعيين</system:String>
     <system:String x:Key="Str_Odo_Healthy">سليم</system:String>
     <system:String x:Key="Str_Odo_Pathology">إصابة / مرض</system:String>

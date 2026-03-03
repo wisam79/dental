@@ -167,6 +167,9 @@ public class BoolToArrowGeometryConverter : IValueConverter
 {
     public static readonly BoolToArrowGeometryConverter Instance = new();
 
+    private static Geometry? _fallbackLeft;
+    private static Geometry? _fallbackRight;
+
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isRtl = value is bool b && b;
@@ -186,9 +189,27 @@ public class BoolToArrowGeometryConverter : IValueConverter
             return geometry;
         }
 
-        const string fallbackLeft = "M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z";
-        const string fallbackRight = "M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z";
-        return resourceKey == "IconArrowLeft" ? fallbackLeft : fallbackRight;
+        try
+        {
+            if (resourceKey == "IconArrowLeft")
+            {
+                _fallbackLeft ??= Geometry.Parse("M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z");
+                return _fallbackLeft;
+            }
+            else
+            {
+                _fallbackRight ??= Geometry.Parse("M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z");
+                return _fallbackRight;
+            }
+        }
+        catch
+        {
+            // If Avalonia rendering platform isn't initialized (e.g., in unit tests), return the raw string.
+            // XAML's type converter will handle converting this to a Geometry at runtime if needed.
+            return resourceKey == "IconArrowLeft" 
+                ? "M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+                : "M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z";
+        }
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -234,3 +255,5 @@ public class BoolToLogicalColumnWidthConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+

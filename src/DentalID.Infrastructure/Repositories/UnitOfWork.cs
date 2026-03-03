@@ -48,7 +48,7 @@ public class UnitOfWork : IUnitOfWork
     {
         try
         {
-            return await _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (DbUpdateException ex)
         {

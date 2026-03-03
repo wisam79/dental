@@ -80,20 +80,25 @@ public class LocalizationServiceTests
     {
         _loc.SwitchLanguage("en");
         var changed = new List<string>();
-
-        _loc.PropertyChanged += (_, e) =>
+        System.ComponentModel.PropertyChangedEventHandler handler = (_, e) =>
         {
             if (e.PropertyName != null) changed.Add(e.PropertyName);
         };
+        _loc.PropertyChanged += handler;
 
-        _loc.SwitchLanguage("ar");
+        try
+        {
+            _loc.SwitchLanguage("ar");
 
-        changed.Should().Contain("Item[]");
-        changed.Should().Contain(nameof(Loc.IsRtl));
-        changed.Should().Contain(nameof(Loc.CurrentLanguage));
-
-        // Cleanup
-        _loc.SwitchLanguage("en");
+            changed.Should().Contain("Item[]");
+            changed.Should().Contain(nameof(Loc.IsRtl));
+            changed.Should().Contain(nameof(Loc.CurrentLanguage));
+        }
+        finally
+        {
+            _loc.PropertyChanged -= handler;
+            _loc.SwitchLanguage("en");
+        }
     }
 
     [Fact]
@@ -101,12 +106,18 @@ public class LocalizationServiceTests
     {
         _loc.SwitchLanguage("en");
         string? firedLang = null;
-        _loc.LanguageChanged += (_, lang) => firedLang = lang;
-
-        _loc.SwitchLanguage("ar");
-
-        firedLang.Should().Be("ar");
-        _loc.SwitchLanguage("en");
+        EventHandler<string> handler = (_, lang) => firedLang = lang;
+        _loc.LanguageChanged += handler;
+        try
+        {
+            _loc.SwitchLanguage("ar");
+            firedLang.Should().Be("ar");
+        }
+        finally
+        {
+            _loc.LanguageChanged -= handler;
+            _loc.SwitchLanguage("en");
+        }
     }
 
     [Fact]
@@ -114,11 +125,18 @@ public class LocalizationServiceTests
     {
         _loc.SwitchLanguage("en");
         bool fired = false;
-        _loc.PropertyChanged += (_, _) => fired = true;
-
-        _loc.SwitchLanguage("en"); // same language
-
-        fired.Should().BeFalse();
+        System.ComponentModel.PropertyChangedEventHandler handler = (_, _) => fired = true;
+        _loc.PropertyChanged += handler;
+        try
+        {
+            _loc.SwitchLanguage("en"); // same language
+            fired.Should().BeFalse();
+        }
+        finally
+        {
+            _loc.PropertyChanged -= handler;
+            _loc.SwitchLanguage("en");
+        }
     }
 
     [Fact]

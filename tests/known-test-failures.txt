@@ -8,6 +8,6 @@
 #   - AnalysisLabViewModelTests.*  (2 tests)  → Fixed: changed mock from float to double (matching interface)
 #   - EncryptionServiceTests.*                → Fixed: implemented TryLegacyDecrypt with actual AES-CBC
 #   - AuthServiceTests.LoginAsync_* (2 tests) → Fixed: mocked FirstOrDefaultAsync instead of GetAllAsync
+#   - SubjectsViewModelTests.SaveSubject_ShouldHandleErrors_Gracefully → Fixed: added messenger reset + delay for async delivery
 #
-# Intermittent in local/CI (timing-sensitive, not a logic bug):
-DentalID.Tests.ViewModels.SubjectsViewModelTests.SaveSubject_ShouldHandleErrors_Gracefully
+# No known failures - all tests pass!

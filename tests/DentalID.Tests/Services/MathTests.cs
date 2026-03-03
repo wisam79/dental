@@ -25,6 +25,7 @@ public class MathTests
         var mockTeeth        = new Mock<ITeethDetectionService>();
         var mockPath         = new Mock<IPathologyDetectionService>();
         var mockEncoder      = new Mock<IFeatureEncoderService>();
+        var mockSam          = new Mock<ISamSegmentationService>();
         var mockYolo         = new Mock<IYoloDetectionParser>();
         var mockHeuristics   = new Mock<IForensicHeuristicsService>();
         var mockIntelligence = new Mock<IDentalIntelligenceService>();
@@ -42,7 +43,7 @@ public class MathTests
                      .Returns(new DentalFingerprint());
 
         _service = new OnnxInferenceService(
-            mockSession.Object, mockTeeth.Object, mockPath.Object, mockEncoder.Object,
+            mockSession.Object, mockTeeth.Object, mockPath.Object, mockEncoder.Object, mockSam.Object,
             mockYolo.Object, mockHeuristics.Object, mockIntelligence.Object,
             mockBiometric.Object, mockCache.Object, mockLogger.Object);
     }

@@ -113,6 +113,7 @@ public class SubjectRepository : ISubjectRepository
     public IAsyncEnumerable<Subject> StreamAllWithVectorsAsync()
         => _db.Subjects
             .AsNoTracking()
+            .Include(s => s.DentalImages)
             .Where(s => s.FeatureVector != null)
             .AsAsyncEnumerable();
 
@@ -136,31 +137,19 @@ public class SubjectRepository : ISubjectRepository
                 .ToListAsync();
         }
 
-        // Encryption limit: Partial name search requires client-side evaluation.
-        // We fetch minimal projection to filter, then fetch full entities.
-        // This is acceptable for < 10k records. For larger, we need Blind Indexing.
-        
-        var candidates = await _db.Subjects
-            .AsNoTracking()
-            .Select(s => new { s.Id, s.FullName, s.NationalId, s.CreatedAt })
-            .ToListAsync(); // EF Core decrypts FullName here via ValueConverter
+        // Use deterministic hash for exact match instead of client-side partial search
+        var normalizedName = NormalizeFullName(query);
+        var nameHash = normalizedName != null ? _encryptionService.ComputeDeterministicHash(normalizedName, FullNameHashContext) : "INVALID_HASH";
 
-        var filteredIds = candidates
-            .Where(s => (s.FullName != null && s.FullName.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-                        (s.NationalId != null && s.NationalId.Contains(query, StringComparison.OrdinalIgnoreCase)))
+        var normalizedId = NormalizeNationalId(query);
+        var idHash = normalizedId != null ? _encryptionService.ComputeDeterministicHash(normalizedId, NationalIdHashContext) : "INVALID_HASH";
+
+        return await _db.Subjects
+            .Include(s => s.DentalImages)
+            .Where(s => s.FullNameLookupHash == nameHash || s.NationalIdLookupHash == idHash)
             .OrderByDescending(s => s.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(s => s.Id)
-            .ToList();
-
-        if (!filteredIds.Any()) return new List<Subject>();
-
-        // Fetch full entities for the current page
-        return await _db.Subjects
-            .Include(s => s.DentalImages)
-            .Where(s => filteredIds.Contains(s.Id))
-            .OrderByDescending(s => s.CreatedAt) // Maintain order
             .ToListAsync();
     }
 
@@ -168,7 +157,7 @@ public class SubjectRepository : ISubjectRepository
     {
         query = query?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(query))
-            return await GetCountAsync();
+            return await GetCountAsync().ConfigureAwait(false);
 
         // Optimization: ID search is indexed and unencrypted -> fast path
         if (query.StartsWith("SUB-", StringComparison.OrdinalIgnoreCase))
@@ -178,19 +167,20 @@ public class SubjectRepository : ISubjectRepository
                 .CountAsync();
         }
 
-        // Encryption limit: Fetch minimal projection to count client-side.
-        var candidates = await _db.Subjects
-            .AsNoTracking()
-            .Select(s => new { s.FullName, s.NationalId })
-            .ToListAsync(); 
+        // Use deterministic hash for exact match
+        var normalizedName = NormalizeFullName(query);
+        var nameHash = normalizedName != null ? _encryptionService.ComputeDeterministicHash(normalizedName, FullNameHashContext) : "INVALID_HASH";
 
-        return candidates
-            .Count(s => (s.FullName != null && s.FullName.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-                        (s.NationalId != null && s.NationalId.Contains(query, StringComparison.OrdinalIgnoreCase)));
+        var normalizedId = NormalizeNationalId(query);
+        var idHash = normalizedId != null ? _encryptionService.ComputeDeterministicHash(normalizedId, NationalIdHashContext) : "INVALID_HASH";
+
+        return await _db.Subjects
+            .Where(s => s.FullNameLookupHash == nameHash || s.NationalIdLookupHash == idHash)
+            .CountAsync();
     }
 
     public async Task<int> GetCountAsync()
-        => await _db.Subjects.CountAsync();
+        => await _db.Subjects.CountAsync().ConfigureAwait(false);
 
     public async Task<Subject> AddAsync(Subject subject)
     {
@@ -200,7 +190,7 @@ public class SubjectRepository : ISubjectRepository
         PopulateLookupHashes(subject);
         
         _db.Subjects.Add(subject);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
         return subject;
     }
 
@@ -213,8 +203,8 @@ public class SubjectRepository : ISubjectRepository
             s.RowVersion = Guid.NewGuid().ToByteArray();
             PopulateLookupHashes(s);
         }
-        await _db.Subjects.AddRangeAsync(subjects);
-        await _db.SaveChangesAsync();
+        await _db.Subjects.AddRangeAsync(subjects).ConfigureAwait(false);
+        await _db.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task UpdateAsync(Subject subject)
@@ -249,7 +239,7 @@ public class SubjectRepository : ISubjectRepository
 
         try 
         {
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -261,11 +251,28 @@ public class SubjectRepository : ISubjectRepository
 
     public async Task DeleteAsync(int id)
     {
-        var subject = await _db.Subjects.FindAsync(id);
+        var subject = await _db.Subjects
+            .Include(s => s.DentalImages)
+            .FirstOrDefaultAsync(s => s.Id == id);
+            
         if (subject != null)
         {
+            var imagesToDelete = subject.DentalImages
+                .Select(img => img.ImagePath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToList();
+                
             _db.Subjects.Remove(subject);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
+
+            // Bug #15 fix: Prevent orphaned physical files when subject is deleted
+            foreach (var imgPath in imagesToDelete)
+            {
+                if (System.IO.File.Exists(imgPath))
+                {
+                    try { System.IO.File.Delete(imgPath); } catch { }
+                }
+            }
         }
     }
 
@@ -279,7 +286,7 @@ public class SubjectRepository : ISubjectRepository
 
     public async Task<Subject?> FirstOrDefaultAsync(System.Linq.Expressions.Expression<Func<Subject, bool>> predicate)
     {
-        return await _db.Subjects.FirstOrDefaultAsync(predicate);
+        return await _db.Subjects.FirstOrDefaultAsync(predicate).ConfigureAwait(false);
     }
 
     private void PopulateLookupHashes(Subject subject)
@@ -358,3 +365,4 @@ public class SubjectRepository : ISubjectRepository
         return (page, pageSize);
     }
 }
+

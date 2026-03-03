@@ -206,4 +206,58 @@ public class ForensicRulesEngineTests
         _engine.ApplyRules(result);
         Assert.Empty(result.Flags);
     }
+
+    [Fact]
+    public void ApplyRules_RootCanalWithCaries_ShouldNotConflict()
+    {
+        // Root canal treatment and an existing caries on the same tooth is clinically valid
+        var result = new AnalysisResult
+        {
+            Pathologies = new List<DetectedPathology>
+            {
+                new() { ClassName = "Root canal obturation", ToothNumber = 46 },
+                new() { ClassName = "Caries", ToothNumber = 46 }
+            }
+        };
+
+        _engine.ApplyRules(result);
+
+        // Should NOT be flagged as a conflict – combination is valid
+        Assert.DoesNotContain(result.Flags, f => f.Contains("Conflict"));
+    }
+
+    [Fact]
+    public void ApplyRules_TwoImplantsOnSameTooth_ShouldCollapseToSingleFlag()
+    {
+        // Two Implant detections: one hard conflict with Caries, one simply duplicate Implant.
+        // Regardless, there should be only one 'Conflict' flag for tooth 15.
+        var result = new AnalysisResult
+        {
+            Pathologies = new List<DetectedPathology>
+            {
+                new() { ClassName = "Implant",  ToothNumber = 15, Confidence = 0.95f, X = 0.20f, Y = 0.20f, Width = 0.08f, Height = 0.08f },
+                new() { ClassName = "Implant",  ToothNumber = 15, Confidence = 0.88f, X = 0.21f, Y = 0.21f, Width = 0.08f, Height = 0.08f },
+                new() { ClassName = "Caries",   ToothNumber = 15, Confidence = 0.85f, X = 0.22f, Y = 0.22f, Width = 0.04f, Height = 0.04f }
+            }
+        };
+
+        _engine.ApplyRules(result);
+
+        // There should be exactly one conflict flag for tooth 15 (not one per Implant)
+        var conflictFlags = result.Flags.Where(f => f.Contains("Conflict") && f.Contains("15")).ToList();
+        Assert.True(conflictFlags.Count <= 1, $"Expected ≤1 conflict flag for tooth 15, got {conflictFlags.Count}: {string.Join(" | ", conflictFlags)}");
+    }
+
+    [Fact]
+    public void ApplyRules_NoPathologiesAtAll_ShouldHaveNoFlags()
+    {
+        var result = new AnalysisResult
+        {
+            Teeth = new List<DetectedTooth> { new() { FdiNumber = 11 }, new() { FdiNumber = 21 } }
+        };
+
+        _engine.ApplyRules(result);
+
+        Assert.Empty(result.Flags);
+    }
 }

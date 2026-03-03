@@ -28,12 +28,16 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
     public InferenceSession? PathologyDetector { get; private set; }
     public InferenceSession? Encoder           { get; private set; }
     public InferenceSession? GenderAge         { get; private set; }
+    public InferenceSession? SamEncoder        { get; private set; }
+    public InferenceSession? SamDecoder        { get; private set; }
 
     // ── Input node names ──────────────────────────────────────────────────────
     public string TeethInputName      { get; private set; } = string.Empty;
     public string PathologyInputName  { get; private set; } = string.Empty;
     public string EncoderInputName    { get; private set; } = string.Empty;
     public string GenderAgeInputName  { get; private set; } = string.Empty;
+    public string SamEncoderInputName { get; private set; } = string.Empty;
+    public string SamDecoderInputName { get; private set; } = string.Empty;
 
     // ── LOH Buffers ───────────────────────────────────────────────────────────
     public float[]? DetectionBuffer    { get; private set; }
@@ -67,17 +71,21 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
             _isReady = false;
             DisposeSessions();
 
-            using var opts = CreateSessionOptions(out var executionProvider);
+            SessionOptions opts = CreateSessionOptions(out var executionProvider);
 
             var teethPath    = Path.Combine(modelsDirectory, "teeth_detect.onnx");
             var pathPath     = Path.Combine(modelsDirectory, "pathology_detect.onnx");
             var encoderPath  = Path.Combine(modelsDirectory, "encoder.onnx");
             var genderAgePath = Path.Combine(modelsDirectory, "genderage.onnx");
+            var samEncoderPath = Path.Combine(modelsDirectory, "sam_encoder.onnx");
+            var samDecoderPath = Path.Combine(modelsDirectory, "sam_decoder.onnx");
 
             _logger.LogInformation($"teeth:     {DescribeFile(teethPath)}");
             _logger.LogInformation($"pathology: {DescribeFile(pathPath)}");
             _logger.LogInformation($"encoder:   {DescribeFile(encoderPath)}");
             _logger.LogInformation($"genderage: {DescribeFile(genderAgePath)}");
+            _logger.LogInformation($"sam_enc:   {DescribeFile(samEncoderPath)}");
+            _logger.LogInformation($"sam_dec:   {DescribeFile(samDecoderPath)}");
 
             if (!File.Exists(teethPath))   throw new FileNotFoundException("Critical model missing", teethPath);
             if (!File.Exists(pathPath))    throw new FileNotFoundException("Critical model missing", pathPath);
@@ -88,17 +96,23 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
             Encoder           = new InferenceSession(encoderPath, opts);
             if (File.Exists(genderAgePath))
                 GenderAge = new InferenceSession(genderAgePath, opts);
+            if (File.Exists(samEncoderPath))
+                SamEncoder = new InferenceSession(samEncoderPath, opts);
+            if (File.Exists(samDecoderPath))
+                SamDecoder = new InferenceSession(samDecoderPath, opts);
 
             TeethInputName     = ResolveInputName(TeethDetector,     "teeth_detect.onnx");
             PathologyInputName = ResolveInputName(PathologyDetector, "pathology_detect.onnx");
             EncoderInputName   = ResolveInputName(Encoder,           "encoder.onnx");
             GenderAgeInputName = GenderAge == null ? string.Empty : ResolveInputName(GenderAge, "genderage.onnx");
+            SamEncoderInputName = SamEncoder == null ? string.Empty : ResolveInputName(SamEncoder, "sam_encoder.onnx");
+            SamDecoderInputName = SamDecoder == null ? string.Empty : ResolveInputName(SamDecoder, "sam_decoder.onnx");
 
             // Pre-allocate LOH buffers
             int detSize = _config.Model.DetectionInputSize * _config.Model.DetectionInputSize * 3;
             DetectionBuffer    = new float[detSize];
             TtaDetectionBuffer = new float[detSize];
-            EncoderBuffer      = new float[1024 * 1024 * 3];
+            EncoderBuffer      = null;
 
             // Warmup / Self-Diagnostic
             RunSelfDiagnostic();
@@ -248,11 +262,14 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
         PathologyDetector?.Dispose(); PathologyDetector = null;
         Encoder?.Dispose();           Encoder           = null;
         GenderAge?.Dispose();         GenderAge         = null;
-        TeethInputName = PathologyInputName = EncoderInputName = GenderAgeInputName = string.Empty;
+        SamEncoder?.Dispose();        SamEncoder        = null;
+        SamDecoder?.Dispose();        SamDecoder        = null;
+        TeethInputName = PathologyInputName = EncoderInputName = GenderAgeInputName = SamEncoderInputName = SamDecoderInputName = string.Empty;
     }
 
     public void Dispose()
     {
+        _isReady = false;
         DisposeSessions();
         InferenceLock.Dispose();
     }

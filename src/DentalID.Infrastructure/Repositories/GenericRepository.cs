@@ -25,7 +25,7 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
 
     public virtual async Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FindAsync([id], cancellationToken);
+        return await _dbSet.FindAsync([id], cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object>>[] includes)
@@ -37,17 +37,17 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
             query = query.Include(include);
         }
 
-        return await query.FirstOrDefaultAsync(x => x.Id == id);
+        return await query.FirstOrDefaultAsync(x => x.Id == id).ConfigureAwait(false);
     }
 
     public virtual async Task<List<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbSet.ToListAsync(cancellationToken);
+        return await _dbSet.ToListAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<List<T>> GetAllAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.Where(predicate).ToListAsync(cancellationToken);
+        return await _dbSet.Where(predicate).ToListAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<List<T>> GetAllAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
@@ -59,12 +59,12 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
             query = query.Include(include);
         }
 
-        return await query.ToListAsync();
+        return await query.ToListAsync().ConfigureAwait(false);
     }
 
     public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(predicate, cancellationToken);
+        return await _dbSet.FirstOrDefaultAsync(predicate, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
@@ -76,7 +76,7 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
             query = query.Include(include);
         }
 
-        return await query.FirstOrDefaultAsync();
+        return await query.FirstOrDefaultAsync().ConfigureAwait(false);
     }
 
     #endregion
@@ -85,12 +85,12 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
 
     public virtual async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.AnyAsync(predicate, cancellationToken);
+        return await _dbSet.AnyAsync(predicate, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<int> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.CountAsync(predicate, cancellationToken);
+        return await _dbSet.CountAsync(predicate, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -102,14 +102,14 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
     // Previously this caused double-save when callers also called UoW.SaveChangesAsync().
     public virtual async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        await _dbSet.AddAsync(entity, cancellationToken);
+        await _dbSet.AddAsync(entity, cancellationToken).ConfigureAwait(false);
         // NOTE: Do NOT call SaveChangesAsync here. Use IUnitOfWork.SaveChangesAsync() instead.
     }
 
     // Bug #56 fix: AddRangeAsync is now consistent with AddAsync — no auto-save
     public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        await _dbSet.AddRangeAsync(entities, cancellationToken);
+        await _dbSet.AddRangeAsync(entities, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -177,7 +177,7 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
 
     public virtual async Task<List<T>> FromSqlRawAsync(string sql, params object[] parameters)
     {
-        return await _dbSet.FromSqlRaw(sql, parameters).ToListAsync();
+        return await _dbSet.FromSqlRaw(sql, parameters).ToListAsync().ConfigureAwait(false);
     }
 
     public virtual IQueryable<T> AsQueryable()

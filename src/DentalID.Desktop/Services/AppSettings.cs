@@ -2,6 +2,7 @@ using DentalID.Application.Interfaces;
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace DentalID.Desktop.Services;
 
@@ -18,20 +19,23 @@ public class AppSettings : ISettingsService
 
     public void Save()
     {
-        try 
+        var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+        Task.Run(() =>
         {
-            var directory = Path.GetDirectoryName(SettingsPath);
-            if (!string.IsNullOrEmpty(directory))
+            try 
             {
-                Directory.CreateDirectory(directory);
+                var directory = Path.GetDirectoryName(SettingsPath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                File.WriteAllText(SettingsPath, json);
             }
-            var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsPath, json);
-        }
-        catch (IOException)
-        {
-            // Ignore concurrent write errors in tests/runtime if minimal impact
-        }
+            catch (IOException)
+            {
+                // Ignore concurrent write errors in tests/runtime if minimal impact
+            }
+        });
     }
 
     public static AppSettings Load() 
@@ -58,6 +62,7 @@ public class AppSettings : ISettingsService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex.Message}");
+            throw new Exception($"Failed to load settings from {SettingsPath}: {ex.Message}", ex);
         }
     }
 

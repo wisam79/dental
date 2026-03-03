@@ -37,7 +37,7 @@
                         </StackPanel>
                     </Border>
                     <Border Classes="badge"
-                            Background="#15FFFFFF"
+                            Background="{DynamicResource OverlayHoverBrush}"
                             BorderBrush="{DynamicResource BorderSubtleBrush}"
                             BorderThickness="1">
                         <TextBlock Classes="caption">
@@ -147,7 +147,7 @@
                         </DataGrid>
 
                         <Border IsVisible="{Binding Subjects.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
-                                Background="#80000000"
+                                Background="{DynamicResource OverlayStrongBrush}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
@@ -284,7 +284,7 @@
                         </DataGrid>
 
                         <Border IsVisible="{Binding ShowAnalysesEmptyState}"
-                                Background="#66000000"
+                                Background="{DynamicResource OverlayModerateBrush}"
                                 CornerRadius="8"
                                 Margin="2">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
@@ -301,7 +301,7 @@
             </Grid>
 
             <Border IsVisible="{Binding IsBusy}"
-                    Background="#7A000000"
+                    Background="{DynamicResource OverlayStrongBrush}"
                     CornerRadius="10"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
@@ -311,9 +311,8 @@
                                Foreground="White"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"/>
-                    <ProgressBar IsIndeterminate="True"
-                                 Height="6"
-                                 Classes="thick"/>
+                    <Border Classes="shimmer"
+                                 Height="4"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -376,7 +375,7 @@
         <!-- ══════ ADD / EDIT DIALOG OVERLAY ══════ -->
         <Border Grid.Row="0" Grid.RowSpan="4"
                 IsVisible="{Binding IsAddEditDialogOpen}"
-                Background="#88000000">
+                Background="{DynamicResource OverlayStrongBrush}">
             <Border Classes="card"
                     Width="480"
                     HorizontalAlignment="Center"

@@ -62,10 +62,15 @@ public static class DentalAgeEstimator
             return ("Over 21 Years (Full Adult Dentition)", 25);
         }
 
-        if (hasWisdomTeeth && hasAllSecondMolars)
+        if (hasWisdomTeeth)
         {
             return ("18 - 21 Years (Late Adolescence / Early Adulthood)", 20);
         }
+
+        // Default or undetermined adulthood without wisdom teeth (often extracted or impacted and not detected)
+        // If there are no deciduous teeth and typical adult teeth exist in large numbers.
+        if (fdiNumbers.Count >= 24)
+            return ("Over 18 Years (Assumed Adult)", 25);
 
         if (hasAllSecondMolars)
         {
@@ -76,11 +81,6 @@ public static class DentalAgeEstimator
         {
              return ("9 - 12 Years (Late Childhood)", 11);
         }
-
-        // Default or undetermined adulthood without wisdom teeth (often extracted or impacted and not detected)
-        // If there are no deciduous teeth and typical adult teeth exist in large numbers.
-        if (fdiNumbers.Count >= 24)
-            return ("Over 18 Years (Assumed Adult)", 25);
 
         return ("Unknown (Complex/Atypical)", null);
     }

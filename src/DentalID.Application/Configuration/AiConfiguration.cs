@@ -60,13 +60,13 @@ public class ThresholdSettings
     /// <summary>
     /// Default confidence threshold for detections.
     /// </summary>
-    public float DefaultThreshold { get; set; } = 0.35f;
+    public float DefaultThreshold { get; set; } = 0.45f;
 
     /// <summary>
     /// Confidence threshold for teeth detection.
     /// Balanced for panoramic X-rays to reduce false positives.
     /// </summary>
-    public float TeethThreshold { get; set; } = 0.35f;
+    public float TeethThreshold { get; set; } = 0.50f;
 
     /// <summary>
     /// Minimum cosine similarity score to consider a subject a match.
@@ -88,26 +88,26 @@ public class ThresholdSettings
     /// <summary>
     /// IoU threshold for Non-Maximum Suppression (NMS).
     /// </summary>
-    public float NmsIoUThreshold { get; set; } = 0.45f;
+    public float NmsIoUThreshold { get; set; } = 0.55f;
 
     /// <summary>
     /// Proximity threshold for mapping pathologies to teeth.
     /// </summary>
-    public float ProximityThreshold { get; set; } = 0.15f;
+    public float ProximityThreshold { get; set; } = 0.10f;
 
     /// <summary>
     /// Class-specific thresholds for pathology detection.
     /// </summary>
     public Dictionary<string, float> PathologyThresholds { get; set; } = new()
     {
-        { "Caries", 0.25f },
-        { "Crown", 0.45f },
-        { "Filling", 0.40f },
-        { "Implant", 0.55f },
-        { "Missing teeth", 0.45f },
-        { "Periapical lesion", 0.25f },
-        { "Root Piece", 0.35f },
-        { "Root canal obturation", 0.45f }
+        { "Caries", 0.35f },
+        { "Crown", 0.55f },
+        { "Filling", 0.50f },
+        { "Implant", 0.65f },
+        { "Missing teeth", 0.55f },
+        { "Periapical lesion", 0.35f },
+        { "Root Piece", 0.45f },
+        { "Root canal obturation", 0.55f }
     };
 
     /// <summary>

@@ -22,7 +22,8 @@ public class BitmapAssetValueConverter : IValueConverter
             {
                 if (path.StartsWith("avares://"))
                 {
-                    return new Bitmap(AssetLoader.Open(new Uri(path)));
+                    using var stream = AssetLoader.Open(new Uri(path));
+                    return new Bitmap(stream);
                 }
 
                 if (System.IO.File.Exists(path))

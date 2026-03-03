@@ -32,6 +32,7 @@ public class PerformanceTests
         var mockTeeth   = new Mock<ITeethDetectionService>();
         var mockPath    = new Mock<IPathologyDetectionService>();
         var mockEncoder = new Mock<IFeatureEncoderService>();
+        var mockSam     = new Mock<ISamSegmentationService>();
         var mockBio     = new Mock<IBiometricService>();
         mockBio.Setup(s => s.GenerateFingerprint(It.IsAny<System.Collections.Generic.List<DentalID.Core.DTOs.DetectedTooth>>(), It.IsAny<System.Collections.Generic.List<DentalID.Core.DTOs.DetectedPathology>>()))
                .Returns(new DentalID.Core.DTOs.DentalFingerprint());
@@ -46,7 +47,7 @@ public class PerformanceTests
         sessionManager.Setup(s => s.IsReady).Returns(false);
 
         var service = new OnnxInferenceService(
-            sessionManager.Object, mockTeeth.Object, mockPath.Object, mockEncoder.Object,
+            sessionManager.Object, mockTeeth.Object, mockPath.Object, mockEncoder.Object, mockSam.Object,
             yoloParser, heuristicsService, intelligence, mockBio.Object, cache.Object, logger.Object);
 
         // Act & Assert: InferenceLock is accessible and is set to allow 1 concurrent request

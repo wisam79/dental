@@ -68,6 +68,7 @@ public class DetectedTooth
     public float Y { get; set; }
     public float Width { get; set; }
     public float Height { get; set; }
+    public List<(float X, float Y)>? Outline { get; set; }
 }
 
 /// <summary>
@@ -82,4 +83,5 @@ public class DetectedPathology
     public float Y { get; set; }
     public float Width { get; set; }
     public float Height { get; set; }
+    public List<(float X, float Y)>? Outline { get; set; }
 }

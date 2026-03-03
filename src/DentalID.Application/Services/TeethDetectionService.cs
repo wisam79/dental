@@ -234,7 +234,7 @@ public sealed class TeethDetectionService : ITeethDetectionService
             .GroupBy(t => t.FdiNumber)
             .Select(g => g.OrderByDescending(t => t.Confidence).First())
             .OrderByDescending(t => t.Confidence)
-            .Take(32)
+            .Take(52)
             .ToList();
 
         if (_config.FdiMapping.ClassMap.Length < 28)
@@ -244,7 +244,7 @@ public sealed class TeethDetectionService : ITeethDetectionService
                 .GroupBy(t => t.FdiNumber)
                 .Select(g => g.OrderByDescending(t => t.Confidence).First())
                 .OrderByDescending(t => t.Confidence)
-                .Take(32)
+                .Take(52)
                 .ToList();
         }
         return teeth;

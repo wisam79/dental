@@ -148,4 +148,33 @@ User2"; // User2 missing age
             }
         }
     }
+
+    [Fact]
+    public async Task ImportCaseFolderAsync_ShouldNotCountFolderWithoutImagesAsSuccess()
+    {
+        var repo = new SubjectRepoStub();
+        var imageRepo = new Mock<IDentalImageRepository>();
+        var service = new DataImportService(repo, imageRepo.Object);
+
+        var root = Path.Combine(Path.GetTempPath(), $"dental-import-empty-{System.Guid.NewGuid():N}");
+        var subjectDir = Path.Combine(root, "NoImagesSubject");
+        Directory.CreateDirectory(subjectDir);
+
+        try
+        {
+            var result = await service.ImportCaseFolderAsync(root);
+
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.ErrorCount);
+            Assert.Contains(result.Errors, e => e.Contains("no supported images were imported", System.StringComparison.OrdinalIgnoreCase));
+            imageRepo.Verify(x => x.AddAsync(It.IsAny<DentalImage>()), Times.Never);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
 }

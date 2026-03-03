@@ -25,6 +25,10 @@ public class BoolToFlowDirectionConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        if (value is FlowDirection direction)
+        {
+            return direction == FlowDirection.RightToLeft;
+        }
+        return false;
     }
 }

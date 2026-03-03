@@ -167,6 +167,7 @@ public partial class App : Avalonia.Application
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AiSettings Load Error: {ex.Message}");
+            throw new Exception($"Failed to load AiSettings: {ex.Message}", ex);
         }
         return settings;
     }

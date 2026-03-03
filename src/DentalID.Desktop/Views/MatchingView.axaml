@@ -3,6 +3,7 @@
              xmlns:vm="using:DentalID.Desktop.ViewModels"
              xmlns:svc="using:DentalID.Desktop.Services"
              xmlns:conv="using:DentalID.Desktop.Converters"
+             xmlns:viewcontrols="using:DentalID.Desktop.Views.Controls"
              x:Class="DentalID.Desktop.Views.MatchingView"
              x:DataType="vm:MatchingViewModel"
              x:Name="Root">
@@ -119,9 +120,8 @@
                             </Grid>
                         </Border>
 
-                        <ProgressBar Value="{Binding MatchingProgress}"
-                                     Maximum="100"
-                                     Height="5"
+                        <Border Classes="shimmer"
+                                     Height="4"
                                      IsVisible="{Binding IsMatching}"/>
 
                         <!-- Query fingerprint status badge -->
@@ -172,50 +172,54 @@
                             </StackPanel>
 
                             <!-- Images -->
-                            <Grid IsVisible="{Binding IsQueryLoaded}">
-                                <!-- Overlay Mode -->
-                                <Grid IsVisible="{Binding IsOverlayMode}">
-                                    <Image Source="{Binding QueryImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                                           Stretch="Uniform"
-                                           Opacity="1.0"/>
-                                    <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                                           Stretch="Uniform"
-                                           Opacity="{Binding OverlayOpacity}"
-                                           IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                </Grid>
+                            <viewcontrols:AdvancedImageViewer IsVisible="{Binding IsQueryLoaded}">
+                                <viewcontrols:AdvancedImageViewer.InnerContent>
+                                    <Grid>
+                                        <!-- Overlay Mode -->
+                                        <Grid IsVisible="{Binding IsOverlayMode}">
+                                            <Image Source="{Binding QueryImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                                   Stretch="Uniform"
+                                                   Opacity="1.0"/>
+                                            <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                                   Stretch="Uniform"
+                                                   Opacity="{Binding OverlayOpacity}"
+                                                   IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                        </Grid>
 
-                                <!-- Split Mode -->
-                                <Grid ColumnDefinitions="*,*" ColumnSpacing="2"
-                                      IsVisible="{Binding IsOverlayMode, Converter={x:Static BoolConverters.Not}}">
-                                    <Border Background="{DynamicResource SurfaceFloatingBrush}">
-                                        <Image Source="{Binding QueryImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                                               Stretch="Uniform"/>
-                                    </Border>
+                                        <!-- Split Mode -->
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="2"
+                                              IsVisible="{Binding IsOverlayMode, Converter={x:Static BoolConverters.Not}}">
+                                            <Border Background="{DynamicResource SurfaceFloatingBrush}">
+                                                <Image Source="{Binding QueryImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                                       Stretch="Uniform"/>
+                                            </Border>
 
-                                    <Border Grid.Column="1"
-                                            Background="{DynamicResource SurfaceFloatingBrush}"
-                                            IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                        <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
-                                               Stretch="Uniform"/>
-                                    </Border>
+                                            <Border Grid.Column="1"
+                                                    Background="{DynamicResource SurfaceFloatingBrush}"
+                                                    IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                <Image Source="{Binding TargetImagePath, Converter={x:Static vm:BitmapAssetValueConverter.Instance}}"
+                                                       Stretch="Uniform"/>
+                                            </Border>
 
-                                    <StackPanel Grid.Column="1"
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Center"
-                                                Spacing="6"
-                                                IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNull}}">
-                                        <PathIcon Data="{StaticResource IconSubjects}"
-                                                  Width="20" Height="20"
-                                                  Foreground="{DynamicResource TextDisabledBrush}"/>
-                                        <TextBlock Text="{DynamicResource Str_Match_NoCandidates}"
-                                                   Classes="caption"
-                                                   HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Grid>
+                                            <StackPanel Grid.Column="1"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center"
+                                                        Spacing="6"
+                                                        IsVisible="{Binding TargetImagePath, Converter={x:Static ObjectConverters.IsNull}}">
+                                                <PathIcon Data="{StaticResource IconSubjects}"
+                                                          Width="20" Height="20"
+                                                          Foreground="{DynamicResource TextDisabledBrush}"/>
+                                                <TextBlock Text="{DynamicResource Str_Match_NoCandidates}"
+                                                           Classes="caption"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </viewcontrols:AdvancedImageViewer.InnerContent>
+                            </viewcontrols:AdvancedImageViewer>
 
                             <!-- Matching progress overlay -->
-                            <Border Background="#CC000000"
+                            <Border Background="{DynamicResource OverlayStrongBrush}"
                                     IsVisible="{Binding IsMatching}">
                                 <StackPanel VerticalAlignment="Center"
                                             HorizontalAlignment="Center"
@@ -267,7 +271,7 @@
                             </StackPanel>
                         </Border>
                         <Border Classes="badge"
-                                Background="#15FFFFFF"
+                                Background="{DynamicResource OverlayHoverBrush}"
                                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1"
                                 VerticalAlignment="Center"
@@ -394,7 +398,7 @@
                             </ListBox>
 
                             <Border IsVisible="{Binding Candidates.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
-                                    Background="#66000000"
+                                    Background="{DynamicResource OverlayModerateBrush}"
                                     CornerRadius="8"
                                     Margin="2">
                                 <TextBlock Text="{DynamicResource Str_Match_NoCandidates}"
@@ -405,7 +409,7 @@
                             </Border>
 
                             <Border IsVisible="{Binding IsMatching}"
-                                    Background="#80000000"
+                                    Background="{DynamicResource OverlayStrongBrush}"
                                     CornerRadius="8"
                                     Margin="2">
                                 <StackPanel VerticalAlignment="Center"

@@ -5,6 +5,7 @@ using DentalID.Core.DTOs;
 using DentalID.Core.Entities;
 using System.Text;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DentalID.Benchmark;
 
@@ -68,19 +69,42 @@ class Program
         var teethSvc   = new DentalID.Application.Services.TeethDetectionService(sessionManager, yoloParser, fdiService, heuristicsService, tensorPrep, config, aiSettings);
         var pathSvc    = new DentalID.Application.Services.PathologyDetectionService(sessionManager, yoloParser, tensorPrep, config, aiSettings);
         var encoderSvc = new DentalID.Application.Services.FeatureEncoderService(sessionManager, tensorPrep, config, logger);
+        var samSvc     = new DentalID.Application.Services.SamSegmentationService(
+            sessionManager,
+            NullLogger<DentalID.Application.Services.SamSegmentationService>.Instance);
 
-        using var aiService = new OnnxInferenceService(sessionManager, teethSvc, pathSvc, encoderSvc, yoloParser, heuristicsService, intelligenceService, bioService, cacheService, logger);
+        using var aiService = new OnnxInferenceService(
+            sessionManager,
+            teethSvc,
+            pathSvc,
+            encoderSvc,
+            samSvc,
+            yoloParser,
+            heuristicsService,
+            intelligenceService,
+            bioService,
+            cacheService,
+            logger);
         
-        // Locate models
         string modelsPath = Path.Combine(AppContext.BaseDirectory, "models");
         
-        if (!Directory.Exists(modelsPath))
+        // If the directory doesn't exist OR it's empty (e.g. MSBuild created it but didn't copy the large files)
+        if (!Directory.Exists(modelsPath) || !File.Exists(Path.Combine(modelsPath, "teeth_detect.onnx")))
         {
-             var projectRoot = Directory.GetParent(AppContext.BaseDirectory)?.Parent?.Parent?.Parent?.Parent?.FullName;
+             var projectRoot = Directory.GetParent(AppContext.BaseDirectory)?.Parent?.Parent?.Parent?.Parent?.Parent?.FullName;
              if (projectRoot != null)
              {
-                 var desktopModels = Path.Combine(projectRoot, "src", "DentalID.Desktop", "Models");
-                 if (Directory.Exists(desktopModels)) modelsPath = desktopModels;
+                 // Try the repository root "models" folder
+                 var rootModels = Path.Combine(projectRoot, "models");
+                 if (Directory.Exists(rootModels) && File.Exists(Path.Combine(rootModels, "teeth_detect.onnx"))) 
+                 {
+                     modelsPath = rootModels;
+                 }
+                 else
+                 {
+                     var desktopModels = Path.Combine(projectRoot, "src", "DentalID.Desktop", "Models");
+                     if (Directory.Exists(desktopModels)) modelsPath = desktopModels;
+                 }
              }
         }
 

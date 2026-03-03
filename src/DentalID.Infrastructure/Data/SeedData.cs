@@ -85,7 +85,7 @@ public static class SeedData
         var updatedRows = await BackfillSubjectLookupHashesAsync(db);
         Console.WriteLine($"[Schema] Subject lookup hash backfill completed. Updated rows: {updatedRows}");
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync().ConfigureAwait(false);
     }
 
     private static async Task EnsureSchemaAsync(AppDbContext db)
@@ -96,6 +96,8 @@ public static class SeedData
             await EnsureColumnExistsAsync(db, "Subjects", "RowVersion", "ALTER TABLE Subjects ADD COLUMN RowVersion BLOB;");
             await EnsureColumnExistsAsync(db, "Subjects", "NationalIdLookupHash", "ALTER TABLE Subjects ADD COLUMN NationalIdLookupHash TEXT NULL;");
             await EnsureColumnExistsAsync(db, "Subjects", "FullNameLookupHash", "ALTER TABLE Subjects ADD COLUMN FullNameLookupHash TEXT NULL;");
+            
+            await EnsureColumnExistsAsync(db, "DentalImages", "FeatureVectorBlob", "ALTER TABLE DentalImages ADD COLUMN FeatureVectorBlob BLOB NULL;");
 
             // Keep auth schema backward compatible while runtime auth remains dormant.
             await EnsureColumnExistsAsync(db, "Users", "MustChangePassword", "ALTER TABLE Users ADD COLUMN MustChangePassword INTEGER NOT NULL DEFAULT 0;");
@@ -131,7 +133,7 @@ public static class SeedData
     private static async Task EnsureColumnExistsAsync(AppDbContext db, string tableName, string columnName, string alterSql)
     {
         var sql = $"SELECT name FROM pragma_table_info('{tableName}') WHERE name = '{columnName}'";
-        var columns = await db.Database.SqlQueryRaw<string>(sql).ToListAsync();
+        var columns = await db.Database.SqlQueryRaw<string>(sql).ToListAsync().ConfigureAwait(false);
         if (!columns.Any())
         {
             await db.Database.ExecuteSqlRawAsync(alterSql);
@@ -195,7 +197,7 @@ public static class SeedData
 
             if (changedInBatch > 0)
             {
-                await db.SaveChangesAsync();
+                await db.SaveChangesAsync().ConfigureAwait(false);
                 updatedRows += changedInBatch;
             }
 

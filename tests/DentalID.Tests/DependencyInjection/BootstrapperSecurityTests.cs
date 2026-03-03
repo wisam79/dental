@@ -105,6 +105,52 @@ public class BootstrapperSecurityTests
         }
     }
 
+    [Fact]
+    public async Task VerifyIntegrityAsync_ShouldFail_WhenOptionalModelExistsButManifestEntryMissing()
+    {
+        var bootstrapper = new Bootstrapper();
+        var aiSettings = new AiSettings();
+        var provider = bootstrapper.ConfigureServices(new AppSettings(), aiSettings);
+
+        var modelPreparation = EnsureRequiredModelFilesExist();
+        var optionalModel = EnsureModelFileExists(modelPreparation.ModelsDirectory, "genderage.onnx");
+        var manifestPath = Path.Combine(Path.GetTempPath(), $"model_integrity_{Guid.NewGuid():N}.json");
+
+        var modelsDir = modelPreparation.ModelsDirectory;
+        var manifest = new
+        {
+            version = 1,
+            createdUtc = DateTime.UtcNow.ToString("O"),
+            models = new Dictionary<string, string>
+            {
+                ["teeth_detect.onnx"] = ComputeSha256(Path.Combine(modelsDir, "teeth_detect.onnx")),
+                ["pathology_detect.onnx"] = ComputeSha256(Path.Combine(modelsDir, "pathology_detect.onnx")),
+                ["encoder.onnx"] = ComputeSha256(Path.Combine(modelsDir, "encoder.onnx"))
+            }
+        };
+        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest));
+
+        aiSettings.EnableModelIntegrity = true;
+        aiSettings.AllowIntegrityBaselineCreation = false;
+        aiSettings.ModelIntegrityManifestPath = manifestPath;
+
+        try
+        {
+            var logger = provider.GetRequiredService<ILoggerService>();
+            var ex = await Assert.ThrowsAsync<Exception>(() => InvokePrivateAsync(bootstrapper, "VerifyIntegrityAsync", logger, provider));
+            Assert.Contains("genderage.onnx", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            SafeDelete(manifestPath);
+            CleanupCreatedModelFiles(modelPreparation.CreatedFiles);
+            if (optionalModel.Created)
+            {
+                SafeDelete(optionalModel.FullPath);
+            }
+        }
+    }
+
     private static async Task InvokePrivateAsync(object instance, string methodName, params object[] args)
     {
         var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -138,6 +184,20 @@ public class BootstrapperSecurityTests
         }
 
         return (modelsDir, createdFiles);
+    }
+
+    private static (string FullPath, bool Created) EnsureModelFileExists(string modelsDir, string fileName)
+    {
+        var fullPath = Path.Combine(modelsDir, fileName);
+        if (File.Exists(fullPath))
+        {
+            return (fullPath, false);
+        }
+
+        var buffer = new byte[512];
+        RandomNumberGenerator.Fill(buffer);
+        File.WriteAllBytes(fullPath, buffer);
+        return (fullPath, true);
     }
 
     private static void CleanupCreatedModelFiles(IEnumerable<string> createdFiles)

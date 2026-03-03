@@ -1,5 +1,7 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DentalID.Core.Interfaces;
@@ -7,8 +9,11 @@ using DentalID.Core.DTOs;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class OdontogramViewModel : ViewModelBase
+public partial class OdontogramViewModel : ViewModelBase, IDisposable
 {
+    [ObservableProperty]
+    private ToothViewModel? _selectedTooth;
+
     public ObservableCollection<ToothViewModel> Teeth { get; } = new();
 
     public ObservableCollection<ToothViewModel> Quadrant1 { get; } = new(); // 18-11
@@ -25,6 +30,8 @@ public partial class OdontogramViewModel : ViewModelBase
         new TreatmentItem("Implant", "#4682B4", "Surgery"),
         new TreatmentItem("Root Canal", "#8B4513", "Endodontic")
     };
+
+    private readonly Dictionary<int, ToothViewModel> _teethMap = new();
 
     public OdontogramViewModel()
     {
@@ -50,10 +57,27 @@ public partial class OdontogramViewModel : ViewModelBase
         // Let's assume View calls this.
     }
 
+    public void SelectTooth(int fdiNumber)
+    {
+        if (!_teethMap.TryGetValue(fdiNumber, out var tooth)) return;
+
+        // Toggle selection
+        if (SelectedTooth?.FdiNumber == fdiNumber)
+        {
+            tooth.IsSelected = false;
+            SelectedTooth = null;
+        }
+        else
+        {
+            if (SelectedTooth != null) SelectedTooth.IsSelected = false;
+            tooth.IsSelected = true;
+            SelectedTooth = tooth;
+        }
+    }
+
     public void OnTreatmentDropped(int toothFdi, string treatmentName)
     {
-        var tooth = Teeth.FirstOrDefault(t => t.FdiNumber == toothFdi);
-        if (tooth != null)
+        if (_teethMap.TryGetValue(toothFdi, out var tooth))
         {
             // Simple logic for now: Change color based on treatment
             var treatment = Treatments.FirstOrDefault(t => t.Name == treatmentName);
@@ -64,9 +88,6 @@ public partial class OdontogramViewModel : ViewModelBase
         }
     }
 
-
-
-
     private void InitializeTeeth()
     {
         // Q1: 18 -> 11
@@ -75,6 +96,7 @@ public partial class OdontogramViewModel : ViewModelBase
             var t = new ToothViewModel(i);
             Teeth.Add(t);
             Quadrant1.Add(t);
+            _teethMap[i] = t;
         }
 
         // Q2: 21 -> 28
@@ -83,6 +105,7 @@ public partial class OdontogramViewModel : ViewModelBase
             var t = new ToothViewModel(i);
             Teeth.Add(t);
             Quadrant2.Add(t);
+            _teethMap[i] = t;
         }
 
         // Q3: 31 -> 38
@@ -91,6 +114,7 @@ public partial class OdontogramViewModel : ViewModelBase
             var t = new ToothViewModel(i);
             Teeth.Add(t);
             Quadrant3.Add(t);
+            _teethMap[i] = t;
         }
 
         // Q4: 48 -> 41
@@ -99,6 +123,7 @@ public partial class OdontogramViewModel : ViewModelBase
             var t = new ToothViewModel(i);
             Teeth.Add(t);
             Quadrant4.Add(t);
+            _teethMap[i] = t;
         }
     }
 
@@ -108,20 +133,15 @@ public partial class OdontogramViewModel : ViewModelBase
         foreach (var tooth in Teeth) tooth.Reset();
 
         // 2. Map detected teeth
-        // Note: The AI might detect a tooth that isn't in our 1-32 range (e.g. baby teeth 51-85). 
-        // We'll focus on permanent for now.
+        var pathologyGroups = result.Pathologies
+            .GroupBy(p => p.ToothNumber ?? 0)
+            .ToDictionary(g => g.Key, g => g.ToList());
         
         foreach (var detected in result.Teeth)
         {
-            var vm = Teeth.FirstOrDefault(t => t.FdiNumber == detected.FdiNumber);
-            if (vm != null)
+            if (_teethMap.TryGetValue(detected.FdiNumber, out var vm))
             {
-                // Verify if it has linked pathologies (Smart Fusion)
-                var pathologies = result.Pathologies
-                    .Where(p => p.ToothNumber == detected.FdiNumber)
-                    .ToList();
-
-                if (pathologies.Any())
+                if (pathologyGroups.TryGetValue(detected.FdiNumber, out var pathologies) && pathologies.Count > 0)
                 {
                     foreach (var p in pathologies)
                     {
@@ -140,6 +160,11 @@ public partial class OdontogramViewModel : ViewModelBase
     {
         foreach (var tooth in Teeth) tooth.Reset();
     }
+
+    public void Dispose()
+    {
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
 }
 
 public class TreatmentItem
@@ -155,3 +180,6 @@ public class TreatmentItem
         Category = category;
     }
 }
+
+
+

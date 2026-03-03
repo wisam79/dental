@@ -4,24 +4,29 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using DentalID.Desktop.Messages;
 using DentalID.Desktop.Services;
 using DentalID.Core.Interfaces;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly INavigationService _navigation;
     private readonly IToastService _toastService;
     private readonly ILoggerService? _logger;
     private string _currentPageLocKey = "Nav_Subjects";
+    private bool _isDisposed;
 
     public ObservableCollection<ToastViewModel> Toasts => _toastService.Toasts;
 
 
     [ObservableProperty]
     private ViewModelBase _currentView;
+
+    [ObservableProperty]
+    private object? _currentContent;
     
     private bool _suppressNavSelectionHandling;
 
@@ -108,6 +113,7 @@ public partial class MainWindowViewModel : ViewModelBase
             null!, 
             null!
         );
+        _currentContent = _currentView;
     }
 
     public MainWindowViewModel(INavigationService navigation, IToastService toastService, ILoggerService logger)
@@ -128,6 +134,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Navigate to Subjects by default (Data Management)
         _navigation.NavigateTo<SubjectsViewModel>();
         _currentView = _navigation.CurrentView;
+        _currentContent = BuildContentFor(_currentView);
         SyncShellForCurrentView(_currentView);
 
         // Register for global toast messages
@@ -154,13 +161,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdateStrings()
     {
-        Title = Loc.Instance["App_TitleFull"];
         SetCurrentPageFromLocalizationKey(_currentPageLocKey);
     }
 
     private void OnCurrentViewChanged(object? sender, ViewModelBase viewModel)
     {
+        _logger?.LogInformation($"[NAV] OnCurrentViewChanged handler received {viewModel.GetType().Name}");
         CurrentView = viewModel;
+        CurrentContent = BuildContentFor(viewModel);
         SyncShellForCurrentView(viewModel);
     }
 
@@ -185,18 +193,33 @@ public partial class MainWindowViewModel : ViewModelBase
             switch (value)
             {
                 case 0:
-                    _navigation.NavigateTo<SubjectsViewModel>();
+                    var subjectsVm = _navigation.NavigateTo<SubjectsViewModel>();
+                    if (subjectsVm != null)
+                    {
+                        CurrentView = subjectsVm;
+                        CurrentContent = BuildContentFor(subjectsVm);
+                    }
                     SetCurrentPageFromLocalizationKey("Nav_Subjects");
                     _logger?.LogInformation("[NAV] Navigated to Subjects");
                     break;
                 case 1:
                     _logger?.LogInformation("[NAV] Navigating to AnalysisLabViewModel...");
-                    _navigation.NavigateTo<AnalysisLabViewModel>();
+                    var analysisVm = _navigation.NavigateTo<AnalysisLabViewModel>();
+                    if (analysisVm != null)
+                    {
+                        CurrentView = analysisVm;
+                        CurrentContent = BuildContentFor(analysisVm);
+                    }
                     SetCurrentPageFromLocalizationKey("Nav_AnalysisLab");
                     _logger?.LogInformation("[NAV] Navigated to Analysis Lab");
                     break;
                 case 2:
-                    _navigation.NavigateTo<MatchingViewModel>();
+                    var matchingVm = _navigation.NavigateTo<MatchingViewModel>();
+                    if (matchingVm != null)
+                    {
+                        CurrentView = matchingVm;
+                        CurrentContent = BuildContentFor(matchingVm);
+                    }
                     SetCurrentPageFromLocalizationKey("Nav_Matching");
                     _logger?.LogInformation("[NAV] Navigated to Matching");
                     break;
@@ -218,7 +241,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (value == 0) // Settings Selected
         {
-            _navigation.NavigateTo<SettingsViewModel>();
+            var settingsVm = _navigation.NavigateTo<SettingsViewModel>();
+            if (settingsVm != null)
+            {
+                CurrentView = settingsVm;
+                CurrentContent = BuildContentFor(settingsVm);
+            }
             SetCurrentPageFromLocalizationKey("Nav_Settings");
             SelectedNavIndex = -1; // Deselect main nav
         }
@@ -256,6 +284,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _currentPageLocKey = key;
         CurrentPageTitle = Loc.Instance[key];
+        var appTitle = Loc.Instance["App_TitleFull"];
+        Title = string.IsNullOrWhiteSpace(CurrentPageTitle)
+            ? appTitle
+            : $"{appTitle} - {CurrentPageTitle}";
     }
 
     private void SetSelectedNavIndexSilently(int index)
@@ -298,6 +330,39 @@ public partial class MainWindowViewModel : ViewModelBase
             return desktop.MainWindow;
         }
         return null;
+    }
+
+    private object BuildContentFor(ViewModelBase viewModel)
+    {
+        try
+        {
+            IDataTemplate locator = new ViewLocator();
+            var view = locator.Build(viewModel);
+            return view is not null ? (object)view : viewModel;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, $"[VIEW] Failed to build content for {viewModel.GetType().Name}");
+            return viewModel;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+
+        if (_navigation != null)
+        {
+            _navigation.CurrentViewChanged -= OnCurrentViewChanged;
+        }
+
+        Loc.Instance.LanguageChanged -= OnLanguageChanged;
+        WeakReferenceMessenger.Default.UnregisterAll(this);
     }
 }
 

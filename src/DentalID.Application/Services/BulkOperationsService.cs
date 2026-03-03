@@ -7,6 +7,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using System.Globalization;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace DentalID.Application.Services;
 
@@ -85,8 +86,8 @@ public class BulkOperationsService : IBulkOperationsService
 
             if (subjectsToAdd.Any())
             {
-                await _unitOfWork.GetRepository<Subject>().AddRangeAsync(subjectsToAdd);
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.GetRepository<Subject>().AddRangeAsync(subjectsToAdd).ConfigureAwait(false);
+                await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -152,8 +153,8 @@ public class BulkOperationsService : IBulkOperationsService
 
             if (imagesToAdd.Any())
             {
-                await _unitOfWork.GetRepository<DentalImage>().AddRangeAsync(imagesToAdd);
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.GetRepository<DentalImage>().AddRangeAsync(imagesToAdd).ConfigureAwait(false);
+                await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -219,8 +220,8 @@ public class BulkOperationsService : IBulkOperationsService
 
             if (casesToAdd.Any())
             {
-                await _unitOfWork.GetRepository<Case>().AddRangeAsync(casesToAdd);
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.GetRepository<Case>().AddRangeAsync(casesToAdd).ConfigureAwait(false);
+                await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -284,8 +285,8 @@ public class BulkOperationsService : IBulkOperationsService
 
             if (matchesToAdd.Any())
             {
-                await _unitOfWork.GetRepository<Match>().AddRangeAsync(matchesToAdd);
-                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.GetRepository<Match>().AddRangeAsync(matchesToAdd).ConfigureAwait(false);
+                await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -330,7 +331,7 @@ public class BulkOperationsService : IBulkOperationsService
                     UpdatedAt = s.UpdatedAt,
                     CreatedById = s.CreatedById
                 })
-                .ToList());
+                .ToList()).ConfigureAwait(false);
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -380,7 +381,7 @@ public class BulkOperationsService : IBulkOperationsService
                     IsProcessed = d.IsProcessed,
                     CreatedAt = d.CreatedAt
                 })
-                .ToList());
+                .ToList()).ConfigureAwait(false);
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -411,8 +412,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(c => caseIds.Contains(c.Id));
             }
 
-            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
-            var cases = await Task.Run(() => query
+            // Bug #41 Fix: Use EF Core's native ToListAsync() instead of evaluating on a thread pool thread
+            var cases = await query
                 .Select(c => new CaseDto
                 {
                     Id = c.Id,
@@ -433,7 +434,7 @@ public class BulkOperationsService : IBulkOperationsService
                     ClosedAt = c.ClosedAt,
                     CreatedById = c.CreatedById
                 })
-                .ToList());
+                .ToListAsync();
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -464,8 +465,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(m => matchIds.Contains(m.Id));
             }
 
-            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
-            var matches = await Task.Run(() => query
+            // Bug #41 Fix: Use EF Core's native ToListAsync() instead of evaluating on a thread pool thread
+            var matches = await query
                 .Select(m => new MatchDto
                 {
                     Id = m.Id,
@@ -482,7 +483,7 @@ public class BulkOperationsService : IBulkOperationsService
                     CreatedAt = m.CreatedAt,
                     UpdatedAt = m.UpdatedAt
                 })
-                .ToList());
+                .ToListAsync();
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -522,7 +523,7 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -556,7 +557,7 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -590,7 +591,7 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -624,7 +625,7 @@ public class BulkOperationsService : IBulkOperationsService
                 }
             }
 
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

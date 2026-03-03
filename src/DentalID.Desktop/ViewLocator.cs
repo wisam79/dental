@@ -28,6 +28,9 @@ public class ViewLocator : IDataTemplate
             try
             {
                 var control = (Control)Activator.CreateInstance(type)!;
+                // Ensure each created view is bound to the requested ViewModel instance.
+                // This avoids blank screens if the host presenter does not assign DataContext.
+                control.DataContext = param;
                 logger?.LogInformation($"[VIEW] ViewLocator: Created view '{type.Name}'");
                 return control;
             }

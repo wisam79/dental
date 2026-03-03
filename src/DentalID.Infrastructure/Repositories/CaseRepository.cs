@@ -22,7 +22,7 @@ public class CaseRepository : ICaseRepository
             .FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task<Case?> GetByCaseNumberAsync(string caseNumber)
-        => await _db.Cases.FirstOrDefaultAsync(c => c.CaseNumber == caseNumber);
+        => await _db.Cases.FirstOrDefaultAsync(c => c.CaseNumber == caseNumber).ConfigureAwait(false);
 
     public async Task<List<Case>> GetAllAsync(int page = 1, int pageSize = 20)
     {
@@ -58,7 +58,7 @@ public class CaseRepository : ICaseRepository
         var query = _db.Cases.AsQueryable();
         if (status.HasValue)
             query = query.Where(c => c.Status == status.Value);
-        return await query.CountAsync();
+        return await query.CountAsync().ConfigureAwait(false);
     }
 
     public async Task<Case> AddAsync(Case forensicCase)
@@ -78,7 +78,7 @@ public class CaseRepository : ICaseRepository
             _db.Cases.Add(forensicCase);
             try
             {
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync().ConfigureAwait(false);
                 return forensicCase;
             }
             catch (DbUpdateException ex) when (IsCaseNumberUniqueConstraintViolation(ex))
@@ -100,16 +100,16 @@ public class CaseRepository : ICaseRepository
     {
         forensicCase.UpdatedAt = DateTime.UtcNow;
         _db.Cases.Update(forensicCase);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(int id)
     {
-        var c = await _db.Cases.FindAsync(id);
+        var c = await _db.Cases.FindAsync(id).ConfigureAwait(false);
         if (c != null)
         {
             _db.Cases.Remove(c);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 

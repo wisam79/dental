@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DentalID.Desktop.Views.Controls.SkeletonLoader"
+             CornerRadius="4"
+             ClipToBounds="True"
+             Background="{DynamicResource SurfaceFloatingBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="ToolTip">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Shimmer">
+            <Style.Animations>
+                <Animation Duration="0:0:2" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.25"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.65"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0.25"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- The shimmer effect -->
+        <Border x:Name="Shimmer" Width="200" HorizontalAlignment="Left"
+                VerticalAlignment="Stretch">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#00FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#15FFFFFF" Offset="0.5" />
+                    <GradientStop Color="#00FFFFFF" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+    </Grid>
+</UserControl>

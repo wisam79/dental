@@ -15,7 +15,7 @@
     ══════════════════════════════════════════════════════ -->
 
     <Style Selector="Window">
-        <Setter Property="Background"                      Value="#101216"/>
+        <Setter Property="Background"                      Value="{DynamicResource SurfaceBgBrush}"/>
         <Setter Property="FontFamily"                      Value="{DynamicResource FontSans}"/>
         <Setter Property="Foreground"                      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize"                        Value="13"/>
@@ -23,14 +23,9 @@
 
     <Style Selector="UserControl">
         <Setter Property="FontFamily" Value="{DynamicResource FontSans}"/>
-        <Setter Property="Opacity" Value="1"/>
-        <Setter Property="RenderTransform" Value="translateY(0)"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut"/>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut"/>
-            </Transitions>
-        </Setter>
+        <!-- Opacity is intentionally NOT set to 0 here. The TransitioningContentControl
+             in MainView handles page transitions (CrossFade 0.25s). Setting a global
+             Opacity=0 on UserControl breaks views when the animation doesn't fire. -->
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -118,13 +113,14 @@
     <!-- Base button reset -->
     <Style Selector="Button">
         <Setter Property="Cursor"        Value="Hand"/>
-        <Setter Property="CornerRadius"  Value="4"/>
+        <Setter Property="CornerRadius"  Value="6"/>
         <Setter Property="FontSize"      Value="13"/>
         <Setter Property="FontFamily"    Value="{DynamicResource FontSans}"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CircularEaseOut"/>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="CircularEaseOut"/>
+                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="CubicEaseOut"/>
             </Transitions>
         </Setter>
     </Style>
@@ -132,19 +128,19 @@
     <!-- ─── Primary (filled, accent-coloured) ─── -->
     <Style Selector="Button.primary">
         <Setter Property="Background"    Value="{DynamicResource AccentPrimaryBrush}"/>
-        <Setter Property="Foreground"    Value="{DynamicResource TextOnAccentBrush}"/>
+        <Setter Property="Foreground"    Value="{DynamicResource SurfaceBgBrush}"/> <!-- Dark text on neon bg -->
         <Setter Property="Padding"       Value="20,10"/>
-        <Setter Property="CornerRadius"  Value="4"/>
-        <Setter Property="FontWeight"    Value="SemiBold"/>
+        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="FontWeight"    Value="Bold"/>
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryHoverBrush}"/>
-        <Setter Property="RenderTransform" Value="scale(1.01)"/>
+        <Setter Property="RenderTransform" Value="scale(1.02)"/>
     </Style>
     <Style Selector="Button.primary:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryPressedBrush}"/>
-        <Setter Property="RenderTransform" Value="scale(0.97)"/>
+        <Setter Property="RenderTransform" Value="scale(0.96)"/>
     </Style>
     <Style Selector="Button.primary:disabled /template/ ContentPresenter">
         <Setter Property="Opacity" Value="0.4"/>
@@ -157,14 +153,18 @@
         <Setter Property="BorderBrush"   Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding"       Value="20,9"/>
-        <Setter Property="CornerRadius"  Value="4"/>
+        <Setter Property="CornerRadius"  Value="6"/>
         <Setter Property="FontWeight"    Value="SemiBold"/>
     </Style>
     <Style Selector="Button.outline:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#18FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/> <!-- Very subtle accent fill on hover -->
+        <Setter Property="RenderTransform" Value="translateY(-1px)"/>
     </Style>
     <Style Selector="Button.outline:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="#25FFFFFF"/>
+        <Setter Property="RenderTransform" Value="translateY(1px)"/>
+    </Style>
+    <Style Selector="Button.outline:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource OverlayPressedBrush}"/>
         <Setter Property="RenderTransform" Value="scale(0.97)"/>
     </Style>
 
@@ -193,11 +193,11 @@
         <Setter Property="CornerRadius"  Value="4"/>
     </Style>
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#12FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
         <Setter Property="TextElement.Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="#1EFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayPressedBrush}"/>
     </Style>
 
     <!-- ─── Nav button (sidebar icon buttons) ─── -->
@@ -218,7 +218,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.nav-button:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#15FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
     </Style>
     <Style Selector="Button.nav-button:pressed /template/ ContentPresenter">
         <Setter Property="RenderTransform" Value="scale(0.90)"/>
@@ -233,7 +233,7 @@
         <Setter Property="Cursor"        Value="Hand"/>
     </Style>
     <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#12FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
     </Style>
 
     <!-- ─── Success (confirm / positive action) ─── -->
@@ -254,14 +254,14 @@
 
     <!-- ── Subtle (light fill, used for secondary actions) ── -->
     <Style Selector="Button.subtle">
-        <Setter Property="Background"    Value="#10FFFFFF"/>
+        <Setter Property="Background"    Value="{DynamicResource OverlayHoverBrush}"/>
         <Setter Property="Foreground"    Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"       Value="16,8"/>
         <Setter Property="CornerRadius"  Value="4"/>
     </Style>
     <Style Selector="Button.subtle:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#1AFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayPressedBrush}"/>
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -289,7 +289,7 @@
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
         <Setter Property="BorderBrush"    Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BoxShadow"      Value="0 0 0 2 #402F84AE"/>
+        <Setter Property="BoxShadow"      Value="0 0 8 0 #406490FF"/>  <!-- Accent glow -->
     </Style>
 
     <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
@@ -300,6 +300,37 @@
     <Style Selector="TextBox.search">
         <Setter Property="CornerRadius" Value="20"/>
         <Setter Property="Padding"      Value="16,9"/>
+    </Style>
+
+    <!-- AutoCompleteBox uses its own control template and can fall back to
+         low-contrast defaults if not themed explicitly. -->
+    <Style Selector="AutoCompleteBox">
+        <Setter Property="Background"      Value="{DynamicResource InputBgBrush}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Padding"         Value="12,9"/>
+        <Setter Property="MinHeight"       Value="38"/>
+        <Setter Property="FontSize"        Value="13"/>
+    </Style>
+    <Style Selector="AutoCompleteBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderPrimaryBrush}"/>
+    </Style>
+    <Style Selector="AutoCompleteBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BoxShadow" Value="0 0 8 0 #406490FF"/>
+    </Style>
+
+    <Style Selector="CalendarDatePicker">
+        <Setter Property="Background"      Value="{DynamicResource InputBgBrush}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Padding"         Value="12,8"/>
+        <Setter Property="MinHeight"       Value="38"/>
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -318,7 +349,7 @@
 
     <Style Selector="ComboBox:focus /template/ Border#Background">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
-        <Setter Property="BoxShadow"   Value="0 0 0 2 #402F84AE"/>
+        <Setter Property="BoxShadow"   Value="0 0 8 0 #406490FF"/>  <!-- Accent glow -->
     </Style>
 
     <Style Selector="ComboBoxItem">
@@ -403,7 +434,7 @@
     </Style>
 
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#0FFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlaySubtleBrush}"/>
     </Style>
 
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
@@ -447,19 +478,25 @@
     </Style>
 
     <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
-        <Setter Property="Fill" Value="#08FFFFFF"/>
+        <Setter Property="Fill" Value="{DynamicResource OverlaySubtleBrush}"/>
         <Setter Property="Opacity" Value="1"/>
     </Style>
 
     <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
         <Setter Property="Fill"    Value="{DynamicResource AccentSecondaryBrush}"/>
-        <Setter Property="Opacity" Value="0.25"/>
+        <Setter Property="Opacity" Value="0.22"/> <!-- Stronger selected contrast -->
     </Style>
 
     <Style Selector="DataGridCell">
         <Setter Property="Padding"       Value="12,10"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Foreground"    Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="DataGridCell TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="DataGridRow:selected DataGridCell">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -473,7 +510,7 @@
     </Style>
 
     <Style Selector="ScrollBar /template/ Thumb">
-        <Setter Property="Background"   Value="#30FFFFFF"/>
+        <Setter Property="Background"   Value="{DynamicResource OverlayHoverBrush}"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Transitions">
             <Transitions>
@@ -483,7 +520,7 @@
     </Style>
 
     <Style Selector="ScrollBar:pointerover /template/ Thumb">
-        <Setter Property="Background" Value="#55FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource OverlayPressedBrush}"/>
     </Style>
 
     <!-- ══════════════════════════════════════════════════════
@@ -561,21 +598,21 @@
     ══════════════════════════════════════════════════════ -->
 
     <Style Selector="Border.card">
-        <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
+        <Setter Property="Background"      Value="{DynamicResource CardBgBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="CornerRadius"    Value="8"/>
         <Setter Property="Padding"         Value="20"/>
-        <Setter Property="BoxShadow"       Value="0 8 24 0 #22000000"/>
+        <Setter Property="BoxShadow"       Value="0 10 30 0 #55000000"/> <!-- Deeper shadow -->
     </Style>
 
     <Style Selector="Border.card-compact">
-        <Setter Property="Background"      Value="{DynamicResource SurfaceElevatedBrush}"/>
+        <Setter Property="Background"      Value="{DynamicResource CardBgBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="12,10"/>
-        <Setter Property="BoxShadow"       Value="0 6 18 0 #1A000000"/>
+        <Setter Property="BoxShadow"       Value="0 4 12 0 #44000000"/>
     </Style>
 
     <!-- Accent-bordered card (for highlighted items) -->
@@ -738,7 +775,7 @@
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="16,12"/>
         <Setter Property="MinWidth" Value="280"/>
-        <Setter Property="BoxShadow" Value="0 8 32 0 #40000000"/>
+        <Setter Property="BoxShadow" Value="0 8 32 0 #55000000"/>
         <Setter Property="Opacity" Value="1"/>
         <Setter Property="RenderTransform" Value="translateX(0)"/>
         <Setter Property="Transitions">
@@ -787,15 +824,56 @@
     </Style>
 
     <Style Selector="Border.toast-info">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                     <GradientStop Color="#1500E5FF" Offset="0"/>
-                    <GradientStop Color="#0A0D0E12" Offset="1"/>
+                    <GradientStop Color="#0A07080A" Offset="1"/>
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- ══════════════════════════════════════════════════════
+         § 23  ANIMATIONS & EFFECTS
+         Reusable classes for loading states or highlights.
+    ══════════════════════════════════════════════════════ -->
+
+    <Style Selector="Border.shimmer">
+        <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Style.Animations>
+            <Animation Duration="0:0:1.5" IterationCount="Infinite" Easing="SineEaseInOut">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0.3"/>
+                </KeyFrame>
+                <KeyFrame Cue="50%">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="0.3"/>
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+    <Style Selector="Border.pulse-accent">
+        <Style.Animations>
+            <Animation Duration="0:0:2" IterationCount="Infinite" Easing="SineEaseInOut">
+                <KeyFrame Cue="0%">
+                    <Setter Property="BorderBrush" Value="#4000F0FF"/>
+                    <Setter Property="BoxShadow"   Value="0 0 4 0 #2000F0FF"/>
+                </KeyFrame>
+                <KeyFrame Cue="50%">
+                    <Setter Property="BorderBrush" Value="#FF00F0FF"/>
+                    <Setter Property="BoxShadow"   Value="0 0 12 0 #8000F0FF"/>
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="BorderBrush" Value="#4000F0FF"/>
+                    <Setter Property="BoxShadow"   Value="0 0 4 0 #2000F0FF"/>
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
     </Style>
 
 </Styles>

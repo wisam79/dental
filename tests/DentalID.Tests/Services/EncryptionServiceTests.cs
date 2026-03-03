@@ -78,10 +78,13 @@ public class EncryptionServiceTests
         // Needs to be > 48 bytes to trigger fallback logic in current implementation
         var plain = "Legacy Data that is sufficiently long to trigger the fallback logic properly 123";
         var iv = Encoding.UTF8.GetBytes("1234567890123456");
-        var key = Convert.FromBase64String(_testKey);
+        
+        // Match EncryptionService internal key derivation
+        var rawKey = Convert.FromBase64String(_testKey);
+        var derivedKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, rawKey, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
         
         using var aes = Aes.Create();
-        aes.Key = key;
+        aes.Key = derivedKey;
         aes.IV = iv;
         aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.PKCS7;

@@ -58,7 +58,10 @@ public static class DependencyInjection
         services.AddTransient<IAuditService, AuditService>();
         
         // Caching
-        services.AddMemoryCache();
+        services.AddMemoryCache(options => 
+        {
+            options.SizeLimit = 500; // Prevent memory bloat from unbounded caching
+        });
         services.AddSingleton<ICacheService, CacheService>();
 
         // Application Services

@@ -25,6 +25,8 @@ namespace DentalID.Desktop.ViewModels;
 
 public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
 {
+    private const float MinDisplayNormalizedSize = 0.005f;
+
     private readonly IForensicAnalysisService _forensicService;
     private readonly ISubjectRepository _subjectRepo;
     private readonly IReportService _reportService;
@@ -60,15 +62,22 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     public bool IsError => CurrentState == AnalysisState.Error;
     public bool IsSaving => CurrentState == AnalysisState.Saving;
     
+    public bool HasImage => !string.IsNullOrEmpty(LoadedImagePath) && CurrentState != AnalysisState.LoadingImage;
+
     // Computed property for View compatibility
-    public bool IsImageLoaded => CurrentState == AnalysisState.Ready || 
+    public bool IsImageLoaded => HasImage && (CurrentState == AnalysisState.Ready || 
                                  CurrentState == AnalysisState.Analyzing || 
                                  CurrentState == AnalysisState.Review ||
                                  CurrentState == AnalysisState.Error ||
-                                 CurrentState == AnalysisState.Saving;
+                                 CurrentState == AnalysisState.Saving);
 
     // ── Image State ──
-    [ObservableProperty] private string? _loadedImagePath;
+    [ObservableProperty]
+[NotifyPropertyChangedFor(nameof(HasImage))]
+[NotifyPropertyChangedFor(nameof(IsImageLoaded))]
+[NotifyPropertyChangedFor(nameof(CanRunAnalysis))]
+[NotifyCanExecuteChangedFor(nameof(RunAnalysisCommand))]
+private string? _loadedImagePath;
     [ObservableProperty] private string? _imageFileName;
     [ObservableProperty] private double _imageWidth;
     [ObservableProperty] private double _imageHeight;
@@ -118,8 +127,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _searchQuery = "";
     [ObservableProperty] private bool _showTeethOverlay = true;
     [ObservableProperty] private bool _showPathosOverlay = false;
-    [ObservableProperty] private double _windowCenter = 128;
-    [ObservableProperty] private double _windowWidth = 256;
+    [ObservableProperty] private double _windowCenter = 0.5;
+    [ObservableProperty] private double _windowWidth = 1.0;
     [ObservableProperty] private double _analysisVisualProgress;
     [ObservableProperty] private string _analysisElapsed = "00:00";
     [ObservableProperty] private string _analysisPhase = "";
@@ -131,6 +140,12 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     private DispatcherTimer? _analysisFeedbackTimer;
     private DateTime _analysisStartedAtUtc;
     private int _analysisTick;
+
+    public bool HasImageEnhancements =>
+        Math.Abs(WindowCenter - 0.5) > 0.0001 ||
+        Math.Abs(WindowWidth - 1.0) > 0.0001;
+
+    public string ImageEnhancementSummary => $"B:{WindowCenter:F2} C:{WindowWidth:F2}";
 
     [RelayCommand]
     private void CancelSave()
@@ -172,8 +187,6 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            // Bug Fix: Use built-in pagination (pageSize=20) instead of loading all records
-            // then doing .Take(20) in memory. ISubjectRepository.GetAllAsync supports pagination directly.
             var subjects = await _subjectRepo.GetAllAsync(page: 1, pageSize: 20);
             Subjects = new ObservableCollection<Subject>(subjects);
         }
@@ -222,8 +235,12 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
                         bool loadSuccess = false;
                         try
                         {
-                            using var stream = _fileService.OpenRead(path);
-                            _currentBitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                            _currentBitmap = await Task.Run(() => 
+                            {
+                                using var stream = _fileService.OpenRead(path);
+                                return new Avalonia.Media.Imaging.Bitmap(stream);
+                            });
+                            
                             ImageWidth = _currentBitmap.Size.Width;
                             ImageHeight = _currentBitmap.Size.Height;
                             loadSuccess = true;
@@ -231,7 +248,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Failed to load image bitmap");
-                            StatusMessage = string.Format(_localizationService["Msg_PreviewFail"] ?? "Preview failed: {0}", ex.Message);
+                            StatusMessage = FormatSafe(_localizationService["Msg_PreviewFail"] ?? "Preview failed: {0}", ex.Message);
                             CurrentState = AnalysisState.Error;
                             ErrorMessage = ex.Message;
                         }
@@ -252,6 +269,18 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
             _toastService.Show("Error", _localizationService["Msg_SelectFail"], ToastType.Error);
             CurrentState = AnalysisState.Error;
             ErrorMessage = ex.Message;
+        }
+    }
+
+    private string FormatSafe(string format, params object[] args)
+    {
+        try
+        {
+            return string.Format(format, args);
+        }
+        catch
+        {
+            return $"{format} - {string.Join(", ", args)}";
         }
     }
 
@@ -288,10 +317,14 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
                 CurrentState = AnalysisState.Review;
                 StatusMessage = _localizationService["Msg_AnalysisComplete"];
                 
-                var successBody = string.Format(_localizationService["Msg_FoundTeethPathos"] ?? "Found {0} teeth, {1} pathologies", result.Teeth.Count, result.Pathologies.Count);
+                var successBody = FormatSafe(
+                    _localizationService["Msg_FoundTeethPathos"] ?? "Found {0} teeth, {1} pathologies",
+                    TeethDetectedCount,
+                    PathologiesCount);
                 WeakReferenceMessenger.Default.Send(new ShowToastMessage(_localizationService["Msg_AnalysisComplete"], successBody, ToastType.Success));
                 
-                _logger.LogInformation($"Analysis completed successfully: {result.Teeth.Count} teeth, {result.Pathologies.Count} pathologies");
+                _logger.LogInformation(
+                    $"Analysis completed successfully: displayed={TeethDetectedCount} teeth, displayed={PathologiesCount} pathologies; raw={result.Teeth.Count} teeth, raw={result.Pathologies.Count} pathologies");
             }
             else
             {
@@ -299,7 +332,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
                 AnalysisPhase = _localizationService["Lab_Phase_Finalize"];
                 ErrorMessage = errorMsg;
                 CurrentState = AnalysisState.Error;
-                StatusMessage = string.Format(_localizationService["Msg_AnalysisFailed"] ?? "Analysis failed: {0}", errorMsg);
+                StatusMessage = FormatSafe(_localizationService["Msg_AnalysisFailed"] ?? "Analysis failed: {0}", errorMsg);
                 _logger.LogError(new Exception(errorMsg), $"Analysis failed: {errorMsg}");
                 // SafeExecuteAsync handles logging too, but redundant is safer
             }
@@ -317,14 +350,14 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SaveToSubject()
+    private async Task SaveToSubject()
     {
         if (_currentAnalysisResult == null || LoadedImagePath == null)
         {
              _toastService.Show(_localizationService["Msg_NoEvidenceTitle"], _localizationService["Msg_NoEvidenceBody"], ToastType.Warning);
              return;
         }
-        _ = LoadRecentSubjectsAsync(); // Refresh list
+        await LoadRecentSubjectsAsync(); // Refresh list safely
         IsSaveDialogOpen = true;
     }
 
@@ -364,6 +397,8 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         CurrentState = AnalysisState.Saving;
         var savedSubjectCode = targetSubject.SubjectId;
         var saveSucceeded = false;
+        int? newlyCreatedSubjectId = null;
+        var subjectNameForToast = targetSubject.FullName ?? "Unknown Subject";
 
         await SafeExecuteAsync(async () =>
         {
@@ -372,32 +407,45 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
                 var created = await _subjectRepo.AddAsync(targetSubject);
                 targetSubject = created;
                 savedSubjectCode = created.SubjectId;
+                newlyCreatedSubjectId = created.Id;
             }
 
-            // Save Image Analysis
-            // Note: In real app, we would save the actual image file to a managed directory here.
-            // For now, we link the file path if it's local.
-            
-            // ... (Logic to persist analysis record to DB would go here)
-            // Since we don't have a full Analysis entity yet in context, we assume UpdateAsync handles linking?
-            // Or maybe we create a DentalImage entity?
-            
              // Link image to subject
-             await _forensicService.SaveEvidenceAsync(imagePath, analysisResult, targetSubject.Id);
-
+             try 
+             {
+                 await _forensicService.SaveEvidenceAsync(imagePath, analysisResult, targetSubject.Id);
+                 saveSucceeded = true;
+             }
+             catch
+             {
+                 // Re-throw to be caught by SafeExecuteAsync and trigger rollback logic
+                 throw;
+             }
+             
              // Log
-             _logger.LogInformation($"Saved analysis for subject {targetSubject.FullName}");
-             saveSucceeded = true;
+             _logger.LogInformation($"Saved analysis for subject {subjectNameForToast}");
              
              IsSaveDialogOpen = false;
              
         },
         errorMessage: _localizationService["Msg_SaveFailedBody"] ?? "Failed to save evidence record.",
-        successMessage: string.Format(_localizationService["Msg_LinkSuccess"] ?? "Evidence linked to {0}", targetSubject?.FullName ?? "subject"),
+        successMessage: FormatSafe(_localizationService["Msg_LinkSuccess"] ?? "Evidence linked to {0}", subjectNameForToast),
         errorTitle: _localizationService["Msg_SaveFailedTitle"] ?? "Save Failed");
 
         if (CurrentState == AnalysisState.Saving)
             CurrentState = previousState;
+
+        if (!saveSucceeded && newlyCreatedSubjectId.HasValue)
+        {
+            try
+            {
+                await _subjectRepo.DeleteAsync(newlyCreatedSubjectId.Value);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.LogError(cleanupEx, $"Failed to rollback newly created subject {newlyCreatedSubjectId.Value} after evidence save failure.");
+            }
+        }
 
         if (saveSucceeded)
         {
@@ -450,13 +498,24 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         _logger.LogInformation("View Reset Triggered");
     }
 
-    /* AI Chat Removed */
-
     private void UpdateUIResults(AnalysisResult result)
     {
         ClearResults();
-        
-        TeethDetectedCount = result.Teeth.Count;
+
+        var normalizedTeeth = new List<DetectedTooth>();
+        foreach (var tooth in result.Teeth)
+        {
+            if (TryNormalizeToothForDisplay(tooth, out var normalized))
+                normalizedTeeth.Add(normalized);
+        }
+
+        var displayTeeth = normalizedTeeth
+            .GroupBy(t => t.FdiNumber)
+            .Select(g => g.OrderByDescending(t => t.Confidence).First())
+            .OrderBy(t => t.FdiNumber)
+            .ToList();
+
+        TeethDetectedCount = displayTeeth.Count;
         PathologiesCount = result.Pathologies.Count;
         EstimatedAge = result.EstimatedAge;
         EstimatedGender = result.EstimatedGender;
@@ -469,7 +528,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
             HasFeatureVector = result.FeatureVector is { Length: > 0 };
         }
 
-        foreach (var t in result.Teeth)
+        foreach (var t in displayTeeth)
         {
             DetectedTeeth.Add(t);
         }
@@ -482,7 +541,7 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         // 4. Insights
         foreach (var insight in result.SmartInsights)
         {
-            SmartInsights.Add(new AiMessage { Role = "System", Content = insight, Timestamp = DateTime.Now });
+            SmartInsights.Add(new AiMessage { Role = "System", Content = insight, Timestamp = DateTime.UtcNow });
         }
 
         // 5. Update Odontogram
@@ -572,6 +631,59 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         _currentBitmap?.Dispose();
     }
 
+    private static bool TryNormalizeToothForDisplay(DetectedTooth tooth, out DetectedTooth normalized)
+    {
+        normalized = null!;
+        if (tooth == null)
+            return false;
+
+        if (!IsFinite(tooth.X) || !IsFinite(tooth.Y) || !IsFinite(tooth.Width) || !IsFinite(tooth.Height))
+            return false;
+
+        if (tooth.Width <= 0f || tooth.Height <= 0f)
+            return false;
+
+        // Intersect with normalized image bounds first (avoid dropping partially-outside boxes).
+        var left = Math.Max(0f, tooth.X);
+        var top = Math.Max(0f, tooth.Y);
+        var right = Math.Min(1f, tooth.X + tooth.Width);
+        var bottom = Math.Min(1f, tooth.Y + tooth.Height);
+        var width = right - left;
+        var height = bottom - top;
+        if (width <= 0f || height <= 0f)
+            return false;
+
+        // Ensure tiny but valid teeth remain visible instead of being dropped.
+        if (width < MinDisplayNormalizedSize)
+        {
+            var cx = (left + right) * 0.5f;
+            width = MinDisplayNormalizedSize;
+            left = Math.Clamp(cx - (width * 0.5f), 0f, 1f - width);
+        }
+
+        if (height < MinDisplayNormalizedSize)
+        {
+            var cy = (top + bottom) * 0.5f;
+            height = MinDisplayNormalizedSize;
+            top = Math.Clamp(cy - (height * 0.5f), 0f, 1f - height);
+        }
+
+        normalized = new DetectedTooth
+        {
+            FdiNumber = tooth.FdiNumber,
+            Confidence = tooth.Confidence,
+            X = left,
+            Y = top,
+            Width = width,
+            Height = height,
+            Outline = tooth.Outline?.Select(p => (X: Math.Clamp(p.X, 0f, 1f), Y: Math.Clamp(p.Y, 0f, 1f))).ToList()
+        };
+
+        return true;
+    }
+
+    private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
     private static int ToGenderIndex(string? rawGender) => Subject.NormalizeGenderCode(rawGender) switch
     {
         "Male" => 0,
@@ -586,3 +698,5 @@ public partial class AnalysisLabViewModel : ViewModelBase, IDisposable
         _ => "Unknown"
     };
 }
+
+

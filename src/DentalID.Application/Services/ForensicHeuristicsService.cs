@@ -44,10 +44,10 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         {
             for (int j = i + 1; j < rawTeeth.Count; j++)
             {
-                // Bug #46 fix: Lower IoU threshold from 0.8 to 0.5 to catch near-duplicate detections
+                // Bug #46 fix: adjusted IoU threshold for density overlap to 0.65 to reduce over-flagging
                 if (CalculateIoU(
                     rawTeeth[i].X, rawTeeth[i].Y, rawTeeth[i].Width, rawTeeth[i].Height,
-                    rawTeeth[j].X, rawTeeth[j].Y, rawTeeth[j].Width, rawTeeth[j].Height) > 0.5f)
+                    rawTeeth[j].X, rawTeeth[j].Y, rawTeeth[j].Width, rawTeeth[j].Height) > 0.65f)
                 {
                     highOverlapCount++;
                 }
@@ -55,7 +55,7 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         }
         if (highOverlapCount > 3)
         {
-            result.Flags.Add($"Forensic Alert: {highOverlapCount} high-density overlaps detected (IoU > 0.5). Possible AI artifacting.");
+            result.Flags.Add($"Forensic Alert: {highOverlapCount} high-density overlaps detected (IoU > 0.65). Possible AI artifacting zone.");
         }
 
         CheckSupernumerary(result, rawTeeth);
@@ -76,7 +76,7 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
             ((t.FdiNumber >= 11 && t.FdiNumber <= 18) ||
              (t.FdiNumber >= 41 && t.FdiNumber <= 48)));
 
-        if (Math.Abs(leftCount - rightCount) > 6 && rawTeeth.Count > 10)
+        if (Math.Abs(leftCount - rightCount) > 8 && rawTeeth.Count > 10)
         {
             result.Flags.Add("Forensic Alert: Severe bilateral asymmetry detected. Verify image authenticity.");
         }
@@ -88,12 +88,17 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         var quadrantCounts = rawTeeth
             .Where(t => t != null && t.FdiNumber >= 11 && t.FdiNumber <= 48)
             .GroupBy(t => t.FdiNumber / 10)
-            .Select(g => new { Quadrant = g.Key, Count = g.Count() })
+            .Select(g => new { 
+                Quadrant = g.Key, 
+                Count = g.Count(),
+                HasWisdomTooth = g.Any(t => t.FdiNumber % 10 == 8)
+            })
             .ToList();
 
         foreach (var qc in quadrantCounts)
         {
-            if (qc.Count > 8)
+            // Skip alert if the count is exactly 9 but includes a wisdom tooth (common artifact zone at edges)
+            if (qc.Count > 8 && !(qc.Count == 9 && qc.HasWisdomTooth))
             {
                 result.Flags.Add($"Forensic Alert: Supernumerary teeth detected in Quadrant {qc.Quadrant} (Count: {qc.Count} > 8 max permanent).");
             }

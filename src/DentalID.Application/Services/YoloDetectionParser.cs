@@ -12,15 +12,15 @@ namespace DentalID.Application.Services;
 /// </summary>
 public class YoloDetectionParser : IYoloDetectionParser
 {
-    private const int MaxAdultTeeth = 32;
+    private const int MaxAdultTeeth = 52;
     private const int CoverageTargetTeeth = 28;
     private const int MinDirectClassMapLengthForTrustedFdi = 28;
     private const float CoverageClassConfidenceFloorSparse = 0.08f;
     private const float CoverageClassConfidenceFloorDense = 0.20f;
     private const float MinToothArea = 0.00018f;
     private const float MaxToothArea = 0.08f;
-    private const float MinToothAspectRatio = 0.12f;
-    private const float MaxToothAspectRatio = 3.2f;
+    private const float MinToothAspectRatio = 0.25f;
+    private const float MaxToothAspectRatio = 2.8f;
     private const float MinNormalizedWidth = 0.009f;
     private const float MinNormalizedHeight = 0.015f;
     private const float RescueMinToothArea = 0.00008f;
@@ -34,7 +34,7 @@ public class YoloDetectionParser : IYoloDetectionParser
     private const float MinPathologyHeight = 0.006f;
     private const float MaxPathologyArea = 0.16f;
     private const float MaxMissingToothArea = 0.24f;
-    private const float MinPathologyOverlapRatio = 0.12f;
+    private const float MinPathologyOverlapRatio = 0.25f;
     private const float PathologyClassMarginMin = 0.06f;
     private const float PathologyMarginHighConfidenceBypass = 0.78f;
 
@@ -581,6 +581,10 @@ public class YoloDetectionParser : IYoloDetectionParser
         {
             return classIndex switch
             {
+                >= 0 and <= 7 => 11 + classIndex,
+                >= 8 and <= 15 => 21 + (classIndex - 8),
+                >= 16 and <= 23 => 31 + (classIndex - 16),
+                >= 24 and <= 31 => 41 + (classIndex - 24),
                 >= 32 and <= 36 => 11 + (classIndex - 32), // 51..55 -> 11..15
                 >= 37 and <= 41 => 21 + (classIndex - 37), // 61..65 -> 21..25
                 >= 42 and <= 46 => 31 + (classIndex - 42), // 71..75 -> 31..35

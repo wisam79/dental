@@ -216,18 +216,7 @@ public partial class MatchingViewModel : ViewModelBase
                 QueryVector = vector;
 
                 // 2. Run Matching Service
-                // Bug #7 fix: paginate through ALL subjects
-                StatusMessage = "Loading subject database...";
-                var allSubjects = new List<Subject>();
-                int page = 1;
-                List<Subject> batch;
-                do
-                {
-                    batch = await _subjectRepo.GetAllAsync(page, MatchingBatchSize);
-                    allSubjects.AddRange(batch);
-                    page++;
-                } while (batch.Count == MatchingBatchSize);
-                MatchingProgress = 40;
+                StatusMessage = "Matching against subject database...";
                 
                 // Create probe fingerprint
                 var probe = new DentalFingerprint 
@@ -236,9 +225,25 @@ public partial class MatchingViewModel : ViewModelBase
                    FeatureVector = vector 
                 };
 
-                // Run matching (CPU bound, consider Task.Run)
-                StatusMessage = "Matching against subject database...";
-                var matches = await Task.Run(() => _matchingService.FindMatches(probe, allSubjects));
+                var matches = new List<MatchCandidate>();
+                var batch = new List<Subject>(MatchingBatchSize);
+                
+                await foreach (var subject in _subjectRepo.StreamAllWithVectorsAsync())
+                {
+                    batch.Add(subject);
+                    if (batch.Count >= MatchingBatchSize)
+                    {
+                        var batchMatches = await Task.Run(() => _matchingService.FindMatches(probe, batch));
+                        matches.AddRange(batchMatches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold));
+                        batch.Clear();
+                    }
+                }
+                if (batch.Count > 0)
+                {
+                    var batchMatches = await Task.Run(() => _matchingService.FindMatches(probe, batch));
+                    matches.AddRange(batchMatches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold));
+                }
+
                 MatchingProgress = 80;
 
                 // 3. Persist Query Image & Match Results
@@ -246,7 +251,7 @@ public partial class MatchingViewModel : ViewModelBase
                 _currentQueryImageId = await SaveQueryImageAsync(QueryImagePath);
 
                 // 4. Update UI & Persist Candidates
-                var topMatches = matches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold).ToList();
+                var topMatches = matches.OrderByDescending(m => m.Score).Take(20).ToList();
                 
                 foreach (var matchCandidate in topMatches)
                 {
@@ -282,18 +287,54 @@ public partial class MatchingViewModel : ViewModelBase
 
     private async Task<int> SaveQueryImageAsync(string path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Query image path cannot be null or empty.", nameof(path));
+        if (!_fileService.Exists(path))
+            throw new FileNotFoundException("Query image not found.", path);
+
         // Keep all probe images under one dedicated system subject to avoid polluting subject records.
         var savedSubject = await GetOrCreateQuerySubjectAsync();
+        var managedPath = CopyQueryImageToManagedStorage(path);
 
-        var image = new DentalImage
+        try
         {
-            SubjectId = savedSubject.Id,
-            ImagePath = path,
-            UploadedAt = DateTime.UtcNow,
-            ImageType = DentalID.Core.Enums.ImageType.Other
-        };
-        var saved = await _imageRepo.AddAsync(image);
-        return saved.Id;
+            var image = new DentalImage
+            {
+                SubjectId = savedSubject.Id,
+                ImagePath = managedPath,
+                UploadedAt = DateTime.UtcNow,
+                ImageType = DentalID.Core.Enums.ImageType.Other
+            };
+            var saved = await _imageRepo.AddAsync(image);
+            return saved.Id;
+        }
+        catch
+        {
+            try 
+            { 
+                _fileService.Delete(managedPath); 
+            } 
+            catch (Exception ex)
+            { 
+                _logger.LogWarning($"Failed to cleanup managed path after save failure. {ex.Message}");
+            }
+            throw;
+        }
+    }
+
+    private string CopyQueryImageToManagedStorage(string originalPath)
+    {
+        string queryStoreDir = Path.Combine(AppContext.BaseDirectory, "data", "query");
+        Directory.CreateDirectory(queryStoreDir);
+
+        string extension = Path.GetExtension(originalPath);
+        if (string.IsNullOrWhiteSpace(extension))
+            extension = ".img";
+
+        string fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}{extension}";
+        string destinationPath = Path.Combine(queryStoreDir, fileName);
+        _fileService.Copy(originalPath, destinationPath, overwrite: false);
+        return destinationPath;
     }
 
     private async Task<Subject> GetOrCreateQuerySubjectAsync()
@@ -313,12 +354,14 @@ public partial class MatchingViewModel : ViewModelBase
             };
             return await _subjectRepo.AddAsync(subject);
         }
-        catch
+        catch (Exception ex)
         {
             // Handle concurrent creation in multi-window/session scenarios.
             var createdByAnother = await _subjectRepo.GetBySubjectIdAsync(QuerySubjectCode);
             if (createdByAnother != null)
                 return createdByAnother;
+                
+            _logger.LogError(ex, "Failed to create query subject and fallback also failed.");
             throw;
         }
     }
@@ -339,14 +382,14 @@ public partial class MatchingViewModel : ViewModelBase
             }
             
             if (match == null)
-        {
-            // Bug #12 fix: check if an unconfirmed match already exists before creating ad-hoc
-            var existingMatches = await _matchRepo.GetBySubjectIdAsync(SelectedCandidate.Subject.Id);
-            match = existingMatches.FirstOrDefault(m => m.QueryImageId == _currentQueryImageId && !m.IsConfirmed);
-        }
+            {
+                // Bug #12 fix: check if an unconfirmed match already exists before creating ad-hoc
+                var existingMatches = await _matchRepo.GetBySubjectIdAsync(SelectedCandidate.Subject.Id);
+                match = existingMatches.FirstOrDefault(m => m.QueryImageId == _currentQueryImageId && !m.IsConfirmed);
+            }
         
-        if (match == null)
-        {
+            if (match == null)
+            {
                  // Create ad-hoc match record if missing
                  match = new Match 
                  {
@@ -366,16 +409,17 @@ public partial class MatchingViewModel : ViewModelBase
             }
             match.IsConfirmed = true;
             match.ConfirmedAt = DateTime.UtcNow;
-            // match.ConfirmedById = _authService?.GetCurrentUserId(); // TODO: Add Auth
+            // match.ConfirmedById = null; // No Auth System in Desktop yet
+
             var caseNote = SelectedCase != null ? $" | Case: {SelectedCase.CaseNumber}" : string.Empty;
-            match.Notes = $"Confirmed by user at {DateTime.Now:yyyy-MM-dd HH:mm:ss}{caseNote}";
+            match.Notes = $"Confirmed by user at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}{caseNote}";
 
             await _matchRepo.UpdateAsync(match);
 
             // 3. Audit log
             _logger.LogAudit(
                 action: "MATCH_CONFIRMED",
-                user: "Researcher", // Placeholder until Auth
+                user: Environment.UserName,
                 details: $"Subject: {SelectedCandidate.Subject.FullName}, Score: {SelectedCandidate.Score:F4}",
                 hash: match.Id.ToString()
             );
@@ -449,4 +493,7 @@ public partial class MatchingViewModel : ViewModelBase
     }
 
     private bool CanExportReport() => SelectedCandidate != null;
-}
+    public void Dispose() { CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this); }}
+
+
+

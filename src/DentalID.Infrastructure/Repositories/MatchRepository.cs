@@ -35,14 +35,14 @@ public class MatchRepository : IMatchRepository
     public async Task<Match> AddAsync(Match match)
     {
         _db.Matches.Add(match);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
         return match;
     }
 
     public async Task UpdateAsync(Match match)
     {
         _db.Matches.Update(match);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<List<Match>> GetRecentAsync(int count = 10)
@@ -54,11 +54,11 @@ public class MatchRepository : IMatchRepository
 
     public async Task DeleteAsync(int id)
     {
-        var match = await _db.Matches.FindAsync(id);
+        var match = await _db.Matches.FindAsync(id).ConfigureAwait(false);
         if (match != null)
         {
             _db.Matches.Remove(match);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

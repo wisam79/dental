@@ -8,8 +8,8 @@ public class LogService : ILoggerService
     private readonly string _logDirectory;
     private readonly string _auditFile;
     private readonly string _appLogFile;
-    private readonly object _auditLock = new();
-    private readonly object _logLock = new();
+    private static readonly object _auditLock = new();
+    private static readonly object _logLock = new();
 
     public LogService()
     {

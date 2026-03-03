@@ -1,5 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace DentalID.Desktop.Views;
 
@@ -14,7 +17,18 @@ public partial class OdontogramView : UserControl
     {
         AvaloniaXamlLoader.Load(this);
     }
-    // Pragma disable for obsolete DragDrop API (DoDragDrop -> DoDragDropAsync transition is complex without docs)
+
+    private void OnToothTapped(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control control && 
+            control.DataContext is DentalID.Desktop.ViewModels.ToothViewModel tooth)
+        {
+            var vm = this.DataContext as DentalID.Desktop.ViewModels.OdontogramViewModel;
+            vm?.SelectTooth(tooth.FdiNumber);
+        }
+    }
+
+    // Pragma disable for obsolete DragDrop API (DoDragDrop → DoDragDropAsync transition)
 #pragma warning disable CS0618 
     private async void OnTreatmentPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
@@ -32,6 +46,8 @@ public partial class OdontogramView : UserControl
         catch (System.Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Drag drop failed: {ex}");
+            WeakReferenceMessenger.Default.Send(
+                new DentalID.Desktop.Messages.ShowToastMessage("Drag Error", ex.Message, DentalID.Desktop.Services.ToastType.Error));
         }
     }
 

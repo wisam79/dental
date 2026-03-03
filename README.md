@@ -2,7 +2,7 @@
 
 [![CI/CD — DentalID Build & Test](https://github.com/wisam79/dental/actions/workflows/ci.yml/badge.svg)](https://github.com/wisam79/dental/actions/workflows/ci.yml)
 
-A forensic dental identification desktop application built with **.NET 8** and **Avalonia UI**, using AI-powered ONNX models for automated tooth detection, pathology analysis, and biometric matching.
+A forensic dental identification desktop application built with **.NET 10** and **Avalonia UI**, using AI-powered ONNX models for automated tooth detection, pathology analysis, and biometric matching.
 
 ---
 
@@ -45,7 +45,8 @@ Place the following models in the `models/` directory:
 - **Forensic Intelligence** — Age estimation, gender analysis, missing teeth analysis
 - **Odontogram** — Visual dental chart with overlay rendering
 - **Report Generation** — PDF forensic reports
-- **Encrypted Database** — SQLite with AES field-level encryption + BCrypt auth
+- **Encrypted Database** — SQLite with AES field-level encryption + deterministic lookup hashes for encrypted PII
+- **No Login Runtime Mode** — no in-app login flow and no runtime admin bootstrap
 - **Multi-language UI** — Avalonia MVVM with localization support
 
 ---
@@ -53,7 +54,7 @@ Place the following models in the `models/` directory:
 ## 🛠️ Getting Started
 
 ### Prerequisites
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Windows 10/11 x64
 
 ### Build
@@ -89,7 +90,10 @@ dotnet run --project src/DentalID.Desktop/DentalID.Desktop.csproj
 
 - Passwords hashed with **BCrypt** (work factor 12)
 - Field-level encryption with **AES-256** + HMAC-SHA256 integrity
+- Deterministic keyed lookup hashes for exact matching on encrypted subject name/ID fields
+- Model integrity baseline/manifest via SHA-256 (`data/model_integrity.json`)
 - Security keys auto-generated on first run (stored in `data/.sealing_key`)
+- Runtime auth/admin bootstrap is intentionally disabled (no-login mode)
 - **Never commit** `appsettings.Development.json` or real keys
 
 ---

@@ -83,7 +83,10 @@ public class AnalysisLabViewModelTests
         _vm.ImageHeight = 1000;
         var result = new AnalysisResult 
         { 
-            Teeth = new List<DetectedTooth> { new DetectedTooth { FdiNumber = 18 } },
+            Teeth = new List<DetectedTooth>
+            {
+                new DetectedTooth { FdiNumber = 18, X = 0.10f, Y = 0.20f, Width = 0.08f, Height = 0.12f }
+            },
             Pathologies = new List<DetectedPathology>(),
             ProcessingTimeMs = 200,
             EstimatedAge = 25
@@ -191,5 +194,39 @@ public class AnalysisLabViewModelTests
     public void ReportService_ShouldBeInjected()
     {
         Assert.NotNull(_mockReport.Object);
+    }
+
+    [Fact]
+    public async Task ConfirmSaveNewSubject_ShouldRollbackCreatedSubject_WhenEvidenceSaveFails()
+    {
+        _vm.CurrentState = AnalysisState.Ready;
+        _vm.LoadedImagePath = "test.jpg";
+        _vm.NewSubjectName = "Rollback Subject";
+        _vm.SelectedSubject = null;
+
+        var analysisResult = new AnalysisResult
+        {
+            Teeth = new List<DetectedTooth>
+            {
+                new DetectedTooth { FdiNumber = 11, X = 0.30f, Y = 0.40f, Width = 0.07f, Height = 0.11f }
+            }
+        };
+
+        _mockForensic.Setup(x => x.AnalyzeImageAsync(It.IsAny<string>(), It.IsAny<double>()))
+            .ReturnsAsync(analysisResult);
+        await _vm.RunAnalysisCommand.ExecuteAsync(null);
+
+        _mockSubjectRepo.Setup(x => x.AddAsync(It.IsAny<Subject>()))
+            .ReturnsAsync((Subject s) =>
+            {
+                s.Id = 777;
+                return s;
+            });
+        _mockForensic.Setup(x => x.SaveEvidenceAsync(It.IsAny<string>(), It.IsAny<AnalysisResult>(), It.IsAny<int>()))
+            .ThrowsAsync(new IOException("simulated save failure"));
+
+        await _vm.ConfirmSaveNewSubjectCommand.ExecuteAsync(null);
+
+        _mockSubjectRepo.Verify(x => x.DeleteAsync(777), Times.Once);
     }
 }

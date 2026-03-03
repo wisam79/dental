@@ -7,7 +7,7 @@ using Xunit;
 
 namespace DentalID.Tests.Navigation;
 
-public class SettingsNavigationTests
+public class SettingsNavigationTests : IDisposable
 {
     private readonly Mock<INavigationService> _navMock;
     private readonly Mock<IToastService> _toastMock;
@@ -49,5 +49,10 @@ public class SettingsNavigationTests
         // Assert
         _vm.SettingsNavIndex.Should().Be(-1); // Settings Deselected
         _navMock.Verify(n => n.NavigateTo<SubjectsViewModel>(), Times.Once);
+    }
+
+    public void Dispose()
+    {
+        _vm.Dispose();
     }
 }

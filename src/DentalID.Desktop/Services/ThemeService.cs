@@ -11,17 +11,17 @@ namespace DentalID.Desktop.Services;
 /// </summary>
 public class ThemeService : IThemeService
 {
-    private readonly Avalonia.Application _app;
+    private readonly Avalonia.Application? _app;
     private readonly AppSettings _settings;
     private ResourceDictionary? _currentTheme;
 
     public string CurrentThemeName { get; private set; }
 
-    public ThemeService(Avalonia.Application app, AppSettings settings)
+    public ThemeService(Avalonia.Application? app, AppSettings settings)
     {
         _app = app;
         _settings = settings;
-        CurrentThemeName = settings.Theme;
+        CurrentThemeName = settings.Theme ?? "Dark";
     }
 
     /// <summary>
@@ -29,12 +29,6 @@ public class ThemeService : IThemeService
     /// </summary>
     public void ApplyTheme(string themeName)
     {
-        // Remove old theme dictionary
-        if (_currentTheme != null)
-        {
-            _app.Resources.MergedDictionaries.Remove(_currentTheme);
-        }
-
         // Load and apply new theme
         var uri = themeName switch
         {
@@ -43,16 +37,25 @@ public class ThemeService : IThemeService
             _ => new Uri("avares://DentalID.Desktop/Themes/DarkTheme.axaml")
         };
 
-        var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(uri);
-        _app.Resources.MergedDictionaries.Add(dict);
-        _currentTheme = dict;
-
-        // Set Avalonia theme variant for FluentTheme compatibility
-        _app.RequestedThemeVariant = themeName switch
+        if (_app != null)
         {
-            "Light" => ThemeVariant.Light,
-            _ => ThemeVariant.Dark
-        };
+            // Remove old theme dictionary
+            if (_currentTheme != null)
+            {
+                _app.Resources.MergedDictionaries.Remove(_currentTheme);
+            }
+            
+            var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(uri);
+            _app.Resources.MergedDictionaries.Add(dict);
+            _currentTheme = dict;
+
+            // Set Avalonia theme variant for FluentTheme compatibility
+            _app.RequestedThemeVariant = themeName switch
+            {
+                "Light" => ThemeVariant.Light,
+                _ => ThemeVariant.Dark
+            };
+        }
 
         CurrentThemeName = themeName;
         _settings.Theme = themeName;

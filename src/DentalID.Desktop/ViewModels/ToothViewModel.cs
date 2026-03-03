@@ -21,16 +21,40 @@ public partial class ToothViewModel : ViewModelBase
     private IBrush _fillColor;
 
     [ObservableProperty]
+    private IBrush _strokeColor;
+
+    [ObservableProperty]
+    private double _strokeThickness = 1.0;
+
+    [ObservableProperty]
     private string _tooltipText;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    [ObservableProperty]
+    private double _opacity = 1.0;
+
+    [ObservableProperty]
+    private string _statusIcon = "";
+
+    [ObservableProperty]
+    private IBrush _statusIconColor;
+
+    [ObservableProperty]
+    private double _confidence;
 
     public List<string> Pathologies { get; set; } = new();
 
+    private static readonly Dictionary<int, Avalonia.Media.Geometry> _geometryCache = new();
     private Avalonia.Media.Geometry? _geometry;
 
     public ToothViewModel(int fdiNumber)
     {
         FdiNumber = fdiNumber;
-        FillColor = Brushes.White;
+        FillColor = new SolidColorBrush(Color.Parse("#E8F0FE"));
+        StrokeColor = new SolidColorBrush(Color.Parse("#90A4AE"));
+        StatusIconColor = Brushes.Gray;
         TooltipText = $"Tooth #{fdiNumber}";
         
         _pathData = DentalID.Desktop.Assets.ToothShapes.GetPathForFdi(fdiNumber);
@@ -44,15 +68,21 @@ public partial class ToothViewModel : ViewModelBase
         {
             if (_geometry == null)
             {
-                try 
-                { 
-                    _geometry = Avalonia.Media.Geometry.Parse(_pathData); 
+                if (_geometryCache.TryGetValue(FdiNumber, out var cached))
+                {
+                    _geometry = cached;
                 }
-                catch (System.Exception ex)
-                { 
-                    // Ignore in tests/headless but log for debug
-                    System.Diagnostics.Debug.WriteLine($"Error parsing geometry: {ex.Message}");
-                    _geometry = null;
+                else
+                {
+                    try 
+                    { 
+                        _geometry = Avalonia.Media.Geometry.Parse(_pathData); 
+                        _geometryCache[FdiNumber] = _geometry;
+                    }
+                    catch (System.Exception ex)
+                    { 
+                        throw new System.FormatException($"Failed to parse geometry for tooth {FdiNumber}: {ex.Message}", ex);
+                    }
                 }
             }
             return _geometry;
@@ -63,8 +93,14 @@ public partial class ToothViewModel : ViewModelBase
     {
         IsPresent = true;
         HasPathology = false;
+        IsSelected = false;
+        Confidence = 0;
         Pathologies.Clear();
-        FillColor = Brushes.White; // Default healthy color
+        FillColor = new SolidColorBrush(Color.Parse("#E8F0FE"));
+        StrokeColor = new SolidColorBrush(Color.Parse("#90A4AE"));
+        StrokeThickness = 1.0;
+        StatusIcon = "";
+        Opacity = 1.0;
         TooltipText = $"Tooth #{FdiNumber}";
     }
 
@@ -73,21 +109,26 @@ public partial class ToothViewModel : ViewModelBase
         HasPathology = true;
         Pathologies.Add(pathology);
         
-        // Forensic Color Coding
-        FillColor = pathology switch
+        // Forensic Color Coding — premium, more subtle colors
+        var (fill, stroke, icon) = pathology switch
         {
-            "Caries" => Brushes.Red,
-            "Crown" => Brushes.Gold,
-            "Filling" => Brushes.Blue,
-            "Implant" => Brushes.SlateGray,
-            "Periapical lesion" => Brushes.Orange,
-            "Root Piece" => Brushes.Brown,
-            "Root canal obturation" => Brushes.DarkGreen,
-            "Missing teeth" => Brushes.Transparent, // Or handle differently logic-wise
-            "Deep Caries" => Brushes.DarkRed, // Legacy support just in case
-            _ => Brushes.Red // Default
+            "Caries" => ("#FFEBEE", "#EF5350", "⚠"),               // Soft red
+            "Crown" => ("#FFF8E1", "#FFC107", "♛"),                 // Soft gold
+            "Filling" => ("#E3F2FD", "#42A5F5", "●"),               // Soft blue
+            "Implant" => ("#ECEFF1", "#607D8B", "⬡"),               // Slate
+            "Periapical lesion" => ("#FFF3E0", "#FF9800", "◉"),     // Soft orange
+            "Root Piece" => ("#EFEBE9", "#795548", "△"),             // Brown
+            "Root canal obturation" => ("#E8F5E9", "#66BB6A", "⊕"), // Green
+            "Missing teeth" => ("#FAFAFA", "#BDBDBD", "✕"),         // Gray
+            "Deep Caries" => ("#FFCDD2", "#E53935", "⚠"),           // Deep red
+            _ => ("#FFEBEE", "#EF5350", "⚠")
         };
 
+        FillColor = new SolidColorBrush(Color.Parse(fill));
+        StrokeColor = new SolidColorBrush(Color.Parse(stroke));
+        StrokeThickness = 2.0;
+        StatusIcon = icon;
+        StatusIconColor = new SolidColorBrush(Color.Parse(stroke));
         TooltipText = $"#{FdiNumber}: {string.Join(", ", Pathologies)}";
     }
     
@@ -95,14 +136,16 @@ public partial class ToothViewModel : ViewModelBase
     {
          if (!HasPathology)
          {
-             FillColor = Brushes.White;
+             FillColor = new SolidColorBrush(Color.Parse("#E8F0FE"));
+             StrokeColor = new SolidColorBrush(Color.Parse("#4CAF50"));
+             StrokeThickness = 1.5;
+             StatusIcon = "✓";
+             StatusIconColor = new SolidColorBrush(Color.Parse("#4CAF50"));
          }
     }
     
     public void MarkTreatment(TreatmentItem treatment)
     {
-        // In a real app, treatments might add layers or icons.
-        // For now, we change the fill color.
         try
         {
             FillColor = Brush.Parse(treatment.Color);
@@ -112,6 +155,7 @@ public partial class ToothViewModel : ViewModelBase
             FillColor = Brushes.Gray;
         }
         
+        StrokeThickness = 2.0;
         TooltipText = $"#{FdiNumber}: {treatment.Name} ({treatment.Category})";
     }
 }

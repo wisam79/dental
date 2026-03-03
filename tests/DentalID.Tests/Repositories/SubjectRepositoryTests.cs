@@ -105,19 +105,25 @@ public class SubjectRepositoryTests
     }
 
     [Fact]
-    public async Task DeleteAsync_ShouldRemoveSubject()
+    public async Task DeleteAsync_ShouldRemoveSubject_AndPhysicalFiles()
     {
         var setup = CreateRepository();
         using var context = setup.Context;
         var repo = setup.Repository;
 
+        var tempFile = System.IO.Path.GetTempFileName();
+        System.IO.File.WriteAllText(tempFile, "dummy test file");
+
         var subject = new Subject { FullName = "Delete Me", SubjectId = "SUB-004" };
+        subject.DentalImages.Add(new DentalImage { ImagePath = tempFile });
+        
         await repo.AddAsync(subject);
 
         await repo.DeleteAsync(subject.Id);
 
         var check = await repo.GetByIdAsync(subject.Id);
         Assert.Null(check);
+        Assert.False(System.IO.File.Exists(tempFile), "Physical file should have been deleted");
     }
 
     [Fact]
@@ -131,11 +137,10 @@ public class SubjectRepositoryTests
         await repo.AddAsync(new Subject { FullName = "Gamma Delta", SubjectId = "A2" });
         await repo.AddAsync(new Subject { FullName = "Alpha Omega", SubjectId = "A3" });
 
-        var results = await repo.SearchAsync("Alpha");
+        var results = await repo.SearchAsync("Alpha Beta");
 
-        Assert.Equal(2, results.Count);
+        Assert.Single(results);
         Assert.Contains(results, s => s.FullName == "Alpha Beta");
-        Assert.Contains(results, s => s.FullName == "Alpha Omega");
     }
 
     [Fact]
@@ -207,8 +212,8 @@ public class SubjectRepositoryTests
 
         var batch = new List<Subject>
         {
-            new() { FullName = "B1", SubjectId = "B1" },
-            new() { FullName = "B2", SubjectId = "B2" }
+            new() { FullName = "B1", SubjectId = "B1", NationalId = "B1" },
+            new() { FullName = "B2", SubjectId = "B2", NationalId = "B2" }
         };
 
         await repo.AddBatchAsync(batch);

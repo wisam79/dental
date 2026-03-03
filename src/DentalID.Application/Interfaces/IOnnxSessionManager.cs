@@ -19,12 +19,16 @@ public interface IOnnxSessionManager : IDisposable
     InferenceSession? PathologyDetector { get; }
     InferenceSession? Encoder { get; }
     InferenceSession? GenderAge { get; }
+    InferenceSession? SamEncoder { get; }
+    InferenceSession? SamDecoder { get; }
 
     // ── Input node names ────────────────────────────────────────────────────
     string TeethInputName { get; }
     string PathologyInputName { get; }
     string EncoderInputName { get; }
     string GenderAgeInputName { get; }
+    string SamEncoderInputName { get; }
+    string SamDecoderInputName { get; }
 
     // ── LOH buffers (pre-allocated to avoid GC pressure) ───────────────────
     float[]? DetectionBuffer { get; }

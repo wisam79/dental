@@ -4,7 +4,7 @@ using DentalID.Desktop.Services;
 
 namespace DentalID.Desktop.ViewModels;
 
-public partial class StartupViewModel : ViewModelBase
+public partial class StartupViewModel : ViewModelBase, IDisposable
 {
     public const string TeethModelKey = "teeth";
     public const string PathologyModelKey = "pathology";
@@ -99,6 +99,8 @@ public partial class StartupViewModel : ViewModelBase
         StatusMessage = L("Startup_Status_Initializing", "Initializing System...");
         Loc.Instance.LanguageChanged += OnLanguageChanged;
     }
+
+    private bool _isDisposed;
 
     partial void OnProgressValueChanged(double value)
     {
@@ -230,5 +232,16 @@ public partial class StartupViewModel : ViewModelBase
         return string.IsNullOrWhiteSpace(value) || string.Equals(value, $"[{key}]", StringComparison.Ordinal)
             ? fallback
             : value;
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        Loc.Instance.LanguageChanged -= OnLanguageChanged;
     }
 }

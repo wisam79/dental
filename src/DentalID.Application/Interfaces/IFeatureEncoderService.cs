@@ -12,9 +12,11 @@ namespace DentalID.Application.Interfaces;
 public interface IFeatureEncoderService
 {
     /// <summary>
-    /// Runs the SAM encoder and mean-pools the spatial output [1,256,64,64] → float[256].
+    /// Runs the SAM encoder and mean-pools the spatial output.
+    /// Appends 160 floats representing standard FDI tooth bounding boxes for spatial biometric matching.
+    /// Returns a vector of length 1184 (1024 Deep Features + 160 Spatial Features).
     /// </summary>
-    (float[]? vector, string? error) ExtractFeatures(SKBitmap bitmap);
+    (float[]? vector, string? error) ExtractFeatures(SKBitmap bitmap, IEnumerable<DetectedTooth>? detections = null);
 
     /// <summary>
     /// Computes age mathematically using DentalAgeEstimator and returns gender as Unknown.

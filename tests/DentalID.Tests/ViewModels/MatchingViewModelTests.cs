@@ -103,9 +103,11 @@ public class MatchingViewModelTests
         };
 
         _mockFileService.Setup(f => f.OpenRead(queryPath)).Returns(new MemoryStream());
+        _mockFileService.Setup(f => f.Exists(queryPath)).Returns(true);
+        _mockFileService.Setup(f => f.Copy(queryPath, It.IsAny<string>(), false));
         _mockPipeline.Setup(p => p.ExtractFeaturesAsync(It.IsAny<Stream>()))
             .ReturnsAsync((new float[128], null));
-        _mockSubjectRepo.Setup(r => r.GetAllAsync(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new List<Subject> { subject });
+        _mockSubjectRepo.Setup(r => r.StreamAllWithVectorsAsync()).Returns(new List<Subject> { subject }.ToAsyncEnumerable());
         _mockMatchingService.Setup(s => s.FindMatches(It.IsAny<DentalFingerprint>(), It.IsAny<List<Subject>>(), It.IsAny<MatchingCriteria>()))
             .Returns(matches); // Note: MatchingService is synchronous or async? Based on VM call: await Task.Run(() => _matchingService.FindMatches(...)) implies sync or async wrapped.
             // Wait, MatchingService interface usually async? Let's check. VM uses Task.Run wrapper around it.
@@ -129,7 +131,13 @@ public class MatchingViewModelTests
         candidate.MatchId.Should().Be(999); 
         
         _mockSubjectRepo.Verify(r => r.AddAsync(It.Is<Subject>(s => s.FullName.StartsWith("Query") && s.SubjectId.StartsWith("QRY-"))), Times.Once);
-        _mockImageRepo.Verify(r => r.AddAsync(It.Is<DentalImage>(i => i.ImagePath == queryPath && i.ImageType == DentalID.Core.Enums.ImageType.Other && i.SubjectId == 99)), Times.Once);
+        var managedQueryDir = Path.Combine(AppContext.BaseDirectory, "data", "query");
+        _mockImageRepo.Verify(r => r.AddAsync(It.Is<DentalImage>(i =>
+            i.ImagePath.StartsWith(managedQueryDir, StringComparison.OrdinalIgnoreCase) &&
+            i.ImagePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) &&
+            i.ImageType == DentalID.Core.Enums.ImageType.Other &&
+            i.SubjectId == 99)), Times.Once);
+        _mockFileService.Verify(f => f.Copy(queryPath, It.IsAny<string>(), false), Times.Once);
         _mockMatchRepo.Verify(r => r.AddAsync(It.Is<DentalID.Core.Entities.Match>(m => m.QueryImageId == 123 && m.MatchedSubjectId == subject.Id)), Times.Once);
     }
 }

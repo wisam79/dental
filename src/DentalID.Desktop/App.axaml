@@ -9,63 +9,14 @@
 
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://DentalID.Desktop/Themes/DarkTheme.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
             <!-- 
                 THEME: Fluent Professional (Forensic Suite v7.0)
                 A neutral, professional, Microsoft Fluent-aligned gray theme.
             -->
-            <!-- 🎨 PALETTE -->
-             <!-- Backgrounds -->
-             <SolidColorBrush x:Key="SurfaceDeepBrush" Color="#0D0E12" />      <!-- Deep Graphite -->
-             <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#16181D" />  <!-- Elevated Panels -->
-             <SolidColorBrush x:Key="SurfaceFloatingBrush" Color="#1E2127" />  <!-- Input Fields/Hovers -->
-             <SolidColorBrush x:Key="SurfaceBgBrush" Color="#101216" />        <!-- Background -->
-             <SolidColorBrush x:Key="CardBgBrush" Color="#16181D" />           <!-- Card Background -->
-             <SolidColorBrush x:Key="InputBgBrush" Color="#1A1D23" />          <!-- Input Background -->
-             
-             <SolidColorBrush x:Key="PageBgBrush" Color="Transparent" />       <!-- Transparent for Window Effects -->
-             <SolidColorBrush x:Key="SidebarBgBrush" Color="#E50D0F14" />      <!-- 88% Opacity Graphite -->
-            
-             <!-- Accents (Steel Blue family) -->
-             <Color x:Key="AccentPrimaryColor">#00E5FF</Color>
-             <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#00E5FF" />    <!-- Steel Blue -->
-             <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#00B8D4" />  <!-- Soft Sky -->
-             <SolidColorBrush x:Key="AccentTertiaryBrush" Color="#00838F" />   <!-- Muted Tertiary -->
-             <SolidColorBrush x:Key="AccentBlueBrush" Color="#00E5FF" />       <!-- Alias -->
-             <SolidColorBrush x:Key="AccentBlueDarkBrush" Color="#006064" />   <!-- Pressed/Dark -->
-             <SolidColorBrush x:Key="AccentRedBrush" Color="#FF3D00" />        <!-- Red for danger buttons -->
-             <SolidColorBrush x:Key="AccentOrangeBrush" Color="#FF9100" />     <!-- Orange accent -->
-             <SolidColorBrush x:Key="AccentPurpleBrush" Color="#D500F9" />     <!-- Purple accent -->
-             <SolidColorBrush x:Key="AccentPrimaryHoverBrush" Color="#18FFFF" />   <!-- Primary button hover -->
-             <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="#00B8D4" /> <!-- Primary button pressed -->
 
-             <!-- Functional Colors (Muted Professional) -->
-             <SolidColorBrush x:Key="SuccessBrush" Color="#00E676" />          <!-- Xbox Green -->
-             <SolidColorBrush x:Key="WarningBrush" Color="#FFD600" />          <!-- Orange -->
-             <SolidColorBrush x:Key="ErrorBrush" Color="#FF1744" />            <!-- Red -->
-             <SolidColorBrush x:Key="ForensicWarningBrush" Color="#FF1744" />  
-             <SolidColorBrush x:Key="ForensicSuccessBrush" Color="#00E676" />
-             <SolidColorBrush x:Key="AccentGreenBrush" Color="#00E676" />      <!-- For cases grid -->  
-            
-             <!-- Text -->
-             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />      <!-- White -->
-             <SolidColorBrush x:Key="TextSecondaryBrush" Color="#D0D0D0" />    <!-- Light Gray -->
-             <SolidColorBrush x:Key="TextDisabledBrush" Color="#707070" />     <!-- Darker Gray -->
-             <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FFFFFF" />     <!-- White -->
-             <SolidColorBrush x:Key="TextMutedBrush" Color="#808080" />       <!-- Muted Gray -->
-
-            <!-- Borders -->
-            <SolidColorBrush x:Key="BorderPrimaryBrush" Color="#3A414A" />    <!-- Standard Border -->
-            <SolidColorBrush x:Key="BorderSubtleBrush" Color="#262A33" />     <!-- Subtle Border -->
-            <SolidColorBrush x:Key="BorderSecondaryBrush" Color="#1A1D23" />  <!-- Secondary Border -->
-            <SolidColorBrush x:Key="BorderFocusBrush" Color="#00E5FF" />      <!-- Focus Border -->
-            <SolidColorBrush x:Key="BorderInputBrush" Color="#3A414A" />      <!-- Input Border -->
-
-            <!-- Navigation -->
-            <SolidColorBrush x:Key="NavItemHoverBrush" Color="#2E343C" />
-            <SolidColorBrush x:Key="NavItemSelectedBrush" Color="#354A5D6E" /> <!-- Subtle Selected -->
-            <SolidColorBrush x:Key="NavItemSelectedTextBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="NavItemTextBrush" Color="#B9C1CA" />
-            <SolidColorBrush x:Key="NavItemHoverTextBrush" Color="#FFFFFF" />
 
             <!-- 🖋 TYPOGRAPHY -->
             <FontFamily x:Key="FontSans">Segoe UI, Inter, Roboto, Helvetica Neue, Arial</FontFamily>
@@ -115,6 +66,8 @@
             <StreamGeometry x:Key="IconImport">M14,12L10,8V11H2V13H10V16M20,18V6C20,4.89 19.1,4 18,4H6A2,2 0 0,0 4,6V9H6V6H18V18H6V15H4V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18Z</StreamGeometry>
             <StreamGeometry x:Key="IconPalette">M12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2C17.5,2 22,6 22,11A6,6 0 0,1 16,17H14.2C13.9,17 13.7,17.2 13.7,17.5C13.7,17.6 13.8,17.7 13.8,17.8C14.2,18.3 14.4,18.9 14.4,19.5C14.4,21.3 12.9,22 12,22M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C12.3,20 12.7,19.8 12.7,19.5C12.7,19.3 12.6,19.2 12.6,19.1C12.2,18.6 12,18.1 12,17.5C12,16.1 13.2,15 14.7,15H16A4,4 0 0,0 20,11C20,7.1 16.4,4 12,4M6.5,10A1.5,1.5 0 0,0 5,11.5A1.5,1.5 0 0,0 6.5,13A1.5,1.5 0 0,0 8,11.5A1.5,1.5 0 0,0 6.5,10M9.5,6.5A1.5,1.5 0 0,0 8,8A1.5,1.5 0 0,0 9.5,9.5A1.5,1.5 0 0,0 11,8A1.5,1.5 0 0,0 9.5,6.5M14.5,6.5A1.5,1.5 0 0,0 13,8A1.5,1.5 0 0,0 14.5,9.5A1.5,1.5 0 0,0 16,8A1.5,1.5 0 0,0 14.5,6.5M17.5,10A1.5,1.5 0 0,0 16,11.5A1.5,1.5 0 0,0 17.5,13A1.5,1.5 0 0,0 19,11.5A1.5,1.5 0 0,0 17.5,10Z</StreamGeometry>
             <StreamGeometry x:Key="IconLanguage">M12.87,15.07L10.33,12.56L10.36,12.53C12.1,10.59 13.34,8.36 14.07,6H17V4H10V2H8V4H1V6H12.17C11.5,7.92 10.44,9.75 9,11.35C8.07,10.32 7.3,9.19 6.69,8H4.69C5.42,9.63 6.42,11.17 7.67,12.56L2.58,17.58L4,19L9,14L12.11,17.11L12.87,15.07M18.5,10H16.5L12,22H14L15.12,19H19.87L21,22H23L18.5,10M15.88,17L17.5,12.67L19.12,17H15.88Z</StreamGeometry>
+            <StreamGeometry x:Key="IconPlus">M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z</StreamGeometry>
+            <StreamGeometry x:Key="IconMinus">M19,13H5V11H19V13Z</StreamGeometry>
         </ResourceDictionary>
         
     </Application.Resources>

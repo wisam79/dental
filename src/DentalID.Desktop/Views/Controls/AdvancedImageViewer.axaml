@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:DentalID.Desktop.Views.Controls"
+             x:Class="DentalID.Desktop.Views.Controls.AdvancedImageViewer"
+             ClipToBounds="True">
+
+    <Panel Background="Transparent"
+           PointerWheelChanged="OnPointerWheelChanged"
+           PointerPressed="OnPointerPressed"
+           PointerReleased="OnPointerReleased"
+           PointerMoved="OnPointerMoved"
+           x:Name="ViewPort">
+
+        <Grid x:Name="TransformParent" Background="Transparent" RenderTransformOrigin="0,0">
+            <ContentPresenter Content="{Binding InnerContent, RelativeSource={RelativeSource AncestorType=local:AdvancedImageViewer}}" />
+        </Grid>
+
+        <!-- Overlay for controls (Zoom In/Out, Reset) -->
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="12"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <Button Click="OnZoomOutClick" Classes="icon" Width="32" Height="32">
+                <PathIcon Data="{StaticResource IconMinus}" Width="12" Height="12"/>
+            </Button>
+            <Button Click="OnResetClick" Classes="icon" Width="32" Height="32">
+                <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14"/>
+            </Button>
+            <Button Click="OnZoomInClick" Classes="icon" Width="32" Height="32">
+                <PathIcon Data="{StaticResource IconPlus}" Width="12" Height="12"/>
+            </Button>
+        </StackPanel>
+    </Panel>
+</UserControl>

@@ -14,5 +14,5 @@ public class AiMessage
     public string Content { get; set; } = "";
 
     /// <summary>Timestamp when this message was generated.</summary>
-    public DateTime Timestamp { get; set; } = DateTime.Now;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

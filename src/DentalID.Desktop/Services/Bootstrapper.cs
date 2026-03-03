@@ -17,6 +17,8 @@ using DentalID.Infrastructure.Data;
 using DentalID.Infrastructure.Services;
 using DentalID.Infrastructure.Repositories;
 using Avalonia.Threading;
+using System.Text;
+using System.Globalization;
 
 namespace DentalID.Desktop.Services;
 
@@ -61,8 +63,9 @@ public class Bootstrapper
         _services.AddSingleton(settings);
         _services.AddSingleton<ISettingsService>(settings); // Register interface mapping
         _services.AddSingleton(aiSettings);
+        _services.AddLogging(); // Enable generic ILogger<T>
         _services.AddSingleton<ILoggerService, LogService>();
-        _services.AddSingleton<IThemeService>(sp => App.ThemeService!); // Use existing instance from App
+        _services.AddSingleton<IThemeService>(sp => App.ThemeService ?? new ThemeService(Avalonia.Application.Current, sp.GetRequiredService<AppSettings>()));
         _services.AddSingleton<ILocalizationService>(sp => Loc.Instance);
 
 
@@ -86,11 +89,12 @@ public class Bootstrapper
         _services.AddSingleton<ITeethDetectionService, TeethDetectionService>();
         _services.AddSingleton<IPathologyDetectionService, PathologyDetectionService>();
         _services.AddSingleton<IFeatureEncoderService, FeatureEncoderService>();
+        _services.AddSingleton<ISamSegmentationService, SamSegmentationService>();
         _services.AddSingleton<IAiPipelineService, OnnxInferenceService>();
         _services.AddSingleton<IMatchingService, MatchingService>();
         _services.AddSingleton<IFileService, LocalFileService>();
         _services.AddSingleton<IBiometricService, BiometricService>();
-    
+        _services.AddTransient<IForensicRulesEngine, ForensicRulesEngine>();
         _services.AddTransient<IForensicAnalysisService, ForensicAnalysisService>();
         _services.AddSingleton<IReportService, PdfReportService>();
         _services.AddSingleton<IToastService, ToastService>(); // Registered ToastService
@@ -126,30 +130,30 @@ public class Bootstrapper
 
         try
         {
-            await RunOnUiThreadAsync(vm.ResetModelStates);
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Booting", "Booting Secure Runtime..."), 8);
+            await RunOnUiThreadAsync(vm.ResetModelStates).ConfigureAwait(false);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Booting", "Booting Secure Runtime..."), 8).ConfigureAwait(false);
 
             // Step 1: Quick integrity check
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Verifying", "Verifying System..."), 20);
-            await VerifyIntegrityAsync(logger, serviceProvider);
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Verified", "Integrity Verified."), 35);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Verifying", "Verifying System..."), 20).ConfigureAwait(false);
+            await VerifyIntegrityAsync(logger, serviceProvider).ConfigureAwait(false);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_Verified", "Integrity Verified."), 35).ConfigureAwait(false);
 
             // Step 2: Database initialization
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_InitDatabase", "Initializing Database..."), 50);
-            await InitializeDatabaseAsync(logger, serviceProvider);
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_DatabaseReady", "Database Ready."), 68);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_InitDatabase", "Initializing Database..."), 50).ConfigureAwait(false);
+            await InitializeDatabaseAsync(logger, serviceProvider).ConfigureAwait(false);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_DatabaseReady", "Database Ready."), 68).ConfigureAwait(false);
 
             // Step 3: AI Engine initialization
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_LoadingModels", "Loading AI Models..."), 80);
-            await InitializeAiEngineAsync(logger, serviceProvider, vm, localization);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_LoadingModels", "Loading AI Models..."), 80).ConfigureAwait(false);
+            await InitializeAiEngineAsync(logger, serviceProvider, vm, localization).ConfigureAwait(false);
 
-            await UpdateStartupAsync(vm, T(localization, "Startup_Status_SystemReady", "System Ready."), 100);
+            await UpdateStartupAsync(vm, T(localization, "Startup_Status_SystemReady", "System Ready."), 100).ConfigureAwait(false);
             logger.LogInformation("Application initialized successfully.");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "INITIALIZATION FAILED");
-            await UpdateStartupAsync(vm, $"ERROR: {ex.Message}", 0);
+            await UpdateStartupAsync(vm, $"ERROR: {ex.Message}", 0).ConfigureAwait(false);
             throw;
         }
     }
@@ -159,9 +163,23 @@ public class Bootstrapper
         var aiSettings = serviceProvider.GetRequiredService<AiSettings>();
         var modelsDir = Path.Combine(AppContext.BaseDirectory, "models");
         var requiredFiles = new[] { "teeth_detect.onnx", "pathology_detect.onnx", "encoder.onnx" };
+        var optionalFiles = new[] { "genderage.onnx", "sam_encoder.onnx", "sam_decoder.onnx" };
+        var filesToVerify = new List<string>(requiredFiles);
+        var optionalModelsDetected = new List<string>();
+
+        foreach (var optionalFile in optionalFiles)
+        {
+            var optionalPath = Path.Combine(modelsDir, optionalFile);
+            if (File.Exists(optionalPath))
+            {
+                filesToVerify.Add(optionalFile);
+                optionalModelsDetected.Add(optionalFile);
+            }
+        }
+
         var computedHashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var fileName in requiredFiles)
+        foreach (var fileName in filesToVerify)
         {
             var path = Path.Combine(modelsDir, fileName);
 
@@ -176,8 +194,14 @@ public class Bootstrapper
                 throw new Exception($"Model file is empty: {fileName}");
             }
 
-            computedHashes[fileName] = ComputeSha256(path);
+            computedHashes[fileName] = await ComputeSha256Async(path).ConfigureAwait(false);
             logger.LogInformation($"Verified: {fileName} ({fileInfo.Length / 1024 / 1024}MB)");
+        }
+
+        if (optionalModelsDetected.Count > 0)
+        {
+            logger.LogInformation(
+                $"Optional models included in integrity validation: {string.Join(", ", optionalModelsDetected)}");
         }
 
         if (!aiSettings.EnableModelIntegrity)
@@ -189,8 +213,8 @@ public class Bootstrapper
         var manifestPath = ResolveManifestPath(aiSettings.ModelIntegrityManifestPath);
         if (File.Exists(manifestPath))
         {
-            var manifest = await LoadManifestAsync(manifestPath);
-            foreach (var requiredFile in requiredFiles)
+            var manifest = await LoadManifestAsync(manifestPath).ConfigureAwait(false);
+            foreach (var requiredFile in filesToVerify)
             {
                 if (!manifest.Models.TryGetValue(requiredFile, out var expectedHash))
                 {
@@ -229,7 +253,7 @@ public class Bootstrapper
             Directory.CreateDirectory(directory);
         }
 
-        await SaveManifestAsync(manifestPath, baselineManifest);
+        await SaveManifestAsync(manifestPath, baselineManifest).ConfigureAwait(false);
         logger.LogWarning($"Model integrity baseline created at '{manifestPath}'. Review and commit this file intentionally.");
     }
 
@@ -239,7 +263,7 @@ public class Bootstrapper
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try
         {
-            await SeedData.InitializeAsync(db);
+            await SeedData.InitializeAsync(db).ConfigureAwait(false);
             logger.LogInformation("Database initialized.");
             logger.LogInformation("Runtime auth is disabled (no-login mode). Admin initialization skipped.");
         }
@@ -267,89 +291,99 @@ public class Bootstrapper
         // Ensure directory exists
         if (!Directory.Exists(modelsDir))
         {
-            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100);
+            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100).ConfigureAwait(false);
             throw new DirectoryNotFoundException($"Critical AI Model Directory missing: {modelsDir}");
         }
 
         foreach (var model in requiredModels)
         {
-            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateValidating, 25);
+            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateValidating, 25).ConfigureAwait(false);
             await UpdateStartupAsync(
                 vm,
                 TF(localization, "Startup_Status_ValidatingModel", "Validating {0}...", model.Label),
-                model.Progress);
+                model.Progress).ConfigureAwait(false);
 
             var modelPath = Path.Combine(modelsDir, model.File);
             if (!File.Exists(modelPath))
             {
-                await UpdateModelAsync(vm, model.Key, StartupViewModel.StateError, 100);
+                await UpdateModelAsync(vm, model.Key, StartupViewModel.StateError, 100).ConfigureAwait(false);
                 throw new FileNotFoundException($"Missing Model File: {model.File}", modelPath);
             }
 
             var fileInfo = new FileInfo(modelPath);
             if (fileInfo.Length == 0)
             {
-                await UpdateModelAsync(vm, model.Key, StartupViewModel.StateError, 100);
+                await UpdateModelAsync(vm, model.Key, StartupViewModel.StateError, 100).ConfigureAwait(false);
                 throw new Exception($"Model file is empty: {model.File}");
+            }
+            
+            try 
+            {
+                using var testSession = new Microsoft.ML.OnnxRuntime.InferenceSession(modelPath);
+            }
+            catch (Exception ex)
+            {
+                await UpdateModelAsync(vm, model.Key, StartupViewModel.StateError, 100).ConfigureAwait(false);
+                throw new Exception($"Model file is corrupted: {model.File}", ex);
             }
 
             logger.LogInformation($"Validated model: {model.File} ({fileInfo.Length / 1024 / 1024}MB)");
-            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateVerified, 55);
+            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateVerified, 55).ConfigureAwait(false);
         }
 
         await UpdateStartupAsync(
             vm,
             T(localization, "Startup_Status_LoadingSessions", "Loading ONNX runtime sessions..."),
-            94);
+            94).ConfigureAwait(false);
         foreach (var model in requiredModels)
         {
-            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateLoading, 82);
+            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateLoading, 82).ConfigureAwait(false);
         }
 
         try
         {
-            await pipeline.InitializeAsync(modelsDir);
+            await pipeline.InitializeAsync(modelsDir).ConfigureAwait(false);
         }
         catch
         {
-            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100);
+            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100).ConfigureAwait(false);
             throw;
         }
         
         if (!pipeline.IsReady)
         {
-            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100);
+            await MarkAllModelsAsync(vm, StartupViewModel.StateError, 100).ConfigureAwait(false);
             throw new Exception("AI Engine failed to return Ready state.");
         }
 
         foreach (var model in requiredModels)
         {
-            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateReady, 100);
+            await UpdateModelAsync(vm, model.Key, StartupViewModel.StateReady, 100).ConfigureAwait(false);
         }
 
         await UpdateStartupAsync(
             vm,
             T(localization, "Startup_Status_ModelsLoaded", "AI models loaded successfully."),
-            98);
+            98).ConfigureAwait(false);
             
         logger.LogInformation("AI Engine Online.");
     }
 
     private static async Task UpdateStartupAsync(StartupViewModel vm, string message, double progress)
     {
-        await RunOnUiThreadAsync(() => vm.UpdateStatus(message, progress));
+        await RunOnUiThreadAsync(() => vm.UpdateStatus(message, progress)).ConfigureAwait(false);
     }
 
     private static async Task UpdateModelAsync(StartupViewModel vm, string modelKey, string state, double progress)
     {
-        await RunOnUiThreadAsync(() => vm.UpdateModelStatus(modelKey, state, progress));
+        await RunOnUiThreadAsync(() => vm.UpdateModelStatus(modelKey, state, progress)).ConfigureAwait(false);
     }
 
     private static async Task MarkAllModelsAsync(StartupViewModel vm, string state, double progress)
     {
-        await UpdateModelAsync(vm, StartupViewModel.TeethModelKey, state, progress);
-        await UpdateModelAsync(vm, StartupViewModel.PathologyModelKey, state, progress);
-        await UpdateModelAsync(vm, StartupViewModel.EncoderModelKey, state, progress);
+        await UpdateModelAsync(vm, StartupViewModel.TeethModelKey, state, progress).ConfigureAwait(false);
+        await UpdateModelAsync(vm, StartupViewModel.PathologyModelKey, state, progress).ConfigureAwait(false);
+        await UpdateModelAsync(vm, StartupViewModel.EncoderModelKey, state, progress).ConfigureAwait(false);
     }
 
     private static async Task RunOnUiThreadAsync(Action action)
@@ -398,12 +432,36 @@ public class Bootstrapper
 
         if (File.Exists(keyPath))
         {
-            var persistedKey = File.ReadAllText(keyPath).Trim();
-            if (!string.IsNullOrWhiteSpace(persistedKey) && !IsDefaultInsecureKey(persistedKey))
+            try
             {
-                aiSettings.SealingKey = persistedKey;
-                return;
+                byte[] fileBytes = File.ReadAllBytes(keyPath);
+                string persistedKey = string.Empty;
+
+                if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                {
+                    try
+                    {
+                        var unp = ProtectedData.Unprotect(fileBytes, null, DataProtectionScope.CurrentUser);
+                        persistedKey = Encoding.UTF8.GetString(unp);
+                    }
+                    catch
+                    {
+                        // Removed insecure fallback to plaintext reading
+                        throw new CryptographicException("Failed to unprotect sealing key. Ensure DPAPI is functioning or delete the corrupted key file.");
+                    }
+                }
+                else
+                {
+                    persistedKey = Encoding.UTF8.GetString(fileBytes).Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(persistedKey) && !IsDefaultInsecureKey(persistedKey))
+                {
+                    aiSettings.SealingKey = persistedKey;
+                    return;
+                }
             }
+            catch { /* fallback to generate */ }
         }
 
         // Generate new cryptographically secure key
@@ -413,13 +471,23 @@ public class Bootstrapper
 
         try
         {
-            File.WriteAllText(keyPath, aiSettings.SealingKey);
-            // Set restrictive permissions on non-Windows
-            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
-                    System.Runtime.InteropServices.OSPlatform.Windows))
+            var dataToWrite = Encoding.UTF8.GetBytes(aiSettings.SealingKey);
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
             {
-                try { File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
-                catch { /* Best effort */ }
+                dataToWrite = ProtectedData.Protect(dataToWrite, null, DataProtectionScope.CurrentUser);
+                File.WriteAllBytes(keyPath, dataToWrite);
+            }
+            else
+            {
+                var options = new FileStreamOptions
+                {
+                    Mode = FileMode.Create,
+                    Access = FileAccess.Write,
+                    Share = FileShare.None,
+                    UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite
+                };
+                using var fs = new FileStream(keyPath, options);
+                fs.Write(dataToWrite);
             }
         }
         catch
@@ -452,7 +520,7 @@ public class Bootstrapper
 
     private static async Task<ModelIntegrityManifest> LoadManifestAsync(string manifestPath)
     {
-        var json = await File.ReadAllTextAsync(manifestPath);
+        var json = await File.ReadAllTextAsync(manifestPath).ConfigureAwait(false);
         var manifest = JsonSerializer.Deserialize<ModelIntegrityManifest>(json, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -474,14 +542,14 @@ public class Bootstrapper
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(manifestPath, json);
+        await File.WriteAllTextAsync(manifestPath, json).ConfigureAwait(false);
     }
 
-    private static string ComputeSha256(string filePath)
+    private static async Task<string> ComputeSha256Async(string filePath)
     {
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(stream);
+        var hash = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
         return Convert.ToHexString(hash);
     }
 
@@ -528,11 +596,11 @@ public class Bootstrapper
         var format = T(localization, key, fallback);
         try
         {
-            return string.Format(format, args);
+            return string.Format(CultureInfo.InvariantCulture, format, args);
         }
         catch
         {
-            return string.Format(fallback, args);
+            return string.Format(CultureInfo.InvariantCulture, fallback, args);
         }
     }
 

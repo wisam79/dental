@@ -18,7 +18,7 @@ public class BiometricService : IBiometricService
     private const int WeightCrown = 50;
     private const int WeightRootCanal = 40;
     private const int WeightFilling = 20;
-    private const int WeightMissing = 10;
+    private const int WeightMissing = 40;
     private const int WeightCaries = 5;
 
     /// <summary>
@@ -95,6 +95,11 @@ public class BiometricService : IBiometricService
                         score += WeightCaries;
                     }
                 }
+            }
+            else if (toothPathologies.Any(p => p.ClassName != null && p.ClassName.Contains("Missing", StringComparison.OrdinalIgnoreCase)))
+            {
+                code = "M"; // Missing
+                score += WeightMissing;
             }
             
             toothMap[fdi] = code;
@@ -173,25 +178,28 @@ public class BiometricService : IBiometricService
             return 0;
         }
 
-        // Get common FDI numbers where NEITHER is Unknown
-        var commonFdi = fingerprint1.ToothMap.Keys
-            .Intersect(fingerprint2.ToothMap.Keys)
-            .Where(k => fingerprint1.ToothMap[k] != "U" && fingerprint2.ToothMap[k] != "U")
+        // Bug #16 fix: Calculate similarity over the UNION of teeth, not intersection.
+        // Intersecting caused a 1-tooth record to perfectly match a 32-tooth record!
+        var allFdi = fingerprint1.ToothMap.Keys
+            .Union(fingerprint2.ToothMap.Keys)
             .ToList();
 
-        if (commonFdi.Count == 0)
+        if (allFdi.Count == 0)
         {
             return 0;
         }
 
-        // Create vectors
-        var vector1 = new double[commonFdi.Count];
-        var vector2 = new double[commonFdi.Count];
+        // Create vectors spanning the entire dental record union
+        var vector1 = new double[allFdi.Count];
+        var vector2 = new double[allFdi.Count];
 
-        for (int i = 0; i < commonFdi.Count; i++)
+        for (int i = 0; i < allFdi.Count; i++)
         {
-            vector1[i] = GetCodeValue(fingerprint1.ToothMap[commonFdi[i]]);
-            vector2[i] = GetCodeValue(fingerprint2.ToothMap[commonFdi[i]]);
+            string code1 = fingerprint1.ToothMap.TryGetValue(allFdi[i], out var c1) ? c1 : "U";
+            string code2 = fingerprint2.ToothMap.TryGetValue(allFdi[i], out var c2) ? c2 : "U";
+
+            vector1[i] = GetCodeValue(code1);
+            vector2[i] = GetCodeValue(code2);
         }
 
         // Calculate cosine similarity

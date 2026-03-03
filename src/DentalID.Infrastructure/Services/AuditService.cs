@@ -66,7 +66,7 @@ public class AuditService : IAuditService
             entry.Hash = ComputeHash(entry);
 
             _db.AuditLog.Add(entry);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
         finally
         {

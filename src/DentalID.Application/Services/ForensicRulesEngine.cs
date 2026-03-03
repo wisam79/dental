@@ -25,6 +25,16 @@ public class ForensicRulesEngine : IForensicRulesEngine
             .ToList();
         if (orphans.Any())
         {
+            // Spatial Localization for Non-Tooth Pathologies
+            foreach (var orphan in orphans)
+            {
+                if (IsClass(orphan.ClassName, "bone loss") || IsClass(orphan.ClassName, "cyst"))
+                {
+                    string region = GetAnatomicalRegion(orphan, result.Teeth);
+                    result.SmartInsights.Add($"Spatial Alert: {ToDisplayClassName(orphan.ClassName)} detected in {region}.");
+                }
+            }
+            
             int uniqueOrphanRegions = EstimateUniquePathologyRegions(orphans);
             if (uniqueOrphanRegions < orphans.Count)
             {
@@ -62,27 +72,32 @@ public class ForensicRulesEngine : IForensicRulesEngine
                 {
                     string className = conflict.Key;
                     int count = conflict.Count();
-                    if (count > 1)
-                    {
-                        result.Flags.Add(
-                            $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant " +
-                            $"({count} overlapping detections). Verify manually.");
-                    }
-                    else
-                    {
-                        result.Flags.Add(
-                            $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant. Verify manually.");
-                    }
+                    string msg = count > 1 
+                        ? $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant ({count} overlapping detections). Auto-suppressed."
+                        : $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant. Auto-suppressed.";
+                    result.Flags.Add(msg);
+                    
+                    // Cross-Validation: Remove the false positive from results
+                    result.Pathologies.RemoveAll(p => p.ToothNumber == toothNum && IsImplantConflictClass(p.ClassName));
                 }
             }
             
-            // Rule 3: Crown + Filling on same tooth — clinically possible but worth noting.
-            // Flagged as an "Observation" (not Conflict) to aid manual review without alarming.
+            // Rule 3: Clinical Grouping (Crown + Root Canal)
             bool hasCrown = group.Any(p => IsClass(p.ClassName, "crown"));
+            bool hasRct = group.Any(p => IsClass(p.ClassName, "root canal") || IsClass(p.ClassName, "rootcanal"));
+            if (hasCrown && hasRct && !hasImplant)
+            {
+                // Group them semantically for smart insights / reports
+                result.SmartInsights.Add($"Clinical Grouping (Tooth {toothNum}): Endodontically treated and crowned (Post-Core/Crown complex).");
+                // We keep both in the GUI bounding boxes, but flag the association.
+            }
+            
+            // Rule 3.5: Redundant Restorations
             bool hasFilling = group.Any(p => IsClass(p.ClassName, "filling"));
             if (hasCrown && hasFilling && !hasImplant)
             {
-                result.Flags.Add($"Observation (Tooth {toothNum}): Both 'Crown' and 'Filling' detected on the same tooth. Clinically possible — review recommended.");
+                result.Flags.Add($"Observation (Tooth {toothNum}): 'Filling' suppressed as redundant under full 'Crown'.");
+                result.Pathologies.RemoveAll(p => p.ToothNumber == toothNum && IsClass(p.ClassName, "filling"));
             }
         }
 
@@ -162,6 +177,14 @@ public class ForensicRulesEngine : IForensicRulesEngine
 
         int step = descendingFdi ? -1 : 1;
 
+        int fdiMin = (startFdiBase / 10) * 10 + 1;
+        int fdiMax = (startFdiBase / 10) * 10 + 8;
+
+        if (sortedByPos[0].FdiNumber < fdiMin || sortedByPos[0].FdiNumber > fdiMax)
+        {
+            sortedByPos[0].FdiNumber = descendingFdi ? fdiMax : fdiMin;
+        }
+
         // Bug #24 fix: Removed unused `currentFdi` variable
         for (int i = 1; i < sortedByPos.Count; i++)
         {
@@ -179,12 +202,10 @@ public class ForensicRulesEngine : IForensicRulesEngine
             if (centerDist > avgWidth * 2.6f) gaps = 2;
             if (centerDist > avgWidth * 3.6f) gaps = 3;
             
-            int expectedFdi = sortedByPos[i - 1].FdiNumber + step * (1 + gaps);
+            int expectedFdi = prev.FdiNumber + step * (1 + gaps);
             
             // Bug #25 fix: Clamp FDI to valid anatomical range to prevent out-of-range values
             // FDI valid ranges per quadrant: 11-18, 21-28, 31-38, 41-48
-            int fdiMin = (startFdiBase / 10) * 10 + 1;
-            int fdiMax = (startFdiBase / 10) * 10 + 8;
             if (expectedFdi < fdiMin || expectedFdi > fdiMax)
                 continue; // Skip correction — gap calculation overflowed the quadrant
 
@@ -241,6 +262,20 @@ public class ForensicRulesEngine : IForensicRulesEngine
         }
 
         return unique;
+    }
+
+    private string GetAnatomicalRegion(DetectedPathology p, List<DetectedTooth> teeth)
+    {
+        if (teeth == null || teeth.Count == 0) return "Unknown Region";
+        
+        float midY = teeth.Average(t => t.Y + t.Height / 2);
+        bool isUpper = (p.Y + p.Height / 2) < midY;
+        bool isRight = (p.X + p.Width / 2) < 0.5f; // Image Left is Patient Right
+        
+        string arch = isUpper ? "Maxillary" : "Mandibular";
+        string side = isRight ? "Right" : "Left";
+        
+        return $"{arch} {side} Quadrant";
     }
 
     private static bool HasValidBox(DetectedPathology pathology)

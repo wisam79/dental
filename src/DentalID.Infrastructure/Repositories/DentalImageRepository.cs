@@ -19,7 +19,7 @@ public class DentalImageRepository : IDentalImageRepository
     }
 
     public async Task<DentalImage?> GetByIdAsync(int id)
-        => await _db.DentalImages.FindAsync(id);
+        => await _db.DentalImages.FindAsync(id).ConfigureAwait(false);
 
     public async Task<List<DentalImage>> GetBySubjectIdAsync(int subjectId, int page = 1, int pageSize = 50)
     {
@@ -36,24 +36,24 @@ public class DentalImageRepository : IDentalImageRepository
     public async Task<DentalImage> AddAsync(DentalImage image)
     {
         _db.DentalImages.Add(image);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
         return image;
     }
 
     public async Task UpdateAsync(DentalImage image)
     {
         _db.DentalImages.Update(image);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task DeleteAsync(int id)
     {
-        var img = await _db.DentalImages.FindAsync(id);
+        var img = await _db.DentalImages.FindAsync(id).ConfigureAwait(false);
         if (img != null)
         {
             // Remove from DB first
             _db.DentalImages.Remove(img);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
 
             // Delete physical file after DB commit confirmed
             if (!string.IsNullOrEmpty(img.ImagePath) && File.Exists(img.ImagePath))

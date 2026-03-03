@@ -17,7 +17,8 @@ public class CacheService : ICacheService
         _defaultOptions = new MemoryCacheEntryOptions()
             .SetSlidingExpiration(TimeSpan.FromMinutes(10))
             .SetAbsoluteExpiration(TimeSpan.FromHours(1))
-            .SetPriority(CacheItemPriority.Normal);
+            .SetPriority(CacheItemPriority.Normal)
+            .SetSize(1);
     }
 
     /// <inheritdoc/>
@@ -69,7 +70,8 @@ public class CacheService : ICacheService
             options = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(expiration.Value)
                 .SetAbsoluteExpiration(expiration.Value.Add(TimeSpan.FromMinutes(5)))
-                .SetPriority(CacheItemPriority.Normal);
+                .SetPriority(CacheItemPriority.Normal)
+                .SetSize(1);
         }
 
         _cache.Set(key, value, options);
