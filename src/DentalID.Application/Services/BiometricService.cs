@@ -13,6 +13,7 @@ namespace DentalID.Application.Services;
 public class BiometricService : IBiometricService
 {
     // Weights for biometric significance
+    private const int WeightSupernumerary = 150;
     private const int WeightImplant = 100;
     private const int WeightBridge = 80;
     private const int WeightCrown = 50;
@@ -64,7 +65,12 @@ public class BiometricService : IBiometricService
                 if (toothPathologies.Any())
                 {
                     // Check for high-value dental work
-                    if (toothPathologies.Any(p => p.ClassName == "Implant"))
+                    if (toothPathologies.Any(p => p.ClassName == "Supernumerary"))
+                    {
+                        code = "S";
+                        score += WeightSupernumerary;
+                    }
+                    else if (toothPathologies.Any(p => p.ClassName == "Implant"))
                     {
                         code = "I"; // Implant
                         score += WeightImplant;
@@ -107,9 +113,9 @@ public class BiometricService : IBiometricService
         }
 
         fingerprint.Code = sb.ToString().TrimEnd('-');
-        // Score is weighted sum; cap at 100 to represent max forensic uniqueness.
-        // A single high-value feature (e.g. implant = 100) already saturates the scale.
-        fingerprint.UniquenessScore = Math.Min(score, 100);
+        // Score is weighted sum.
+        // Removed hard cap of 100 to allow for better differentiation of complex forensic records.
+        fingerprint.UniquenessScore = score;
         fingerprint.ToothMap = toothMap;
 
         return fingerprint;
@@ -147,6 +153,7 @@ public class BiometricService : IBiometricService
                 // Add to uniqueness score
                 score += toothCode switch
                 {
+                    "S" => WeightSupernumerary,
                     "I" => WeightImplant,
                     "B" => WeightBridge,
                     "C" => WeightCrown,
@@ -160,13 +167,15 @@ public class BiometricService : IBiometricService
         }
 
         fingerprint.ToothMap = toothMap;
-        fingerprint.UniquenessScore = Math.Min(score, 100);
+        fingerprint.UniquenessScore = score;
 
         return fingerprint;
     }
 
     /// <summary>
-    /// Calculates similarity between two dental fingerprints using cosine similarity
+    /// Calculates similarity between two dental fingerprints using a weighted forensic comparison.
+    /// This metric correctly handles "Missing" vs "Undetected" as distinct forensic states and
+    /// penalizes identity conflicts (e.g., Implant vs Healthy tooth).
     /// </summary>
     /// <param name="fingerprint1">First dental fingerprint</param>
     /// <param name="fingerprint2">Second dental fingerprint</param>
@@ -178,10 +187,9 @@ public class BiometricService : IBiometricService
             return 0;
         }
 
-        // Bug #16 fix: Calculate similarity over the UNION of teeth, not intersection.
-        // Intersecting caused a 1-tooth record to perfectly match a 32-tooth record!
         var allFdi = fingerprint1.ToothMap.Keys
             .Union(fingerprint2.ToothMap.Keys)
+            .OrderBy(f => f)
             .ToList();
 
         if (allFdi.Count == 0)
@@ -189,21 +197,89 @@ public class BiometricService : IBiometricService
             return 0;
         }
 
-        // Create vectors spanning the entire dental record union
-        var vector1 = new double[allFdi.Count];
-        var vector2 = new double[allFdi.Count];
+        double totalWeightedSimilarity = 0;
+        double totalMaxWeight = 0;
 
-        for (int i = 0; i < allFdi.Count; i++)
+        foreach (var fdi in allFdi)
         {
-            string code1 = fingerprint1.ToothMap.TryGetValue(allFdi[i], out var c1) ? c1 : "U";
-            string code2 = fingerprint2.ToothMap.TryGetValue(allFdi[i], out var c2) ? c2 : "U";
+            string code1 = fingerprint1.ToothMap.TryGetValue(fdi, out var c1) ? c1 : "U";
+            string code2 = fingerprint2.ToothMap.TryGetValue(fdi, out var c2) ? c2 : "U";
 
-            vector1[i] = GetCodeValue(code1);
-            vector2[i] = GetCodeValue(code2);
+            // Skip if both are Unknown (no information)
+            if (code1 == "U" && code2 == "U") continue;
+
+            // Calculate weight based on forensic significance (rarity of the feature)
+            double weight = Math.Max(GetForensicWeight(code1), GetForensicWeight(code2));
+            totalMaxWeight += weight;
+
+            // Compare codes
+            if (code1 == code2)
+            {
+                totalWeightedSimilarity += weight; // Exact match
+            }
+            else if (IsPartialMatch(code1, code2))
+            {
+                totalWeightedSimilarity += weight * 0.6; // Partial match (e.g. Filling vs Caries)
+            }
+            else if (IsConflict(code1, code2))
+            {
+                // Identity Conflict (e.g. Missing vs Healthy)
+                // Forensic logic: An identity conflict should drag down the score significantly.
+                totalWeightedSimilarity -= weight * 0.5; 
+            }
+            // else: U vs something (neutral/no score added)
         }
 
-        // Calculate cosine similarity
-        return CalculateCosineSimilarity(vector1, vector2);
+        if (totalMaxWeight == 0) return 0;
+        
+        // Normalize to 0-1
+        double finalScore = totalWeightedSimilarity / totalMaxWeight;
+        return Math.Max(0, finalScore);
+    }
+
+    private static double GetForensicWeight(string code)
+    {
+        return code switch
+        {
+            "S" => 15.0, // Supernumerary - Extremely rare/identifying
+            "I" => 10.0, // Implant - Rare
+            "B" => 8.0,  // Bridge
+            "C" => 6.0,  // Crown
+            "R" => 5.0,  // Root Canal
+            "M" => 5.0,  // Missing - Highly identifying (irreversible)
+            "F" => 3.0,  // Filling
+            "K" => 1.5,  // Caries
+            "H" => 1.0,  // Healthy - Most common/least identifying
+            _   => 0.0
+        };
+    }
+
+    private static bool IsPartialMatch(string c1, string c2)
+    {
+        // Filling and Caries are logically related
+        if ((c1 == "F" && c2 == "K") || (c1 == "K" && c2 == "F")) return true;
+        // Crown and Root Canal often co-occur
+        if ((c1 == "C" && c2 == "R") || (c1 == "R" && c2 == "C")) return true;
+        return false;
+    }
+
+    private static bool IsConflict(string c1, string c2)
+    {
+        // One is undetected (U) - not a conflict, just missing info
+        if (c1 == "U" || c2 == "U") return false;
+        
+        // Supernumerary (S) conflicts with everything that isn't S
+        if ((c1 == "S" && c2 != "S") || (c2 == "S" && c1 != "S")) return true;
+
+        // Healthy (H) conflicts with any irreversible work
+        if (c1 == "H" && "IBCRM".Contains(c2)) return true;
+        if (c2 == "H" && "IBCRM".Contains(c1)) return true;
+        
+        // Missing (M) conflicts with any physical tooth present
+        if (c1 == "M" && c2 != "M") return true;
+        if (c2 == "M" && c1 != "M") return true;
+        
+        return false;
     }
 
     /// <summary>

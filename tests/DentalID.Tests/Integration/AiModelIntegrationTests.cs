@@ -57,8 +57,7 @@ public class AiModelIntegrationTests
             Model = new ModelSettings 
             { 
                 DetectionInputSize = 640,
-                GenderAgeInputSize = 96
-            },
+                },
             Thresholds = new ThresholdSettings(),
             FdiMapping = new FdiMappingSettings { ClassMap = new int[32] },
             EnableTTA = false

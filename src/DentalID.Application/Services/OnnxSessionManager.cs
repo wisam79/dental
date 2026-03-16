@@ -42,6 +42,7 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
     // ── LOH Buffers ───────────────────────────────────────────────────────────
     public float[]? DetectionBuffer    { get; private set; }
     public float[]? TtaDetectionBuffer { get; private set; }
+    public float[]? PathologyBuffer    { get; private set; }
     public float[]? EncoderBuffer      { get; private set; }
 
     /// <summary>Shared semaphore — all sub-services must acquire before running inference.</summary>
@@ -112,7 +113,9 @@ public sealed class OnnxSessionManager : IOnnxSessionManager
             int detSize = _config.Model.DetectionInputSize * _config.Model.DetectionInputSize * 3;
             DetectionBuffer    = new float[detSize];
             TtaDetectionBuffer = new float[detSize];
-            EncoderBuffer      = null;
+            PathologyBuffer    = new float[detSize];
+            // Encoder uses 1024x1024x3
+            EncoderBuffer      = new float[1024 * 1024 * 3];
 
             // Warmup / Self-Diagnostic
             RunSelfDiagnostic();

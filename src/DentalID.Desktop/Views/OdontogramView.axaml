@@ -102,7 +102,7 @@
                                                           StrokeThickness="{Binding StrokeThickness}"
                                                           Stretch="Uniform" Margin="2"/>
                                                     <!-- Missing X overlay -->
-                                                    <Path Data="M0,0 L1,1 M1,0 L0,1" Stroke="#EF5350"
+                                                    <Path Data="M 0,0 L 20,20 M 20,0 L 0,20" Stroke="#EF5350"
                                                           StrokeThickness="2.5" Stretch="Uniform" Margin="8"
                                                           IsVisible="{Binding IsMissing}" Opacity="0.8"/>
                                                     <!-- Status icon -->
@@ -149,7 +149,7 @@
                                                           Stroke="{Binding StrokeColor}"
                                                           StrokeThickness="{Binding StrokeThickness}"
                                                           Stretch="Uniform" Margin="2"/>
-                                                    <Path Data="M0,0 L1,1 M1,0 L0,1" Stroke="#EF5350"
+                                                    <Path Data="M 0,0 L 20,20 M 20,0 L 0,20" Stroke="#EF5350"
                                                           StrokeThickness="2.5" Stretch="Uniform" Margin="8"
                                                           IsVisible="{Binding IsMissing}" Opacity="0.8"/>
                                                     <TextBlock Text="{Binding StatusIcon}"
@@ -195,7 +195,7 @@
                                                           Stroke="{Binding StrokeColor}"
                                                           StrokeThickness="{Binding StrokeThickness}"
                                                           Stretch="Uniform" Margin="2"/>
-                                                    <Path Data="M0,0 L1,1 M1,0 L0,1" Stroke="#EF5350"
+                                                    <Path Data="M 0,0 L 20,20 M 20,0 L 0,20" Stroke="#EF5350"
                                                           StrokeThickness="2.5" Stretch="Uniform" Margin="8"
                                                           IsVisible="{Binding IsMissing}" Opacity="0.8"/>
                                                     <TextBlock Text="{Binding StatusIcon}"
@@ -240,7 +240,7 @@
                                                           Stroke="{Binding StrokeColor}"
                                                           StrokeThickness="{Binding StrokeThickness}"
                                                           Stretch="Uniform" Margin="2"/>
-                                                    <Path Data="M0,0 L1,1 M1,0 L0,1" Stroke="#EF5350"
+                                                    <Path Data="M 0,0 L 20,20 M 20,0 L 0,20" Stroke="#EF5350"
                                                           StrokeThickness="2.5" Stretch="Uniform" Margin="8"
                                                           IsVisible="{Binding IsMissing}" Opacity="0.8"/>
                                                     <TextBlock Text="{Binding StatusIcon}"

@@ -95,7 +95,7 @@ public class MatchingViewModelTests
     public async Task RunMatching_ShouldSaveQueryImage_AndCreateMatchRecords()
     {
         // Arrange
-        var queryPath = "c:\\test\\query.jpg";
+        var queryPath = Path.Combine(Path.GetTempPath(), "query.jpg");
         var subject = new Subject { Id = 1, FullName = "Jane Doe" };
         var matches = new List<MatchCandidate>
         {

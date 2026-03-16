@@ -201,11 +201,17 @@ public class YoloDetectionParser : IYoloDetectionParser
                 float overlapRatio = area / pathologyArea;
                 bool centerInside = IsPointInside(tooth.X, tooth.Y, tooth.Width, tooth.Height, pCenterX, pCenterY);
 
-                if (!centerInside && overlapRatio < MinPathologyOverlapRatio)
+                // Bug Fix #1: Relaxed mapping for apical pathologies (Lesions/Root Pieces) 
+                // which often sit outside the main tooth bounding box.
+                float effectiveMinOverlap = (pathology.ClassName.Contains("Lesion") || pathology.ClassName.Contains("Root Piece")) 
+                    ? 0.12f 
+                    : MinPathologyOverlapRatio;
+
+                if (!centerInside && overlapRatio < effectiveMinOverlap)
                     continue;
 
                 // Prefer center containment + stronger overlap
-                float score = overlapRatio + (centerInside ? 0.25f : 0f) + (tooth.Confidence * 0.05f);
+                float score = overlapRatio + (centerInside ? 0.35f : 0f) + (tooth.Confidence * 0.05f);
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -222,7 +228,19 @@ public class YoloDetectionParser : IYoloDetectionParser
                 {
                     float tCenterX = tooth.X + tooth.Width / 2;
                     float tCenterY = tooth.Y + tooth.Height / 2;
-                    float dist = (float)Math.Sqrt(Math.Pow(pCenterX - tCenterX, 2) + Math.Pow(pCenterY - tCenterY, 2));
+                    
+                    float dx = pCenterX - tCenterX;
+                    float dy = pCenterY - tCenterY;
+
+                    // Bug Fix #3: Directional vertical bias.
+                    // For maxillary teeth (Upper), the apex is ABOVE the tooth (smaller Y).
+                    // For mandibular teeth (Lower), the apex is BELOW the tooth (larger Y).
+                    bool isUpper = tooth.FdiNumber / 10 <= 2 || (tooth.FdiNumber / 10 >= 5 && tooth.FdiNumber / 10 <= 6);
+                    bool isApicalDirection = isUpper ? (dy < 0) : (dy > 0);
+                    
+                    // Penalty for mapping to a tooth in the "wrong" vertical direction (occlusal side).
+                    float verticalWeight = isApicalDirection ? 1.8f : 3.5f;
+                    float dist = (float)Math.Sqrt(dx * dx + Math.Pow(dy * verticalWeight, 2));
 
                     if (dist < minDistance && dist < proximityThreshold)
                     {
@@ -260,6 +278,7 @@ public class YoloDetectionParser : IYoloDetectionParser
 
         var sorted = detections.OrderByDescending(d => getter(d).conf).ToList();
         var results = new List<T>();
+        var isPathology = typeof(T) == typeof(DetectedPathology);
         var suppressed = new bool[sorted.Count];
         for (int i = 0; i < sorted.Count; i++)
         {
@@ -270,6 +289,14 @@ public class YoloDetectionParser : IYoloDetectionParser
             for (int j = i + 1; j < sorted.Count; j++)
             {
                 if (suppressed[j]) continue;
+
+                if (isPathology)
+                {
+                    var p1 = current as DetectedPathology;
+                    var p2 = sorted[j] as DetectedPathology;
+                    if (p1 != null && p2 != null && p1.ClassName != p2.ClassName) continue;
+                }
+
                 var o = getter(sorted[j]);
                 if (ForensicHeuristicsService.CalculateIoU(c.x, c.y, c.w, c.h, o.x, o.y, o.w, o.h) > iouThreshold) 
                     suppressed[j] = true;
@@ -576,7 +603,7 @@ public class YoloDetectionParser : IYoloDetectionParser
 
         // Compatibility fallback for 54-class dental models:
         // 0..31 permanent, 32..51 deciduous, 52 paramolar, 53 unidentified.
-        // For adult panoramic workflow, remap deciduous classes to nearest permanent counterparts.
+        // Forensic Fix: Preserve original deciduous FDI (51-85) to maintain pediatric data integrity.
         if (_config.FdiMapping.ClassMap.Length <= 32 && numClasses >= 54)
         {
             return classIndex switch
@@ -585,10 +612,10 @@ public class YoloDetectionParser : IYoloDetectionParser
                 >= 8 and <= 15 => 21 + (classIndex - 8),
                 >= 16 and <= 23 => 31 + (classIndex - 16),
                 >= 24 and <= 31 => 41 + (classIndex - 24),
-                >= 32 and <= 36 => 11 + (classIndex - 32), // 51..55 -> 11..15
-                >= 37 and <= 41 => 21 + (classIndex - 37), // 61..65 -> 21..25
-                >= 42 and <= 46 => 31 + (classIndex - 42), // 71..75 -> 31..35
-                >= 47 and <= 51 => 41 + (classIndex - 47), // 81..85 -> 41..45
+                >= 32 and <= 36 => 51 + (classIndex - 32), // 51..55
+                >= 37 and <= 41 => 61 + (classIndex - 37), // 61..65
+                >= 42 and <= 46 => 71 + (classIndex - 42), // 71..75
+                >= 47 and <= 51 => 81 + (classIndex - 47), // 81..85
                 _ => 0
             };
         }

@@ -554,4 +554,37 @@ public class ForensicAnalysisServiceTests : IDisposable
         // Low-confidence (but above floor) pathology should survive at permissive sensitivity
         Assert.Contains(result.Pathologies, p => p.ClassName == "Caries");
     }
+
+    [Fact]
+    public void UpdateForensicFilter_ShouldExcludeLowConfidenceStragglers_WhenNearComplete()
+    {
+        // Arrange
+        var result = new AnalysisResult
+        {
+            Teeth = new List<DetectedTooth>(),
+            RawTeeth = new List<DetectedTooth>()
+        };
+
+        // Add 31 high-confidence teeth (FDI 11-18, 21-28, 31-38, 41-47)
+        for (int q = 1; q <= 4; q++)
+        {
+            for (int u = 1; u <= 8; u++)
+            {
+                int fdi = q * 10 + u;
+                if (fdi == 48) continue; // Skip 48
+
+                result.RawTeeth.Add(new DetectedTooth { FdiNumber = fdi, Confidence = 0.9f, X = 0.1f, Y = 0.1f, Width = 0.05f, Height = 0.05f });
+            }
+        }
+
+        // Add the 32nd tooth (48) with 0.10 confidence (below the new 0.15 floor)
+        result.RawTeeth.Add(new DetectedTooth { FdiNumber = 48, Confidence = 0.10f, X = 0.1f, Y = 0.1f, Width = 0.05f, Height = 0.05f });
+
+        // Act
+        _service.UpdateForensicFilter(result, 0.5);
+
+        // Assert
+        Assert.Equal(31, result.Teeth.Count);
+        Assert.DoesNotContain(result.Teeth, t => t.FdiNumber == 48);
+    }
 }

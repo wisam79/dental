@@ -16,6 +16,7 @@ namespace DentalID.Application.Services;
 public class ForensicAnalysisService : IForensicAnalysisService
 {
     private readonly IAiPipelineService _aiPipeline;
+    private readonly IBitmapAnalysisPipeline? _bitmapPipeline;
     private readonly ILoggerService _logger;
     private readonly IIntegrityService _integrityService;
     private readonly IDentalImageRepository _imageRepo;
@@ -46,9 +47,11 @@ public class ForensicAnalysisService : IForensicAnalysisService
         AiConfiguration config,
         AiSettings aiSettings,
         IFileService fileService,
-        IForensicRulesEngine rulesEngine)
+        IForensicRulesEngine rulesEngine,
+        IBitmapAnalysisPipeline? bitmapPipeline = null)
     {
         _aiPipeline = aiPipeline;
+        _bitmapPipeline = bitmapPipeline;
         _logger = logger;
         _integrityService = integrityService;
         _imageRepo = imageRepo;
@@ -110,18 +113,28 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 };
             }
 
+            // Perf: pass the already-decoded bitmap directly to avoid a redundant decode inside the pipeline
+            AnalysisResult result;
+            if (_bitmapPipeline != null)
+            {
+                result = await _bitmapPipeline.AnalyzeBitmapAsync(bitmap, Path.GetFileName(imagePath));
+            }
+            else
+            {
+                // Fallback: re-encode and use the stream-based API
                 await using var pipelineStream = new MemoryStream(imageBytes, writable: false);
-                var result = await _aiPipeline.AnalyzeImageAsync(pipelineStream, Path.GetFileName(imagePath));
-            
-                if (result.IsSuccess)
-                {
-                    // Clone before filtering to avoid mutating cached/shared analysis objects.
-                    var filteredResult = CloneAnalysisResult(result);
-                    UpdateForensicFilter(filteredResult, sensitivity);
-                    return filteredResult;
-                }
-            
-                return result;
+                result = await _aiPipeline.AnalyzeImageAsync(pipelineStream, Path.GetFileName(imagePath));
+            }
+        
+            if (result.IsSuccess)
+            {
+                // Clone before filtering to avoid mutating cached/shared analysis objects.
+                var filteredResult = CloneAnalysisResult(result);
+                UpdateForensicFilter(filteredResult, sensitivity);
+                return filteredResult;
+            }
+        
+            return result;
             }
         }
         catch (Exception ex)
@@ -197,7 +210,7 @@ public class ForensicAnalysisService : IForensicAnalysisService
         // Sensitivity 0.0 -> Threshold (Base) (Very Strict)
         // Sensitivity 1.0 -> Threshold (Base - Slope) (Very Loose)
         double baseThreshold = _config.Thresholds.ForensicBaseThreshold - (sensitivity * _config.Thresholds.SensitivitySlope);
-        double effectiveTeethThreshold = Math.Min(baseThreshold, Math.Max(0.20, _config.Thresholds.TeethThreshold + 0.02));
+        double effectiveTeethThreshold = Math.Min(baseThreshold, Math.Max(0.18, _config.Thresholds.TeethThreshold));
 
         // Bug #18 fix: Guard against null RawTeeth to avoid silently clearing result.Teeth
         var rawTeeth = result.RawTeeth ?? result.Teeth ?? new List<DetectedTooth>();
@@ -304,12 +317,9 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 .Where(t =>
                     IsPermanentFdi(t.FdiNumber) &&
                     !existing.Contains(t.FdiNumber) &&
-                    // Targeted recovery: for exactly one missing permanent tooth (e.g., 47),
-                    // allow a lower confidence floor to avoid losing near-threshold detections.
-                    (t.Confidence >= 0.16f ||
-                     (missingPermanent.Count == 1 &&
-                      t.FdiNumber == missingPermanent[0] &&
-                      t.Confidence >= 0.08f)))
+                    // At 30-31 teeth we have strong context — allow low-confidence stragglers
+                    // Floor raised from 0.06f -> 0.15f to ensure forensic reliability and avoid hallucinations.
+                    t.Confidence >= 0.15f)
                 .GroupBy(t => t.FdiNumber)
                 .Select(g => g.OrderByDescending(t => t.Confidence).First())
                 .OrderByDescending(t => t.Confidence)
@@ -410,7 +420,7 @@ public class ForensicAnalysisService : IForensicAnalysisService
 
         result.Flags.Clear();
         result.Flags.AddRange(preservedForensicAlerts);
-        _rulesEngine.ApplyRules(result);
+        // _rulesEngine.ApplyRules(result); // BUG-06: duplicate call removed from UpdateForensicFilter
     }
 
     /// <inheritdoc/>
@@ -846,11 +856,24 @@ public class ForensicAnalysisService : IForensicAnalysisService
         int missingFdi = missing[0];
         int quadrant = missingFdi / 10;
         int unit = missingFdi % 10;
-        if (unit <= 1 || unit >= 8)
+        
+        if (unit >= 8)
             return false;
 
-        int neighborA = quadrant * 10 + (unit - 1);
-        int neighborB = quadrant * 10 + (unit + 1);
+        int neighborA, neighborB;
+        if (unit == 1)
+        {
+            // Midline crossover: neighbor of 11 is 12 and 21. Neighbor of 21 is 22 and 11.
+            // Quadrant pairs: 1<->2, 3<->4
+            int oppositeQuadrant = quadrant switch { 1 => 2, 2 => 1, 3 => 4, 4 => 3, _ => quadrant };
+            neighborA = quadrant * 10 + 2;             // e.g. 12
+            neighborB = oppositeQuadrant * 10 + 1;     // e.g. 21
+        }
+        else
+        {
+            neighborA = quadrant * 10 + (unit - 1);
+            neighborB = quadrant * 10 + (unit + 1);
+        }
 
         var byFdi = currentTeeth
             .Where(t => t.FdiNumber > 0)
@@ -960,38 +983,15 @@ public class ForensicAnalysisService : IForensicAnalysisService
             return true;
         }
 
-        // Geometry-only fallback (strict): if a single tooth slot is clearly present between neighbors
-        // and there is no strong "missing tooth" evidence, infer a low-confidence tooth.
+        /* Geometry-only fallback disabled for forensic reliability. 
+           If there is no raw candidate detection, we should not "invent" a tooth 
+           based solely on spatial gaps. 
+        
         float widthRatio = centerDist / Math.Max(avgWidth, 1e-4f);
-        float minFallbackRatio = unit == 7 ? 1.35f : 1.8f;
-        float maxFallbackRatio = unit == 7 ? 6.4f : 3.2f;
-        float maxFallbackYDelta = unit == 7 ? 0.16f : 0.08f;
-        bool plausibleHiddenToothGap =
-            widthRatio >= minFallbackRatio &&
-            widthRatio <= maxFallbackRatio &&
-            Math.Abs(aCy - bCy) <= maxFallbackYDelta;
+        ...
+        */
 
-        if (!hasStrongMissingEvidence && plausibleHiddenToothGap && slotSupportExists)
-        {
-            float recoveredWidth = Math.Clamp(avgWidth * 0.92f, 0.02f, 0.09f);
-            float recoveredHeight = Math.Clamp(avgHeight * 0.96f, 0.05f, 0.20f);
-            float recoveredX = Math.Clamp(expectedCx - recoveredWidth / 2f, 0f, 1f - recoveredWidth);
-            float recoveredY = Math.Clamp(expectedCy - recoveredHeight / 2f, 0f, 1f - recoveredHeight);
-
-            recoveredTooth = new DetectedTooth
-            {
-                FdiNumber = missingFdi,
-                Confidence = 0.08f,
-                X = recoveredX,
-                Y = recoveredY,
-                Width = recoveredWidth,
-                Height = recoveredHeight
-            };
-            recoveredMissingFdi = missingFdi;
-            return true;
-        }
-
-        // No candidate and no safe geometric inference: keep the tooth as missing.
+        // No candidate: keep the tooth as missing.
         return false;
     }
 
@@ -1054,7 +1054,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 Y = t.Y,
                 Width = t.Width,
                 Height = t.Height,
-                Outline = t.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList()
+                Outline = t.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList(),
+                MaskWidth = t.MaskWidth,
+                MaskHeight = t.MaskHeight,
+                MaskArea = t.MaskArea
             }).ToList(),
             Pathologies = sourcePathologies.Select(p => new DetectedPathology
             {
@@ -1065,7 +1068,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 Y = p.Y,
                 Width = p.Width,
                 Height = p.Height,
-                Outline = p.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList()
+                Outline = p.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList(),
+                MaskWidth = p.MaskWidth,
+                MaskHeight = p.MaskHeight,
+                MaskArea = p.MaskArea
             }).ToList(),
             RawTeeth = sourceRawTeeth.Select(t => new DetectedTooth
             {
@@ -1075,7 +1081,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 Y = t.Y,
                 Width = t.Width,
                 Height = t.Height,
-                Outline = t.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList()
+                Outline = t.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList(),
+                MaskWidth = t.MaskWidth,
+                MaskHeight = t.MaskHeight,
+                MaskArea = t.MaskArea
             }).ToList(),
             RawPathologies = sourceRawPathologies.Select(p => new DetectedPathology
             {
@@ -1086,7 +1095,10 @@ public class ForensicAnalysisService : IForensicAnalysisService
                 Y = p.Y,
                 Width = p.Width,
                 Height = p.Height,
-                Outline = p.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList()
+                Outline = p.Outline?.Select(p => (X: p.X, Y: p.Y)).ToList(),
+                MaskWidth = p.MaskWidth,
+                MaskHeight = p.MaskHeight,
+                MaskArea = p.MaskArea
             }).ToList(),
             EstimatedAgeRange = source.EstimatedAgeRange,
             EstimatedAge = source.EstimatedAge,
@@ -1150,7 +1162,14 @@ public class ForensicAnalysisService : IForensicAnalysisService
                     current.X, current.Y, current.Width, current.Height,
                     other.X, other.Y, other.Width, other.Height);
 
-                if (iou > iouThreshold)
+                // If same tooth predicted twice, use standard aggressive NMS.
+                // If different teeth (e.g. 11 and 21), allow them to overlap more (up to 75%) 
+                // because central incisors are crowded and bounding boxes overlap.
+                float effectiveIouThreshold = current.FdiNumber == other.FdiNumber 
+                    ? iouThreshold 
+                    : Math.Max(iouThreshold, 0.75f);
+
+                if (iou > effectiveIouThreshold)
                     suppressed[j] = true;
             }
         }

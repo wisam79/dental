@@ -186,6 +186,11 @@ public class DentalAnalysisControl : Control
                 if (brush is ISolidColorBrush scb) 
                     bgBrush = new SolidColorBrush(scb.Color, 0.6);
                 
+                // Semi-transparent fill for polygon outlines
+                var fillBrush = new SolidColorBrush(Colors.Cyan, 0.15);
+                if (brush is ISolidColorBrush scbFill)
+                    fillBrush = new SolidColorBrush(scbFill.Color, 0.15);
+
                 foreach (var tooth in Teeth)
                 {
                     // Validate coordinates
@@ -198,8 +203,33 @@ public class DentalAnalysisControl : Control
                     var w = tooth.Width * destRect.Width;
                     var h = tooth.Height * destRect.Height;
 
-                    var rect = new Rect(x, y, w, h);
-                    context.DrawRectangle(null, toothPen, rect);
+                    // Draw SAM polygon outline if available, else fallback to bounding box
+                    if (tooth.Outline != null && tooth.Outline.Count >= 3)
+                    {
+                        var geometry = new StreamGeometry();
+                        using (var ctx = geometry.Open())
+                        {
+                            var first = tooth.Outline[0];
+                            ctx.BeginFigure(
+                                new Point(destRect.X + first.X * destRect.Width,
+                                          destRect.Y + first.Y * destRect.Height),
+                                true);  // isFilled
+                            for (int i = 1; i < tooth.Outline.Count; i++)
+                            {
+                                var pt = tooth.Outline[i];
+                                ctx.LineTo(new Point(
+                                    destRect.X + pt.X * destRect.Width,
+                                    destRect.Y + pt.Y * destRect.Height));
+                            }
+                            ctx.EndFigure(true); // isClosed
+                        }
+                        context.DrawGeometry(fillBrush, toothPen, geometry);
+                    }
+                    else
+                    {
+                        var rect = new Rect(x, y, w, h);
+                        context.DrawRectangle(null, toothPen, rect);
+                    }
 
                     // Draw Label with bounds checking
                     var label = tooth.FdiNumber.ToString();
@@ -252,6 +282,11 @@ public class DentalAnalysisControl : Control
                     if (colorBrush is ISolidColorBrush scb)
                         bgBrush = new SolidColorBrush(scb.Color, 0.6);
 
+                    // Semi-transparent fill for polygon outlines
+                    var pathFillBrush = new SolidColorBrush(Colors.Red, 0.12);
+                    if (colorBrush is ISolidColorBrush scbPath)
+                        pathFillBrush = new SolidColorBrush(scbPath.Color, 0.12);
+
                     foreach (var path in group)
                     {
                          // Validate coordinates
@@ -264,8 +299,33 @@ public class DentalAnalysisControl : Control
                         var w = path.Width * destRect.Width;
                         var h = path.Height * destRect.Height;
 
-                        var rect = new Rect(x, y, w, h);
-                        context.DrawRectangle(null, pathPen, rect);
+                        // Draw SAM polygon outline if available, else fallback to bounding box
+                        if (path.Outline != null && path.Outline.Count >= 3)
+                        {
+                            var geometry = new StreamGeometry();
+                            using (var ctx = geometry.Open())
+                            {
+                                var first = path.Outline[0];
+                                ctx.BeginFigure(
+                                    new Point(destRect.X + first.X * destRect.Width,
+                                              destRect.Y + first.Y * destRect.Height),
+                                    true);
+                                for (int i = 1; i < path.Outline.Count; i++)
+                                {
+                                    var pt = path.Outline[i];
+                                    ctx.LineTo(new Point(
+                                        destRect.X + pt.X * destRect.Width,
+                                        destRect.Y + pt.Y * destRect.Height));
+                                }
+                                ctx.EndFigure(true);
+                            }
+                            context.DrawGeometry(pathFillBrush, pathPen, geometry);
+                        }
+                        else
+                        {
+                            var rect = new Rect(x, y, w, h);
+                            context.DrawRectangle(null, pathPen, rect);
+                        }
 
                         // Localized Label
                         var labelKey = $"Pathology_{path.ClassName}";

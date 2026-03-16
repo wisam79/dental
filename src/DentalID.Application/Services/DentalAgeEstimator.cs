@@ -67,8 +67,7 @@ public static class DentalAgeEstimator
             return ("18 - 21 Years (Late Adolescence / Early Adulthood)", 20);
         }
 
-        // Default or undetermined adulthood without wisdom teeth (often extracted or impacted and not detected)
-        // If there are no deciduous teeth and typical adult teeth exist in large numbers.
+        // High count fallback (Adult) - Move up to prevent childhood false positives for adults with missing molars
         if (fdiNumbers.Count >= 24)
             return ("Over 18 Years (Assumed Adult)", 25);
 

@@ -58,31 +58,34 @@ public class ForensicRulesEngine : IForensicRulesEngine
         {
             int toothNum = group.Key!.Value;
 
-            // Rule 2: Implant Supremacy Conflict
-            // If a tooth has an "Implant", having "Caries", "RootCanal", or "Filling" is medically highly improbable.
-            bool hasImplant = group.Any(p => IsImplantClass(p.ClassName));
-            if (hasImplant)
+            // Rule 2: Implant Supremacy Conflict (with confidence weighting)
+            // If a tooth has a high-confidence "Implant", having "Caries", "RootCanal", or "Filling" is improbable.
+            var implants = group.Where(p => IsImplantClass(p.ClassName)).OrderByDescending(p => p.Confidence).ToList();
+            if (implants.Any())
             {
+                float bestImplantConf = implants[0].Confidence;
                 var conflicts = group
                     .Where(p => IsImplantConflictClass(p.ClassName))
-                    .GroupBy(p => ToDisplayClassName(p.ClassName))
                     .ToList();
                 
                 foreach (var conflict in conflicts)
                 {
-                    string className = conflict.Key;
-                    int count = conflict.Count();
-                    string msg = count > 1 
-                        ? $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant ({count} overlapping detections). Auto-suppressed."
-                        : $"Conflict (Tooth {toothNum}): Detected '{className}' on a tooth with an Implant. Auto-suppressed.";
-                    result.Flags.Add(msg);
-                    
-                    // Cross-Validation: Remove the false positive from results
-                    result.Pathologies.RemoveAll(p => p.ToothNumber == toothNum && IsImplantConflictClass(p.ClassName));
+                    // Bug Fix: Only suppress if the implant is more reliable than the conflict,
+                    // or if the implant is near-certain (> 85%).
+                    if (bestImplantConf > conflict.Confidence || bestImplantConf > 0.85f)
+                    {
+                        result.Flags.Add($"Conflict (Tooth {toothNum}): Detected '{ToDisplayClassName(conflict.ClassName)}' suppressed on a tooth with an Implant (Confidence: {bestImplantConf:P0}).");
+                        result.Pathologies.Remove(conflict);
+                    }
+                    else
+                    {
+                        result.Flags.Add($"Forensic Alert (Tooth {toothNum}): High-confidence conflict between Implant ({bestImplantConf:P0}) and {ToDisplayClassName(conflict.ClassName)} ({conflict.Confidence:P0}). Verify manually.");
+                    }
                 }
             }
             
             // Rule 3: Clinical Grouping (Crown + Root Canal)
+            bool hasImplant = implants.Any();
             bool hasCrown = group.Any(p => IsClass(p.ClassName, "crown"));
             bool hasRct = group.Any(p => IsClass(p.ClassName, "root canal") || IsClass(p.ClassName, "rootcanal"));
             if (hasCrown && hasRct && !hasImplant)
@@ -149,22 +152,49 @@ public class ForensicRulesEngine : IForensicRulesEngine
             // Fall back to simple median for small sets
             midY = sortedByY[sortedByY.Count / 2].Y + sortedByY[sortedByY.Count / 2].Height / 2f;
         }
+
+        // Bug Fix: Sanity check for midY. If the gap-based approach produced an extreme value 
+        // (outside 30-70% of image height), fall back to the vertical median of all teeth.
+        if (midY < 0.30f || midY > 0.70f)
+        {
+            midY = result.Teeth.Average(t => t.Y + t.Height / 2f);
+        }
         
-        // 2. Separate Arches
-        var upperArch = result.Teeth.Where(t => (t.Y + t.Height / 2) < midY).ToList();
-        var lowerArch = result.Teeth.Where(t => (t.Y + t.Height / 2) >= midY).ToList();
+        // 2. Separate Arches and Quadrants
+        // Bug Fix #5: Dynamic Midline Detection
+        // Use the average X of the central incisors or median of all teeth if centered poorly.
+        float midX = 0.5f;
+        var centralTeeth = result.Teeth.Where(t => (t.FdiNumber % 10) <= 2).ToList();
+        if (centralTeeth.Count >= 2)
+        {
+            midX = centralTeeth.Average(t => t.X + t.Width / 2f);
+        }
+        else
+        {
+            var allCenters = result.Teeth.Select(t => t.X + t.Width / 2f).OrderBy(x => x).ToList();
+            midX = allCenters[allCenters.Count / 2];
+        }
+        // Sanity clamp: midline shouldn't be at the very edges
+        midX = Math.Clamp(midX, 0.35f, 0.65f);
 
-        // Fix Q1 (1x): 18 -> 11 (descending FDI, increasing X)
-        CorrectSequence(upperArch.Where(t => t.FdiNumber >= 11 && t.FdiNumber <= 18).ToList(), 11, descendingFdi: true);
+        var q1 = result.Teeth.Where(t => (t.Y + t.Height / 2) < midY && (t.X + t.Width / 2) < midX).ToList();
+        var q2 = result.Teeth.Where(t => (t.Y + t.Height / 2) < midY && (t.X + t.Width / 2) >= midX).ToList();
+        var q4 = result.Teeth.Where(t => (t.Y + t.Height / 2) >= midY && (t.X + t.Width / 2) < midX).ToList();
+        var q3 = result.Teeth.Where(t => (t.Y + t.Height / 2) >= midY && (t.X + t.Width / 2) >= midX).ToList();
+
+        // Fix Q1 (1x): 18 -> 11 (descending FDI, increasing X towards midline)
+        // Note: For Q1/Q4 (Right side), higher X means closer to midline. 
+        // Our CorrectSequence assumes sorted by X (left to right).
+        CorrectSequence(q1, 11, descendingFdi: true);
         
-        // Fix Q2 (2x): 21 -> 28 (ascending FDI, increasing X)
-        CorrectSequence(upperArch.Where(t => t.FdiNumber >= 21 && t.FdiNumber <= 28).ToList(), 21, descendingFdi: false);
+        // Fix Q2 (2x): 21 -> 28 (ascending FDI, increasing X away from midline)
+        CorrectSequence(q2, 21, descendingFdi: false);
 
-        // Fix Q4 (4x): 48 -> 41 (descending FDI, increasing X)
-        CorrectSequence(lowerArch.Where(t => t.FdiNumber >= 41 && t.FdiNumber <= 48).ToList(), 41, descendingFdi: true);
+        // Fix Q4 (4x): 48 -> 41 (descending FDI, increasing X towards midline)
+        CorrectSequence(q4, 41, descendingFdi: true);
 
-        // Fix Q3 (3x): 31 -> 38 (ascending FDI, increasing X)
-        CorrectSequence(lowerArch.Where(t => t.FdiNumber >= 31 && t.FdiNumber <= 38).ToList(), 31, descendingFdi: false);
+        // Fix Q3 (3x): 31 -> 38 (ascending FDI, increasing X away from midline)
+        CorrectSequence(q3, 31, descendingFdi: false);
     }
 
     private void CorrectSequence(List<DetectedTooth> quadrantTeeth, int startFdiBase, bool descendingFdi)

@@ -12,7 +12,7 @@ namespace DentalID.Application.Services;
 /// Delegates all session management and sub-pipeline work to dedicated services.
 /// Implements <see cref="IAiPipelineService"/> — public API is unchanged.
 /// </summary>
-public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
+public sealed class OnnxInferenceService : IAiPipelineService, IBitmapAnalysisPipeline, IDisposable
 {
     // ── Session manager ───────────────────────────────────────────────────────
     private readonly IOnnxSessionManager _sessions;
@@ -116,7 +116,7 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
     // IAiPipelineService — Full Analysis Pipeline
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null)
+    public async Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null, CancellationToken ct = default)
     {
         if (imageStream == null)
             throw new ArgumentNullException(nameof(imageStream));
@@ -124,171 +124,114 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
         await EnsureInitializedAsync();
         var (seekableStream, ownsSeekableStream) = await PrepareSeekableStreamAsync(imageStream).ConfigureAwait(false);
 
-        // 1. Cache check (outside lock — read-only)
-        string? cacheKey = null;
-        if (_integrityService != null)
+        try
         {
-            try
+            // 1. Cache check
+            string? cacheKey = null;
+            if (_integrityService != null)
             {
                 TryResetStream(seekableStream);
                 var hash = _integrityService.ComputeHash(seekableStream);
-                TryResetStream(seekableStream);
                 cacheKey = $"analysis_{hash}";
                 if (_cacheService.Exists(cacheKey))
                 {
                     var cached = _cacheService.Get<AnalysisResult>(cacheKey);
-                    if (cached != null)
-                    {
-                        _logger.LogAudit("CACHE_HIT", "SYSTEM", $"Returning cached result for {fileName ?? "stream"}");
-                        var cachedCopy = CloneAnalysisResult(cached);
-                        cachedCopy.ProcessingTimeMs = 0;
-                        if (ownsSeekableStream)
-                        {
-                            seekableStream.Dispose();
-                        }
-                        return cachedCopy;
-                    }
+                    if (cached != null) return CloneAnalysisResult(cached);
                 }
             }
-            catch (Exception ex)
+
+            ct.ThrowIfCancellationRequested();
+
+            // 2. Decode and Validate
+            TryResetStream(seekableStream);
+            using var bitmap = SKBitmap.Decode(seekableStream);
+            if (bitmap == null || bitmap.Width == 0 || bitmap.Height == 0)
             {
-                _logger.LogWarning($"Hashing failed for cache lookup: {ex.Message}");
+                return new AnalysisResult { Error = "Image decoding failed." };
             }
-        }
 
-        // 2. Acquire inference lock
-        var result = new AnalysisResult();
-        var sw     = Stopwatch.StartNew();
-        var lockAcquired = false;
-
-        try
-        {
-            await _sessions.InferenceLock.WaitAsync().ConfigureAwait(false);
-            lockAcquired = true;
-
-            // Execute heavy CPU-bound operations on a background thread pool explicitly
-            // to prevent complete freezing of Avalonia's UI dispatcher.
-            await Task.Run(async () =>
-            {
-                // Redundant check, but safe
-                if (!_sessions.IsReady)
-                    throw new InvalidOperationException($"AI Engine not initialized. SessionManager {_sessions.GetHashCode()} is not ready.");
-
-                var streamLength = TryGetStreamLength(seekableStream);
-                _logger.LogAudit("ANALYSIS_START", "SYSTEM",
-                    streamLength.HasValue
-                        ? $"Analyzing stream. Size: {streamLength.Value} bytes"
-                        : "Analyzing stream. Size: unknown");
-
-                TryResetStream(seekableStream);
-                using var bitmap = SKBitmap.Decode(seekableStream);
-                if (bitmap == null || bitmap.Width == 0 || bitmap.Height == 0)
-                {
-                    result.Error = "Image decoding failed or image is empty.";
-                    return;
-                }
-
-                // 3. Teeth detection
-                result.Teeth = _teethSvc.DetectTeeth(bitmap);
-                result.RawTeeth = new List<DetectedTooth>(result.Teeth);
-
-                // 4. Pathology detection
-                result.Pathologies = _pathSvc.DetectPathologies(bitmap);
-                result.RawPathologies = new List<DetectedPathology>(result.Pathologies);
-
-                // 4.5 SAM Instance Segmentation (Zero-Shot using Bounding Boxes as Prompts)
-                _samSvc.SegmentTeeth(bitmap, result.Teeth);
-                _samSvc.SegmentPathologies(bitmap, result.Pathologies);
-
-                // 5. Edge-crop rescue
-                if (_teethSvc.ShouldApplyEdgeCropRescue(bitmap, result.RawTeeth))
-                {
-                    _teethSvc.ApplyEdgeCropRescue(result, bitmap);
-                    if (!_sessions.IsReady) 
-                    {
-                        _logger.LogWarning("[Auto-Recovery] Session became unavailable mid-analysis. Skipping encoder steps.");
-                    }
-                    else
-                    {
-                        result.Teeth = _teethSvc.BuildFinalTeeth(result.RawTeeth);
-                    }
-                }
-
-                if (_sessions.IsReady)
-                {
-                    // 6. Test-Time Augmentation
-                    if (result.Teeth.Any())
-                        _teethSvc.ApplyTta(result, bitmap);
-
-                    // 7. Feature extraction (encoder)
-                    if (_sessions.Encoder != null)
-                    {
-                        var (vector, err) = _encoderSvc.ExtractFeatures(bitmap, result.Teeth);
-                        result.FeatureVector = vector;
-                        if (err != null) result.Error += $" | Encoder: {err}";
-                    }
-
-                    // 8. Age / Gender (Dental Rules Engine)
-                    if (_sessions.Encoder != null) // Tied to Encoder step now, not InsightFace genderAge
-                    {
-                        var dictImage = "stream";
-                        // Note: imagePath was removed in an earlier iteration.
-                        // We'll pass the list of detections to the scientific rules engine.
-                        var ageGenderResult = await _encoderSvc.EstimateGenderAgeAsync(dictImage, result.Teeth);
-                        result.EstimatedAgeRange = ageGenderResult.AgeRange;
-                        result.EstimatedGender = ageGenderResult.Gender;
-                        result.EstimatedAge = ageGenderResult.MedianAge;
-                    }
-                }
-
-                // PostProcessing:
-
-                // 9. Map pathologies → teeth
-                _yoloParser.MapPathologiesToTeeth(result.RawTeeth, result.RawPathologies);
-
-                // 10. Forensic checks
-                _heuristicsService.ApplyChecks(result);
-
-                // 11. AI intelligence analysis
-                _intelligenceService.Analyze(result);
-                _rulesEngine.ApplyRules(result);
-
-                // 12. Biometric fingerprint
-                result.Fingerprint = _biometricService.GenerateFingerprint(result.Teeth, result.Pathologies);
-                if (result.FeatureVector != null)
-                    result.Fingerprint.FeatureVector = result.FeatureVector;
-
-            }).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Inference failed");
-            result.Error = $"Internal Engine Panic: {ex.Message}";
+            return await AnalyzeBitmapAsync(bitmap, fileName, ct).ConfigureAwait(false);
         }
         finally
         {
-            if (lockAcquired)
-            {
-                _sessions.InferenceLock.Release();
-            }
-            if (ownsSeekableStream)
-            {
-                seekableStream.Dispose();
-            }
+            if (ownsSeekableStream) seekableStream.Dispose();
         }
+    }
 
-        sw.Stop();
-        result.ProcessingTimeMs = sw.ElapsedMilliseconds;
-        _logger.LogAudit("ANALYSIS_COMPLETE", "SYSTEM",
-            $"Time: {result.ProcessingTimeMs}ms | Teeth: {result.Teeth.Count} | Pathologies: {result.Pathologies.Count}");
+    public async Task<AnalysisResult> AnalyzeBitmapAsync(SKBitmap bitmap, string? fileName = null, CancellationToken ct = default)
+    {
+        if (bitmap == null) throw new ArgumentNullException(nameof(bitmap));
 
-        if (cacheKey != null && string.IsNullOrEmpty(result.Error))
+        await EnsureInitializedAsync();
+        ct.ThrowIfCancellationRequested();
+
+        if (!_sessions.IsReady)
         {
-            var copy = CloneAnalysisResult(result);
-            copy.ProcessingTimeMs = result.ProcessingTimeMs;
-            _cacheService.Set(cacheKey, copy);
+            return new AnalysisResult { Error = "AI Engine is not initialized." };
         }
 
+        var result = new AnalysisResult();
+        var totalSw = Stopwatch.StartNew();
+        
+        // Bug Fix #1: Strict Serial Access to shared buffers
+        await _sessions.InferenceLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            _logger.LogAudit("ANALYSIS_START", "SYSTEM", $"Analyzing {bitmap.Width}x{bitmap.Height}");
+
+            // Step 1: Sequential Detection (Safe for Shared Buffers)
+            result.Teeth = _teethSvc.DetectTeeth(bitmap);
+            ct.ThrowIfCancellationRequested();
+            
+            result.Pathologies = _pathSvc.DetectPathologies(bitmap);
+            ct.ThrowIfCancellationRequested();
+
+            result.RawTeeth = new List<DetectedTooth>(result.Teeth);
+            result.RawPathologies = new List<DetectedPathology>(result.Pathologies);
+
+            // Step 2: SAM Segmentation
+            _samSvc.SegmentTeeth(bitmap, result.Teeth);
+            _samSvc.SegmentPathologies(bitmap, result.Pathologies);
+            ct.ThrowIfCancellationRequested();
+
+            // Step 3: Rescue & TTA
+            if (_teethSvc.ShouldApplyEdgeCropRescue(bitmap, result.RawTeeth))
+            {
+                _teethSvc.ApplyEdgeCropRescue(result, bitmap);
+                result.Teeth = _teethSvc.BuildFinalTeeth(result.RawTeeth);
+            }
+            
+            if (result.Teeth.Any())
+                _teethSvc.ApplyTta(result, bitmap);
+
+            // Step 4: Features
+            if (_sessions.Encoder != null)
+            {
+                var (vector, err) = _encoderSvc.ExtractFeatures(bitmap, result.Teeth);
+                result.FeatureVector = vector;
+            }
+
+            // Step 5: Post-processing
+            _yoloParser.MapPathologiesToTeeth(result.RawTeeth, result.RawPathologies);
+            _rulesEngine.ApplyRules(result);
+            _intelligenceService.Analyze(result);
+
+            result.Fingerprint = _biometricService.GenerateFingerprint(result.Teeth, result.Pathologies);
+            if (result.FeatureVector != null) result.Fingerprint.FeatureVector = result.FeatureVector;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Inference panic");
+            result.Error = ex.Message;
+        }
+        finally
+        {
+            _sessions.InferenceLock.Release();
+        }
+
+        totalSw.Stop();
+        result.ProcessingTimeMs = totalSw.ElapsedMilliseconds;
         return result;
     }
 
@@ -403,7 +346,10 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
                 TryResetStream(seekableStream);
                 using var bitmap = SKBitmap.Decode(seekableStream);
                 if (bitmap == null) return (null, "Failed to decode image");
-                return _encoderSvc.ExtractFeatures(bitmap);
+                
+                // BUG-01 Fix: Run teeth detection first so spatial features (bbox) are included in the encoding
+                var teeth = _teethSvc.DetectTeeth(bitmap);
+                return _encoderSvc.ExtractFeatures(bitmap, teeth);
             }).ConfigureAwait(false);
         }
         finally
@@ -476,7 +422,10 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
             Y = tooth.Y,
             Width = tooth.Width,
             Height = tooth.Height,
-            Outline = tooth.Outline?.Select(p => (p.X, p.Y)).ToList()
+            Outline = tooth.Outline?.Select(p => (p.X, p.Y)).ToList(),
+            MaskWidth = tooth.MaskWidth,
+            MaskHeight = tooth.MaskHeight,
+            MaskArea = tooth.MaskArea
         };
 
         static DetectedPathology ClonePathology(DetectedPathology pathology) => new()
@@ -488,7 +437,10 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
             Y = pathology.Y,
             Width = pathology.Width,
             Height = pathology.Height,
-            Outline = pathology.Outline?.Select(p => (p.X, p.Y)).ToList()
+            Outline = pathology.Outline?.Select(p => (p.X, p.Y)).ToList(),
+            MaskWidth = pathology.MaskWidth,
+            MaskHeight = pathology.MaskHeight,
+            MaskArea = pathology.MaskArea
         };
 
         return new AnalysisResult
@@ -509,7 +461,7 @@ public sealed class OnnxInferenceService : IAiPipelineService, IDisposable
                 Features = source.Fingerprint.Features?.ToList() ?? new List<string>(),
                 FeatureVector = source.Fingerprint.FeatureVector?.ToArray()
             },
-            ProcessingTimeMs = source.ProcessingTimeMs,
+            ProcessingTimeMs = 0,
             Error = source.Error,
             Flags = source.Flags?.ToList() ?? new List<string>(),
             SmartInsights = source.SmartInsights?.ToList() ?? new List<string>()

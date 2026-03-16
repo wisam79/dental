@@ -84,6 +84,14 @@ dotnet run --project src/DentalID.Desktop/DentalID.Desktop.csproj
 
 > ⚠️ **Note:** You must place ONNX model files in `models/` before running.
 
+### Build Windows Installer (NSIS)
+
+```powershell
+pwsh ./scripts/build-installer.ps1 -Version 1.0.0
+```
+
+Detailed packaging guide: [`installer/README.md`](installer/README.md)
+
 ---
 
 ## 🔐 Security

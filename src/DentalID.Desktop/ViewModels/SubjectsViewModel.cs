@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -38,8 +39,29 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _formContactInfo = string.Empty;
     [ObservableProperty] private string _formNotes = string.Empty;
 
+    [ObservableProperty] private bool _isBusy;
+
     // Pagination & Search
     [ObservableProperty] private string _searchQuery = string.Empty;
+
+    partial void OnSearchQueryChanged(string value)
+    {
+        // Bug Fix #57: Debounced search for subjects list
+        _searchDebounceTimer?.Stop();
+        _searchDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(350)
+        };
+        _searchDebounceTimer.Tick += async (s, e) =>
+        {
+            _searchDebounceTimer.Stop();
+            await Search();
+        };
+        _searchDebounceTimer.Start();
+    }
+
+    private DispatcherTimer? _searchDebounceTimer;
+
     [ObservableProperty] private int _currentPage = 1;
     [ObservableProperty] private int _pageSize = 20;
     [ObservableProperty] private int _totalCount;
@@ -55,11 +77,38 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
     // Partial method hooks for property changes if needed
     partial void OnCurrentPageChanged(int value) => RefreshPagination();
     partial void OnTotalCountChanged(int value) => RefreshPagination();
+    
     partial void OnSelectedSubjectChanged(Subject? value)
     {
-        UpdateSelectedSubjectAnalyses(value);
-        OnPropertyChanged(nameof(ShowAnalysesEmptyState));
+        // Bug Fix #61: Lazy-hydrate selection if images are missing (shallow load fallback)
+        if (value != null && (value.DentalImages == null || value.DentalImages.Count == 0))
+        {
+            _ = HydrateSubjectAsync(value.Id);
+        }
+        else
+        {
+            UpdateSelectedSubjectAnalyses(value);
+        }
     }
+
+    private async Task HydrateSubjectAsync(int id)
+    {
+        try
+        {
+            var fullSubject = await _readRepo.GetByIdAsync(id);
+            if (fullSubject != null && SelectedSubject?.Id == id)
+            {
+                // Update the current selection with full data (Images/Navigation)
+                SelectedSubject.DentalImages = fullSubject.DentalImages;
+                UpdateSelectedSubjectAnalyses(SelectedSubject);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to hydrate subject {id}");
+        }
+    }
+
     partial void OnSelectedSubjectAnalysesChanged(ObservableCollection<DentalImage> value)
     {
         OnPropertyChanged(nameof(SelectedSubjectAnalysisCount));
@@ -258,7 +307,8 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
                     var normalizedGender = ToGenderCode(FormGenderIndex);
                     subjectToUpdate.FullName = FormFullName;
                     subjectToUpdate.Gender = normalizedGender;
-                    subjectToUpdate.DateOfBirth = FormDateOfBirth?.DateTime;
+                    // Bug Fix #63: Stable Date Mapping (Ensure date-only kind to prevent timezone shift)
+                    subjectToUpdate.DateOfBirth = FormDateOfBirth?.Date; 
                     subjectToUpdate.NationalId = normalizedNationalId;
                     subjectToUpdate.ContactInfo = normalizedContactInfo;
                     subjectToUpdate.Notes = normalizedNotes;
@@ -275,7 +325,7 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
                     SubjectId = $"SUB-{Guid.NewGuid():N}",
                     FullName = FormFullName,
                     Gender = normalizedGender,
-                    DateOfBirth = FormDateOfBirth?.DateTime,
+                    DateOfBirth = FormDateOfBirth?.Date, // Bug Fix #63
                     NationalId = normalizedNationalId,
                     ContactInfo = normalizedContactInfo,
                     Notes = normalizedNotes,
@@ -348,51 +398,60 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
 
      private async Task LoadAsyncCore()
      {
-         var selectedId = SelectedSubject?.Id;
-         var query = SearchQuery?.Trim() ?? string.Empty;
-         List<Subject> list;
-         if (string.IsNullOrWhiteSpace(query))
+         if (IsBusy) return;
+         IsBusy = true;
+         try
          {
-             list = await _readRepo.GetAllAsync(CurrentPage, PageSize);
-             TotalCount = await _readRepo.GetCountAsync();
-         }
-         else
-         {
-             list = await _readRepo.SearchAsync(query, CurrentPage, PageSize);
-             TotalCount = await _readRepo.GetSearchCountAsync(query);
-
-             // Defensive fallback: if count says records exist but the page is empty,
-             // attempt exact SubjectId lookup so the grid is not left blank.
-             if (list.Count == 0 && TotalCount > 0)
+             var selectedId = SelectedSubject?.Id;
+             var query = SearchQuery?.Trim() ?? string.Empty;
+             List<Subject> list;
+             if (string.IsNullOrWhiteSpace(query))
              {
-                 var exact = await _readRepo.GetBySubjectIdAsync(query);
-                 if (exact != null)
+                 list = await _readRepo.GetAllAsync(CurrentPage, PageSize);
+                 TotalCount = await _readRepo.GetCountAsync();
+             }
+             else
+             {
+                 list = await _readRepo.SearchAsync(query, CurrentPage, PageSize);
+                 TotalCount = await _readRepo.GetSearchCountAsync(query);
+
+                 // Defensive fallback: if count says records exist but the page is empty,
+                 // attempt exact SubjectId lookup so the grid is not left blank.
+                 if (list.Count == 0 && TotalCount > 0)
                  {
-                     list = new List<Subject> { exact };
-                     TotalCount = 1;
-                     _logger.LogWarning($"[SUBJECTS] Search mismatch for query='{query}'. Using exact SubjectId fallback.");
+                     var exact = await _readRepo.GetBySubjectIdAsync(query);
+                     if (exact != null)
+                     {
+                         list = new List<Subject> { exact };
+                         TotalCount = 1;
+                         _logger.LogWarning($"[SUBJECTS] Search mismatch for query='{query}'. Using exact SubjectId fallback.");
+                     }
                  }
              }
-         }
 
-         Subjects = new ObservableCollection<Subject>(list);
-         if (selectedId.HasValue)
-         {
-             SelectedSubject = Subjects.FirstOrDefault(s => s.Id == selectedId.Value);
-         }
-         else if (Subjects.Count > 0)
-         {
-             SelectedSubject = Subjects[0];
-         }
-         else
-         {
-             SelectedSubject = null;
-         }
+             Subjects = new ObservableCollection<Subject>(list);
+             if (selectedId.HasValue)
+             {
+                 SelectedSubject = Subjects.FirstOrDefault(s => s.Id == selectedId.Value);
+             }
+             else if (Subjects.Count > 0)
+             {
+                 SelectedSubject = Subjects[0];
+             }
+             else
+             {
+                 SelectedSubject = null;
+             }
 
-         _logger.LogInformation($"[SUBJECTS] Load completed. Query='{query}', Page={CurrentPage}, Rows={Subjects.Count}, Total={TotalCount}");
-         OnPropertyChanged(nameof(HasPreviousPage));
-         OnPropertyChanged(nameof(HasNextPage));
-         OnPropertyChanged(nameof(PageInfo));
+             _logger.LogInformation($"[SUBJECTS] Load completed. Query='{query}', Page={CurrentPage}, Rows={Subjects.Count}, Total={TotalCount}");
+             OnPropertyChanged(nameof(HasPreviousPage));
+             OnPropertyChanged(nameof(HasNextPage));
+             OnPropertyChanged(nameof(PageInfo));
+         }
+         finally
+         {
+             IsBusy = false;
+         }
      }
 
     private void UpdateSelectedSubjectAnalyses(Subject? subject)
@@ -439,7 +498,12 @@ public partial class SubjectsViewModel : ViewModelBase, IDisposable
 
         return value.Trim();
     }
-    public void Dispose() { CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this); }}
+    public void Dispose() 
+    { 
+        _searchDebounceTimer?.Stop();
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this); 
+    }
+}
 
 
 

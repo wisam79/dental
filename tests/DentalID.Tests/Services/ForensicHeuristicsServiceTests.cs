@@ -67,19 +67,20 @@ public class ForensicHeuristicsServiceTests
     }
 
     [Fact]
-    public void ApplyChecks_ShouldFlagHighOverlapDensity()
+    public void ApplyChecks_ShouldFlagDuplicateFdis()
     {
-        var teeth = new List<DetectedTooth>();
-        // Add 5 teeth perfectly overlapping each other
-        for(int i=0; i<5; i++) 
+        var teeth = new List<DetectedTooth>
         {
-            teeth.Add(new DetectedTooth { X=0.5f, Y=0.5f, Width=0.1f, Height=0.1f, Confidence=0.9f });
-        }
+            // FDI 16 at top-left
+            new() { FdiNumber = 16, X = 0.1f, Y = 0.1f, Width = 0.05f, Height = 0.05f, Confidence = 0.9f },
+            // FDI 16 at bottom-right (non-overlapping)
+            new() { FdiNumber = 16, X = 0.8f, Y = 0.8f, Width = 0.05f, Height = 0.05f, Confidence = 0.8f }
+        };
 
         var result = new AnalysisResult { RawTeeth = teeth };
         
         _service.ApplyChecks(result);
 
-        result.Flags.Should().ContainMatch("*high-density overlaps*");
+        result.Flags.Should().ContainMatch("*CRITICAL CONFLICT*FDI 16*");
     }
 }

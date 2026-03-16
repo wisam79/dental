@@ -17,9 +17,9 @@ public class ForensicRulesEngineReproductionTests
         // Q4 Case: 48->41 (Descending FDI, Increasing X) for Lower Arch
         // To avoid midY issues (single line of teeth = lower arch typically in this logic), use 4x series.
         
-        var t44 = new DetectedTooth { FdiNumber = 44, X = 10, Width = 10, Height = 10, Y = 10, Confidence = 0.9f };
-        var t42 = new DetectedTooth { FdiNumber = 42, X = 30, Width = 10, Height = 10, Y = 10, Confidence = 0.9f }; // Gap of 10
-        var t41 = new DetectedTooth { FdiNumber = 41, X = 40, Width = 10, Height = 10, Y = 10, Confidence = 0.9f };
+        var t44 = new DetectedTooth { FdiNumber = 44, X = 0.10f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f };
+        var t42 = new DetectedTooth { FdiNumber = 42, X = 0.20f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f }; // Gap
+        var t41 = new DetectedTooth { FdiNumber = 41, X = 0.25f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f };
 
         result.Teeth = new List<DetectedTooth> { t44, t42, t41 }; 
 
@@ -44,9 +44,9 @@ public class ForensicRulesEngineReproductionTests
         // 42: X=20 (Should be 43 if tight)
         // 41: X=30 (Should be 42 if tight)
 
-        var t44 = new DetectedTooth { FdiNumber = 44, X = 10, Width = 10, Height = 10, Y = 10, Confidence = 0.9f };
-        var t42 = new DetectedTooth { FdiNumber = 42, X = 20, Width = 10, Height = 10, Y = 10, Confidence = 0.9f }; 
-        var t41 = new DetectedTooth { FdiNumber = 41, X = 30, Width = 10, Height = 10, Y = 10, Confidence = 0.9f };
+        var t44 = new DetectedTooth { FdiNumber = 44, X = 0.10f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f };
+        var t42 = new DetectedTooth { FdiNumber = 42, X = 0.15f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f }; 
+        var t41 = new DetectedTooth { FdiNumber = 41, X = 0.20f, Width = 0.05f, Height = 0.10f, Y = 0.50f, Confidence = 0.9f };
 
         result.Teeth = new List<DetectedTooth> { t44, t42, t41 };
 

@@ -75,16 +75,48 @@ public partial class MatchingViewModel : ViewModelBase
 
     partial void OnSelectedCandidateChanged(MatchCandidate? value)
     {
-        if (value != null && !string.IsNullOrEmpty(value.Subject.ThumbnailPath))
+        if (value?.Subject != null)
         {
-            // In a real app, this would be the high-res X-Ray path, not thumbnail
-            TargetImagePath = value.Subject.ThumbnailPath;
+            // Bug Fix #64: Lazy-hydrate candidate subject if images are missing.
+            // Often matching only returns shallow subject objects for performance.
+            if (value.Subject.DentalImages == null || value.Subject.DentalImages.Count == 0)
+            {
+                _ = HydrateCandidateAsync(value);
+            }
+            else
+            {
+                var latestImage = value.Subject.DentalImages?.OrderByDescending(d => d.UploadedAt).FirstOrDefault();
+                TargetImagePath = latestImage?.ImagePath ?? value.Subject.ThumbnailPath;
+            }
         }
         else
         {
             TargetImagePath = null;
         }
         ExportReportCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task HydrateCandidateAsync(MatchCandidate candidate)
+    {
+        try
+        {
+            var fullSubject = await _subjectRepo.GetByIdAsync(candidate.Subject.Id);
+            if (fullSubject != null && SelectedCandidate?.Subject.Id == candidate.Subject.Id)
+            {
+                candidate.Subject.DentalImages = fullSubject.DentalImages;
+                candidate.Subject.ThumbnailPath = fullSubject.ThumbnailPath;
+                
+                var latestImage = candidate.Subject.DentalImages?.OrderByDescending(d => d.UploadedAt).FirstOrDefault();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => 
+                {
+                    TargetImagePath = latestImage?.ImagePath ?? candidate.Subject.ThumbnailPath;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to hydrate candidate subject {candidate.Subject.Id}");
+        }
     }
 
     // Design-time constructor — only used by XAML previewer.
@@ -137,7 +169,6 @@ public partial class MatchingViewModel : ViewModelBase
         _aiConfig = aiConfig;
 
         // Bug #22 Fix: Show initialization failure in the UI StatusMessage instead of silently logging.
-        // The original code logged errors but the user had no indication the engine failed to start.
         _ = InitializeAsync().ContinueWith(t =>
         {
             if (t.IsFaulted)
@@ -182,6 +213,8 @@ public partial class MatchingViewModel : ViewModelBase
         Candidates.Clear();
         StatusMessage = "Query image loaded. Starting automatic matching...";
         
+        RunMatchingCommand.NotifyCanExecuteChanged();
+
         // Auto-run matching
         if (RunMatchingCommand.CanExecute(null))
         {
@@ -189,7 +222,9 @@ public partial class MatchingViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    private bool CanRunMatching => !IsMatching && IsQueryLoaded;
+
+    [RelayCommand(CanExecute = nameof(CanRunMatching))]
     private async Task RunMatching()
     {
         if (!IsQueryLoaded || QueryImagePath == null) return;
@@ -197,16 +232,17 @@ public partial class MatchingViewModel : ViewModelBase
         Candidates.Clear();
         MatchingProgress = 0;
         IsMatching = true;
+        RunMatchingCommand.NotifyCanExecuteChanged();
+
         try
         {
             await SafeExecuteAsync(async () =>
             {
                 // 1. Extract Features from Query Image
-                // Uses Stream to ensure file lock safety
                 using var stream = _fileService.OpenRead(QueryImagePath);
                 StatusMessage = "Extracting features from query image...";
                 var (vector, error) = await _pipeline.ExtractFeaturesAsync(stream);
-                MatchingProgress = 20;
+                MatchingProgress = 15;
                 
                 if (vector == null)
                 {
@@ -228,23 +264,35 @@ public partial class MatchingViewModel : ViewModelBase
                 var matches = new List<MatchCandidate>();
                 var batch = new List<Subject>(MatchingBatchSize);
                 
+                // Bug Fix #65: Progressive progress bar feedback during DB streaming
+                int totalSubjects = await _subjectRepo.GetCountAsync();
+                int processedCount = 0;
+
                 await foreach (var subject in _subjectRepo.StreamAllWithVectorsAsync())
                 {
                     batch.Add(subject);
+                    processedCount++;
+
                     if (batch.Count >= MatchingBatchSize)
                     {
-                        var batchMatches = await Task.Run(() => _matchingService.FindMatches(probe, batch));
+                        var currentBatch = batch.ToList(); // Clone batch for background processing
+                        var batchMatches = await Task.Run(() => _matchingService.FindMatches(probe, currentBatch));
                         matches.AddRange(batchMatches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold));
                         batch.Clear();
+
+                        // Update progress: 15% to 85% range
+                        if (totalSubjects > 0)
+                            MatchingProgress = 15 + (int)((float)processedCount / totalSubjects * 70);
                     }
                 }
+                
                 if (batch.Count > 0)
                 {
                     var batchMatches = await Task.Run(() => _matchingService.FindMatches(probe, batch));
                     matches.AddRange(batchMatches.Where(m => m.Score >= _aiConfig.Thresholds.MatchSimilarityThreshold));
                 }
 
-                MatchingProgress = 80;
+                MatchingProgress = 90;
 
                 // 3. Persist Query Image & Match Results
                 StatusMessage = "Saving results...";
@@ -282,6 +330,7 @@ public partial class MatchingViewModel : ViewModelBase
         finally
         {
             IsMatching = false;
+            RunMatchingCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -434,6 +483,7 @@ public partial class MatchingViewModel : ViewModelBase
     {
         try
         {
+            
             // Verify pipeline readiness
             if (!_pipeline.IsReady)
             {

@@ -49,20 +49,46 @@ public class MatchingServiceTests
     }
 
     [Fact]
-    public void CalculateCosineSimilarity_ShouldReturnCorrectScore()
+    public void CalculateCosineSimilarity_ShouldUseHybridWeighting_For1280LengthVectors()
     {
         // Arrange
-        float[] v1 = { 1, 0, 0 };
-        float[] v2 = { 0, 1, 0 };
-        float[] v3 = { 1, 0, 0 };
+        // v1: Perfect visual (1.0), imperfect spatial (0.5), imperfect SAM (0.5)
+        // v2: Perfect visual (1.0), perfect spatial (1.0), perfect SAM (1.0)
+        var v1 = new float[1280];
+        var v2 = new float[1280];
+
+        // Fill Visual (0-1023)
+        for (int i = 0; i < 1024; i++) { v1[i] = 1.0f; v2[i] = 1.0f; }
+        
+        // Fill Spatial (1024-1183) -> v1 is orthogonal to v2 in this segment to get 0 similarity
+        // but for simplicity let's just use known values.
+        // Actually, let's make them identical except for one element to control similarity.
+        for (int i = 1024; i < 1184; i++) { v1[i] = 0.0f; v2[i] = 0.0f; }
+        v1[1024] = 1.0f; v2[1024] = 1.0f; // Identical in spatial part too for now
+
+        // Wait, to test weighting, I need segments with different similarities.
+        // Segment 1 (Deep): Identical -> Sim = 1.0
+        // Segment 2 (Spatial): Orthogonal -> Sim = 0.0
+        // Segment 3 (SAM): Orthogonal -> Sim = 0.0
+        
+        var vProbe = new float[1280];
+        var vCandidate = new float[1280];
+        
+        // Deep: 1.0
+        vProbe[0] = 1.0f; vCandidate[0] = 1.0f; 
+        
+        // Spatial: 0.0 (vProbe[1024]=1, vCandidate[1025]=1)
+        vProbe[1024] = 1.0f; vCandidate[1025] = 1.0f;
+        
+        // SAM: 0.0 (vProbe[1184]=1, vCandidate[1185]=1)
+        vProbe[1184] = 1.0f; vCandidate[1185] = 1.0f;
+
+        // Expected Score = (1.0 * 0.70) + (0.0 * 0.20) + (0.0 * 0.10) = 0.70
 
         // Act
-        var scoreOrthogonal = _matchingService.CalculateCosineSimilarity(v1, v2);
-        var scoreIdentical = _matchingService.CalculateCosineSimilarity(v1, v3);
+        var score = _matchingService.CalculateCosineSimilarity(vProbe, vCandidate);
 
         // Assert
-        Assert.Equal(0, scoreOrthogonal, 0.001);
-        Assert.Equal(1.0, scoreIdentical, 0.001);
+        Assert.Equal(0.70, score, 0.001);
     }
-
 }

@@ -1,0 +1,277 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DentalID.Desktop.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="1100"
+             d:DesignHeight="760"
+             x:Class="DentalID.Desktop.Views.ReportGeneratorView"
+             x:DataType="vm:ReportGeneratorViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- ══════ PAGE HEADER ══════ -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,24">
+            <StackPanel>
+                <TextBlock Classes="display" Text="{DynamicResource Str_Nav_Reports}" Margin="0,0,0,8"/>
+                <TextBlock Text="Build forensic subject and case reports with export-ready PDF output." Classes="caption" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ══════ MAIN LAYOUT ══════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="380,16,*">
+            <!-- Left: Configuration Form -->
+            <Border Grid.Column="0" Classes="card" Background="{DynamicResource SurfaceFloatingBrush}" Padding="20">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="18">
+                        <TextBlock Text="{DynamicResource Str_Reports_Config}" Classes="h3"/>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Report Scope" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding ReportTargets}" SelectedItem="{Binding ReportTarget}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <Border IsVisible="{Binding IsSubjectTarget}"
+                                Background="{DynamicResource OverlaySubtleBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Subject Selection" Classes="label"/>
+                                <TextBox Text="{Binding SubjectSearchText}" Watermark="Search by name / ID..." Classes="search"/>
+                                <ComboBox ItemsSource="{Binding SubjectsList}"
+                                          SelectedItem="{Binding SelectedSubject}"
+                                          PlaceholderText="Choose subject">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding FullName}"/>
+                                                <TextBlock Text="{Binding SubjectId}" Classes="caption mono"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{Binding SubjectsList.Count, StringFormat='Visible subjects: {0}'}" Classes="caption"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border IsVisible="{Binding IsCaseTarget}"
+                                Background="{DynamicResource OverlaySubtleBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Case Selection" Classes="label"/>
+                                <TextBox Text="{Binding CaseSearchText}" Watermark="Search by case # / title..." Classes="search"/>
+                                <ComboBox ItemsSource="{Binding CasesList}"
+                                          SelectedItem="{Binding SelectedCase}"
+                                          PlaceholderText="Choose case">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding CaseNumber}" Classes="mono"/>
+                                                <TextBlock Text="{Binding Title}" Classes="caption"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{Binding CasesList.Count, StringFormat='Visible cases: {0}'}" Classes="caption"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Format" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding ReportFormats}" SelectedItem="{Binding ReportFormat}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Text="{Binding HintMessage}" Classes="caption"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Include Sections" Classes="label"/>
+                            <StackPanel Spacing="10">
+                                <CheckBox IsChecked="{Binding IncludeProfile}" Content="Subject / Case identity"/>
+                                <CheckBox IsChecked="{Binding IncludeOdontogram}" Content="Odontogram"
+                                          IsEnabled="{Binding CanConfigureOdontogram}"/>
+                                <CheckBox IsChecked="{Binding IncludeDetections}" Content="AI detections"
+                                          IsEnabled="{Binding CanConfigureDetections}"/>
+                                <CheckBox IsChecked="{Binding IncludeFingerprint}" Content="Biometric fingerprint"
+                                          IsEnabled="{Binding CanConfigureFingerprint}"/>
+                                <CheckBox IsChecked="{Binding IncludeMatchHistory}" Content="Match history"
+                                          IsEnabled="{Binding CanConfigureMatchHistory}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border IsVisible="{Binding ValidationMessage, Converter={x:Static vm:StringConverters.IsNotNullOrWhiteSpace}}"
+                                Background="{DynamicResource OverlaySubtleBrush}"
+                                BorderBrush="{DynamicResource ErrorBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10">
+                            <TextBlock Text="{Binding ValidationMessage}" Classes="error"/>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button Classes="outline" Command="{Binding ResetFiltersCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14"/>
+                                    <TextBlock Text="Reset Filters"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="outline" Command="{Binding ClearSelectionCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <PathIcon Data="{StaticResource IconClose}" Width="14" Height="14"/>
+                                    <TextBlock Text="Clear Selection"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Button Classes="primary"
+                                Command="{Binding GenerateReportCommand}"
+                                IsEnabled="{Binding CanGenerateReport}">
+                            <Button.Content>
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <PathIcon Grid.Column="0" Data="{StaticResource IconDocument}" Width="14" Height="14" IsVisible="{Binding !IsGenerating}"/>
+                                    <ProgressBar Grid.Column="0" Width="16" Height="16" IsIndeterminate="True" IsVisible="{Binding IsGenerating}"/>
+                                    <TextBlock Grid.Column="1" Text="{DynamicResource Str_Reports_Generate}" IsVisible="{Binding !IsGenerating}"/>
+                                    <TextBlock Grid.Column="1" Text="Generating..." IsVisible="{Binding IsGenerating}"/>
+                                </Grid>
+                            </Button.Content>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Right: Preview / Status Pane -->
+            <Border Grid.Column="2" Classes="card" Background="{DynamicResource SurfaceElevatedBrush}">
+                <Panel>
+                    <!-- Empty State (No Report Generated) -->
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="24"
+                                IsVisible="{Binding !HasPreview}">
+                        <Border Width="110" Height="140" CornerRadius="12"
+                                Background="#0A3B82F6"
+                                BorderBrush="#203B82F6"
+                                BorderThickness="1"
+                                BoxShadow="0 8 20 0 #40000000">
+                            <PathIcon Data="{StaticResource IconDocument}" Width="40" Height="40"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                        </Border>
+
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <TextBlock Text="Report Preview" Classes="h2" HorizontalAlignment="Center" FontWeight="Bold"/>
+                            <TextBlock Text="Configure options on the left and generate a report to view metadata, print, or export."
+                                       Classes="caption"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center"
+                                       TextWrapping="Wrap" MaxWidth="320" TextAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Active State (Report Ready) -->
+                    <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding HasPreview}">
+                        
+                        <!-- Top Header Area -->
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto, *" Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Border Width="36" Height="36" CornerRadius="10" Background="#1510B981">
+                                    <PathIcon Data="{StaticResource IconCheckCircle}" Width="16" Height="16" Foreground="{DynamicResource SuccessBrush}"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Report Ready" Classes="h2" FontSize="16" FontWeight="Bold"/>
+                                    <TextBlock Text="Document successfully generated" Classes="caption" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Middle: Metadata Card -->
+                        <Border Grid.Row="1"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="24"
+                                VerticalAlignment="Top">
+                            <StackPanel Spacing="20">
+                                <TextBlock Text="Document Metadata" Classes="label" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                
+                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="16">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Summary" Classes="label" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LastReportSummary}" FontWeight="SemiBold"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Generated At" Classes="label" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource SurfaceBgBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" Padding="8,4" CornerRadius="6" HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding GeneratedAtText}" Classes="mono" FontSize="12"/>
+                                    </Border>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="File Size" Classes="label" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource SurfaceBgBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" Padding="8,4" CornerRadius="6" HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding GeneratedSizeText}" Classes="mono" FontSize="12"/>
+                                    </Border>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Temporary Path" Classes="label" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <Border Grid.Row="3" Grid.Column="1" Background="{DynamicResource SurfaceBgBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" Padding="8,6" CornerRadius="6">
+                                        <TextBlock Text="{Binding PreviewPdfPath}" TextWrapping="Wrap" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <ProgressBar Grid.Row="1"
+                                     VerticalAlignment="Bottom"
+                                     Margin="0,20,0,0"
+                                     IsVisible="{Binding IsGenerating}"
+                                     IsIndeterminate="True"
+                                     Height="4"
+                                     CornerRadius="2"/>
+
+                        <!-- Bottom: Action Bar -->
+                        <Border Grid.Row="2"
+                                Margin="0,24,0,0"
+                                Background="{DynamicResource SurfaceFloatingBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="12">
+                            <Grid ColumnDefinitions="*,*,*">
+                                <Button Grid.Column="0" Classes="ghost" Command="{Binding OpenPreviewCommand}" IsEnabled="{Binding CanPreviewReport}" HorizontalAlignment="Stretch" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconEye}" Width="14" Height="14"/>
+                                        <TextBlock Text="Open Native" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Classes="outline" Command="{Binding PrintReportCommand}" IsEnabled="{Binding CanPreviewReport}" HorizontalAlignment="Stretch" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconDocument}" Width="14" Height="14"/>
+                                        <TextBlock Text="Print Document" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Classes="primary" Command="{Binding ExportReportCommand}" IsEnabled="{Binding CanPreviewReport}" HorizontalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="{StaticResource IconExport}" Width="14" Height="14"/>
+                                        <TextBlock Text="Save As PDF" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Panel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

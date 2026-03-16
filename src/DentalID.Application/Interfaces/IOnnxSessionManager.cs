@@ -18,7 +18,6 @@ public interface IOnnxSessionManager : IDisposable
     InferenceSession? TeethDetector { get; }
     InferenceSession? PathologyDetector { get; }
     InferenceSession? Encoder { get; }
-    InferenceSession? GenderAge { get; }
     InferenceSession? SamEncoder { get; }
     InferenceSession? SamDecoder { get; }
 
@@ -26,13 +25,13 @@ public interface IOnnxSessionManager : IDisposable
     string TeethInputName { get; }
     string PathologyInputName { get; }
     string EncoderInputName { get; }
-    string GenderAgeInputName { get; }
     string SamEncoderInputName { get; }
     string SamDecoderInputName { get; }
 
     // ── LOH buffers (pre-allocated to avoid GC pressure) ───────────────────
     float[]? DetectionBuffer { get; }
     float[]? TtaDetectionBuffer { get; }
+    float[]? PathologyBuffer { get; }
     float[]? EncoderBuffer { get; }
 
     /// <summary>

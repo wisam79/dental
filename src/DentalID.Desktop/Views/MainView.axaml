@@ -96,8 +96,19 @@
                     <Button Classes="titlebar-btn" Command="{Binding MinimizeCommand}" ToolTip.Tip="Minimize">
                         <PathIcon Data="{StaticResource IconMinus}" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
-                    <Button Classes="titlebar-btn" Command="{Binding MaximizeCommand}" ToolTip.Tip="Maximize">
-                        <PathIcon Data="M 3,3 L 13,3 L 13,13 L 3,13 Z M 5,5 L 11,5 L 11,11 L 5,11 Z" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <Button Classes="titlebar-btn" Command="{Binding MaximizeCommand}" ToolTip.Tip="{Binding MaximizeToolTip}">
+                        <Grid Width="10" Height="10">
+                            <PathIcon Data="M 3,3 L 13,3 L 13,13 L 3,13 Z M 5,5 L 11,5 L 11,11 L 5,11 Z"
+                                      Width="10"
+                                      Height="10"
+                                      Foreground="{DynamicResource TextSecondaryBrush}"
+                                      IsVisible="{Binding !IsWindowMaximized}"/>
+                            <PathIcon Data="M 7,3 L 13,3 L 13,9 L 7,9 Z M 8,4 L 12,4 L 12,8 L 8,8 Z M 3,7 L 9,7 L 9,13 L 3,13 Z M 4,8 L 8,8 L 8,12 L 4,12 Z"
+                                      Width="10"
+                                      Height="10"
+                                      Foreground="{DynamicResource TextSecondaryBrush}"
+                                      IsVisible="{Binding IsWindowMaximized}"/>
+                        </Grid>
                     </Button>
                     <Button Classes="titlebar-btn titlebar-close" Command="{Binding CloseCommand}" ToolTip.Tip="Close">
                         <PathIcon Data="{StaticResource IconClose}" Width="10" Height="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -108,7 +119,6 @@
 
         <!-- MAIN LAYOUT -->
         <Grid Grid.Row="1"
-              IsVisible="{Binding IsShellVisible}"
               Margin="14,0,14,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalColumnWidthConverter.Instance}, ConverterParameter=Start}"/>
@@ -157,34 +167,35 @@
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Width" Value="74"/>
-                                        <Setter Property="Height" Value="76"/>
-                                        <Setter Property="Margin" Value="0,3"/>
-                                        <Setter Property="CornerRadius" Value="10"/>
+                                        <Setter Property="Width" Value="68"/>
+                                        <Setter Property="Height" Value="68"/>
+                                        <Setter Property="Margin" Value="0,4"/>
+                                        <Setter Property="CornerRadius" Value="14"/>
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                         <Setter Property="Transitions">
                                             <Transitions>
-                                                <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
                                                 <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
                                             </Transitions>
                                         </Setter>
                                     </Style>
                                     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource OverlaySubtleBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="{DynamicResource NavItemSelectedBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource NeonGlowBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected PathIcon">
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected TextBlock">
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:pressed /template/ ContentPresenter">
-                                         <Setter Property="RenderTransform" Value="scale(0.90)"/>
+                                         <Setter Property="RenderTransform" Value="scale(0.95)"/>
                                     </Style>
                                 </ListBox.Styles>
 
@@ -212,6 +223,22 @@
                                         </StackPanel>
                                     </Button>
                                 </ListBoxItem>
+                                <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Comparison}">
+                                    <Button Command="{Binding NavigateToComparisonCommand}" Classes="sidebar-nav">
+                                        <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconImage}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource Str_Nav_Comparison}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </ListBoxItem>
+                                <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Reports}">
+                                    <Button Command="{Binding NavigateToReportsCommand}" Classes="sidebar-nav">
+                                        <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <PathIcon Data="{StaticResource IconDocument}" Width="20" Height="20" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource Str_Nav_Reports}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </ListBoxItem>
                             </ListBox>
 
                             <Border Height="1" Width="54" Background="{DynamicResource BorderSubtleBrush}" Opacity="0.45"/>
@@ -220,23 +247,24 @@
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Width" Value="74"/>
-                                        <Setter Property="Height" Value="76"/>
-                                        <Setter Property="CornerRadius" Value="10"/>
+                                        <Setter Property="Width" Value="68"/>
+                                        <Setter Property="Height" Value="68"/>
+                                        <Setter Property="CornerRadius" Value="14"/>
                                         <Setter Property="HorizontalAlignment" Value="Center"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="{DynamicResource OverlayHoverBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource OverlaySubtleBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-                                        <Setter Property="Background" Value="{DynamicResource NavItemSelectedBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource NeonGlowBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected PathIcon">
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
                                     </Style>
                                     <Style Selector="ListBoxItem:selected TextBlock">
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBoxItem ToolTip.Tip="{DynamicResource Str_Nav_Settings}">
@@ -292,24 +320,14 @@
                          <!-- Main Content -->
                          <ContentControl x:Name="MainContentHost"
                                          Content="{Binding CurrentContent}"
-                                         Margin="8"/>
+                                         Margin="32,32,32,24"/>
                      </Grid>
                 </Border>
             </Grid>
         </Grid>
 
-        <!-- BOOT / NO-SHELL MODE -->
-        <Border Grid.Row="1"
-                IsVisible="{Binding IsShellVisible, Converter={x:Static BoolConverters.Not}}"
-                Margin="14,0,14,10"
-                Background="Transparent">
-            <ContentControl x:Name="BootContentHost"
-                            Content="{Binding CurrentContent}"/>
-        </Border>
-
         <!-- STATUS BAR -->
         <Border Grid.Row="2"
-                IsVisible="{Binding IsShellVisible}"
                 Margin="14,0,14,10"
                 Height="34"
                 Background="{DynamicResource OverlayStrongBrush}"

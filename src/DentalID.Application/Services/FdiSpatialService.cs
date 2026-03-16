@@ -35,9 +35,11 @@ public class FdiSpatialService : Interfaces.IFdiSpatialService
         
         if (maxGap < 0.05f) 
         {
-            // Failsafe: if no distinct gap, split by geometric middle
+            // Failsafe: if no distinct gap, detect if it's likely a single arch
             float meanY = teeth.Average(t => t.Y + t.Height / 2);
-            midY = meanY < 0.5f ? 2.0f : -1.0f; // Force all upper or all lower if heavily skewed
+            if (meanY < 0.4f) midY = 1.0f; // Likely only upper arch
+            else if (meanY > 0.6f) midY = 0.0f; // Likely only lower arch
+            else midY = 0.5f; // Ambiguous, split at middle
         }
 
         // Fuzzy sets for abnormal vertical displacement (e.g., highly impacted canines)
@@ -45,19 +47,28 @@ public class FdiSpatialService : Interfaces.IFdiSpatialService
         var upperArch = teeth.Where(t => (t.Y + t.Height / 2) < midY).ToList();
         var lowerArch = teeth.Where(t => (t.Y + t.Height / 2) >= midY).ToList();
 
-        // 2. POLAR COORDINATE SORTING
-        // Flattens the horseshoe arch into a linear sequence from Patient Right to Patient Left.
+        // 2. POLAR COORDINATE SORTING (More stable than simple linear sort for pano arches)
         if (upperArch.Any())
         {
-            float cx = upperArch.Average(t => t.X + t.Width/2);
-            float cy = upperArch.Max(t => t.Y + t.Height) + 0.2f;
+            float minX = upperArch.Min(t => t.X);
+            float maxX = upperArch.Max(t => t.X + t.Width);
+            float maxY = upperArch.Max(t => t.Y + t.Height);
+            
+            float cx = (minX + maxX) / 2.0f;
+            // Place polar center far below the arch to get a clean sweep
+            float cy = maxY + 0.35f; 
             upperArch = upperArch.OrderBy(t => Math.Atan2((t.Y + t.Height/2) - cy, (t.X + t.Width/2) - cx)).ToList();
         }
 
         if (lowerArch.Any())
         {
-            float cx = lowerArch.Average(t => t.X + t.Width/2);
-            float cy = lowerArch.Min(t => t.Y) - 0.2f;
+            float minX = lowerArch.Min(t => t.X);
+            float maxX = lowerArch.Max(t => t.X + t.Width);
+            float minY = lowerArch.Min(t => t.Y);
+            
+            float cx = (minX + maxX) / 2.0f;
+            // Place polar center far above the arch to get a clean sweep
+            float cy = minY - 0.35f; 
             lowerArch = lowerArch.OrderByDescending(t => Math.Atan2((t.Y + t.Height/2) - cy, (t.X + t.Width/2) - cx)).ToList();
         }
 
@@ -119,55 +130,59 @@ public class FdiSpatialService : Interfaces.IFdiSpatialService
                 {
                     // Gap Detection: calculate distance between centers
                     float dist = Math.Abs((t.X + t.Width/2) - (prev.X + prev.Width/2));
-                    if (dist > avgWidth * 1.5f)
+                    if (dist > avgWidth * 1.55f) // Slightly more lenient threshold
                     {
                         // Deduce missing teeth
-                        int skipped = (int)Math.Floor(dist / avgWidth);
-                        currentUnit += skipped;
+                        int skipped = (int)Math.Floor(dist / (avgWidth * 1.1f));
+                        if (skipped > 0) currentUnit += skipped;
                     }
                 }
             }
 
             // 2. Anchor Lock & Confidence Weighting
-            // If the model is highly confident, respect its classification rather than blindly overriding
-            bool isTargetQuad = (t.FdiNumber / 10) == quad;
+            bool isTargetAdultQuad = (t.FdiNumber / 10) == quad;
             bool isTargetDeciduousQuad = (t.FdiNumber / 10) == (quad + 4);
+            int anchorUnit = t.FdiNumber % 10;
             
             // High confidence threshold for anchoring
-            if (t.Confidence >= 0.70f) 
+            // Bug Fix #3: Only allow anchor jumps if they are spatially plausible (not backwards)
+            if (t.Confidence >= 0.82f) 
             {
-                if (isTargetQuad && (t.FdiNumber % 10) >= currentUnit)
+                if (isTargetAdultQuad && anchorUnit >= currentUnit && anchorUnit <= 8)
                 {
-                    currentUnit = t.FdiNumber % 10;
+                    currentUnit = anchorUnit;
                     t.FdiNumber = baseAdult + currentUnit;
                     currentUnit++;
                     continue;
                 }
-                else if (isTargetDeciduousQuad && (t.FdiNumber % 10) >= currentUnit)
+                else if (isTargetDeciduousQuad && anchorUnit >= 1 && anchorUnit <= 5)
                 {
-                    int decUnit = t.FdiNumber % 10;
-                    t.FdiNumber = baseDeciduous + decUnit;
-                    currentUnit = decUnit + 1; // Advance the expected adult counter as well
-                    continue;
+                    // If anchoring to a baby tooth, check if we've already passed that adult slot
+                    if (anchorUnit >= currentUnit)
+                    {
+                        t.FdiNumber = baseDeciduous + anchorUnit;
+                        currentUnit = anchorUnit + 1; 
+                        continue;
+                    }
                 }
             }
             
-            // 3. Mixed Dentition & Deciduous Fallback (Low Confidence but Morphologically Small)
+            // 3. Mixed Dentition & Deciduous Fallback
             bool isDeciduousClass = t.FdiNumber >= 51 && t.FdiNumber <= 85;
-            bool isPhysicallySmall = t.Width < avgWidth * 0.75f;
+            float smallnessFactor = currentUnit <= 2 ? 0.45f : 0.70f;
+            bool isPhysicallySmall = t.Width < avgWidth * smallnessFactor;
             
             if (isDeciduousClass || (isPhysicallySmall && currentUnit <= 5))
             {
                 int decUnit = Math.Min(5, currentUnit);
                 t.FdiNumber = baseDeciduous + decUnit;
                 currentUnit++;
-                continue; // Skip adult assignment
+                continue; 
             }
 
             // 4. Safely Cap and Assign Final Sequence
-            if (currentUnit > 8) currentUnit = 8;
-            
-            t.FdiNumber = baseAdult + currentUnit;
+            // Support Supernumerary teeth. Assign unique numbers for extra teeth.
+            t.FdiNumber = currentUnit <= 9 ? baseAdult + currentUnit : baseAdult * 10 + currentUnit;
             currentUnit++;
         }
     }

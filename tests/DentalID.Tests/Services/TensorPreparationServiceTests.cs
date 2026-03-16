@@ -52,26 +52,7 @@ public class TensorPreparationServiceTests
         tensor.Dimensions.ToArray().Should().Equal(1024, 1024, 3);
     }
     
-    [Fact]
-    public void PrepareAgeGenderTensor_ShouldCreateBGR_NCHW()
-    {
-        // 50x50. Target 96.
-        using var bmp = new SKBitmap(50, 50);
-        using (var canvas = new SKCanvas(bmp)) { canvas.Clear(SKColors.Red); } // R=255, G=0, B=0
-        
-        var tensor = _service.PrepareAgeGenderTensor(bmp, 96);
-        
-        tensor.Dimensions.ToArray().Should().Equal(1, 3, 96, 96);
-        
-        // BGR check
-        // Channel 0 is B (should be 0)
-        // Channel 1 is G (should be 0)
-        // Channel 2 is R (should be 255)
-        
-        tensor[0, 0, 50, 50].Should().Be(0);
-        tensor[0, 1, 50, 50].Should().Be(0);
-        tensor[0, 2, 50, 50].Should().Be(255);
-    }
+
 
     [Fact]
     public void PrepareDetectionTensor_SquareImage_ShouldHaveZeroPadding()

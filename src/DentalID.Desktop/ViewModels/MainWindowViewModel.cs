@@ -62,6 +62,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isFocusMode = false;
 
+    [ObservableProperty]
+    private bool _isWindowMaximized;
+
+    public string MaximizeToolTip => IsWindowMaximized ? "Restore" : "Maximize";
+
+    partial void OnIsWindowMaximizedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(MaximizeToolTip));
+    }
+
     [RelayCommand]
     private void ToggleFocusMode()
     {
@@ -98,7 +108,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         SelectedNavIndex = 2;
     }
 
+    [RelayCommand]
+    private void NavigateToComparison()
+    {
+        SelectedNavIndex = 3;
+    }
 
+    [RelayCommand]
+    private void NavigateToReports()
+    {
+        SelectedNavIndex = 4;
+    }
 
     public MainWindowViewModel()
     {
@@ -122,21 +142,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _toastService = toastService ?? throw new ArgumentNullException(nameof(toastService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         
+        // Register for events BEFORE initiating first navigation
         _navigation.CurrentViewChanged += OnCurrentViewChanged;
-        
         Loc.Instance.LanguageChanged += OnLanguageChanged;
-        UpdateStrings();
-
-        // Research Mode: Default to Research User (admin status should be determined by authentication)
-        CurrentUserName = "Researcher";
-        IsAdmin = false; // Default to non-admin; should be set by authentication
-
-        // Navigate to Subjects by default (Data Management)
-        _navigation.NavigateTo<SubjectsViewModel>();
-        _currentView = _navigation.CurrentView;
-        _currentContent = BuildContentFor(_currentView);
-        SyncShellForCurrentView(_currentView);
-
+        
         // Register for global toast messages
         WeakReferenceMessenger.Default.Register<ShowToastMessage>(this, (r, m) =>
         {
@@ -149,6 +158,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             IsBusy = m.Value;
             BusyMessage = m.Message;
         });
+
+        UpdateStrings();
+
+        // Research Mode: Default to Research User
+        CurrentUserName = "Researcher";
+        IsAdmin = false; 
+
+        // Initial Navigation
+        _navigation.NavigateTo<SubjectsViewModel>();
+        
+        // Bug Fix #72: Ensure shell becomes visible after initial view is ready
+        IsShellVisible = true; 
     }
 
     [ObservableProperty]
@@ -174,58 +195,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void OnSelectedNavIndexChanged(int value)
     {
-        _logger?.LogInformation($"[NAV] OnSelectedNavIndexChanged: value={value}, _navigation={_navigation != null}");
+        if (_navigation == null) return;
         
-        if (_navigation == null)
-        {
-            _logger?.LogWarning("[NAV] Navigation is NULL! Skipping navigation.");
-            return;
-        }
-        
-        // If main nav is selected (0-2), deselect settings
-        if (value >= 0 && value <= 2)
+        if (value >= 0 && value <= 4)
         {
             SettingsNavIndex = -1; 
         }
 
         try
         {
+            // Bug Fix #73: Centralized Navigation. 
+            // Only trigger the service; the UI update happens in OnCurrentViewChanged handler.
             switch (value)
             {
-                case 0:
-                    var subjectsVm = _navigation.NavigateTo<SubjectsViewModel>();
-                    if (subjectsVm != null)
-                    {
-                        CurrentView = subjectsVm;
-                        CurrentContent = BuildContentFor(subjectsVm);
-                    }
-                    SetCurrentPageFromLocalizationKey("Nav_Subjects");
-                    _logger?.LogInformation("[NAV] Navigated to Subjects");
-                    break;
-                case 1:
-                    _logger?.LogInformation("[NAV] Navigating to AnalysisLabViewModel...");
-                    var analysisVm = _navigation.NavigateTo<AnalysisLabViewModel>();
-                    if (analysisVm != null)
-                    {
-                        CurrentView = analysisVm;
-                        CurrentContent = BuildContentFor(analysisVm);
-                    }
-                    SetCurrentPageFromLocalizationKey("Nav_AnalysisLab");
-                    _logger?.LogInformation("[NAV] Navigated to Analysis Lab");
-                    break;
-                case 2:
-                    var matchingVm = _navigation.NavigateTo<MatchingViewModel>();
-                    if (matchingVm != null)
-                    {
-                        CurrentView = matchingVm;
-                        CurrentContent = BuildContentFor(matchingVm);
-                    }
-                    SetCurrentPageFromLocalizationKey("Nav_Matching");
-                    _logger?.LogInformation("[NAV] Navigated to Matching");
-                    break;
-                default:
-                    // Invalid index or Settings selected (handled elsewhere)
-                    break;
+                case 0: _navigation.NavigateTo<SubjectsViewModel>(); break;
+                case 1: _navigation.NavigateTo<AnalysisLabViewModel>(); break;
+                case 2: _navigation.NavigateTo<MatchingViewModel>(); break;
+                case 3: _navigation.NavigateTo<ImageComparisonViewModel>(); break;
+                case 4: _navigation.NavigateTo<ReportGeneratorViewModel>(); break;
             }
         }
         catch (Exception ex)
@@ -271,6 +258,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 SetSelectedNavIndexSilently(2);
                 SettingsNavIndex = -1;
                 break;
+            case ImageComparisonViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_Comparison");
+                SetSelectedNavIndexSilently(3);
+                SettingsNavIndex = -1;
+                break;
+            case ReportGeneratorViewModel:
+                SetCurrentPageFromLocalizationKey("Nav_Reports");
+                SetSelectedNavIndexSilently(4);
+                SettingsNavIndex = -1;
+                break;
             case SettingsViewModel:
                 SetCurrentPageFromLocalizationKey("Nav_Settings");
                 SetSelectedNavIndexSilently(-1);
@@ -311,6 +308,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (GetMainWindow() is Window w)
         {
             w.WindowState = w.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            UpdateWindowState(w.WindowState);
         }
     }
 
@@ -345,6 +343,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             _logger?.LogError(ex, $"[VIEW] Failed to build content for {viewModel.GetType().Name}");
             return viewModel;
         }
+    }
+
+    public void UpdateWindowState(WindowState state)
+    {
+        IsWindowMaximized = state is WindowState.Maximized or WindowState.FullScreen;
     }
 
     public void Dispose()

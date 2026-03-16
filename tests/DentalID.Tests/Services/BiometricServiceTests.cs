@@ -30,7 +30,8 @@ public class BiometricServiceTests
         // Assert
         Assert.Contains("11:I", fingerprint.Code);
         Assert.Contains("21:K", fingerprint.Code);
-        Assert.Equal(100, fingerprint.UniquenessScore); // Cap is 100
+        // Bug Fix: Uncapped score (100 + 5 = 105)
+        Assert.Equal(105, fingerprint.UniquenessScore); 
     }
 
     [Fact]

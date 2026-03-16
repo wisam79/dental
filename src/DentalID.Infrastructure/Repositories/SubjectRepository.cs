@@ -125,7 +125,7 @@ public class SubjectRepository : ISubjectRepository
 
         (page, pageSize) = NormalizePaging(page, pageSize, DefaultPageSize);
 
-        // Optimization: ID search is indexed and unencrypted -> fast path
+        // Optimization 1: ID search (SUB-...) is unencrypted and indexed
         if (query.StartsWith("SUB-", StringComparison.OrdinalIgnoreCase))
         {
              return await _db.Subjects
@@ -137,46 +137,53 @@ public class SubjectRepository : ISubjectRepository
                 .ToListAsync();
         }
 
-        // Use deterministic hash for exact match instead of client-side partial search
+        // Optimization 2: Exact hash match (deterministic lookup)
         var normalizedName = NormalizeFullName(query);
         var nameHash = normalizedName != null ? _encryptionService.ComputeDeterministicHash(normalizedName, FullNameHashContext) : "INVALID_HASH";
 
         var normalizedId = NormalizeNationalId(query);
         var idHash = normalizedId != null ? _encryptionService.ComputeDeterministicHash(normalizedId, NationalIdHashContext) : "INVALID_HASH";
 
-        return await _db.Subjects
+        var exactMatches = await _db.Subjects
             .Include(s => s.DentalImages)
             .Where(s => s.FullNameLookupHash == nameHash || s.NationalIdLookupHash == idHash)
             .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync();
+
+        if (exactMatches.Count >= pageSize)
+        {
+            return exactMatches.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        }
+
+        // Bug Fix #54: Partial Match Fallback (Client-side decryption)
+        // Fetches a recent window of subjects to allow "Contains" search on encrypted PII.
+        // Limited to 250 candidates to prevent LOH/GC pressure in large databases.
+        var candidates = await _db.Subjects
+            .Include(s => s.DentalImages)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(250)
+            .ToListAsync();
+
+        var partialMatches = candidates
+            .Where(s => !exactMatches.Any(e => e.Id == s.Id)) // Avoid duplicates
+            .Where(s => (normalizedName != null && NormalizeFullName(s.FullName)?.Contains(normalizedName) == true) ||
+                        (normalizedId != null && NormalizeNationalId(s.NationalId)?.Contains(normalizedId) == true))
+            .ToList();
+
+        return exactMatches.Concat(partialMatches)
+            .OrderByDescending(s => s.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<int> GetSearchCountAsync(string query)
     {
-        query = query?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(query))
-            return await GetCountAsync().ConfigureAwait(false);
-
-        // Optimization: ID search is indexed and unencrypted -> fast path
-        if (query.StartsWith("SUB-", StringComparison.OrdinalIgnoreCase))
-        {
-             return await _db.Subjects
-                .Where(s => s.SubjectId.StartsWith(query))
-                .CountAsync();
-        }
-
-        // Use deterministic hash for exact match
-        var normalizedName = NormalizeFullName(query);
-        var nameHash = normalizedName != null ? _encryptionService.ComputeDeterministicHash(normalizedName, FullNameHashContext) : "INVALID_HASH";
-
-        var normalizedId = NormalizeNationalId(query);
-        var idHash = normalizedId != null ? _encryptionService.ComputeDeterministicHash(normalizedId, NationalIdHashContext) : "INVALID_HASH";
-
-        return await _db.Subjects
-            .Where(s => s.FullNameLookupHash == nameHash || s.NationalIdLookupHash == idHash)
-            .CountAsync();
+        // For simplicity in the UI, we return the count of the hybrid search result
+        // Note: In very large databases, this might be a slight under-count if matches 
+        // exist beyond the 250-candidate window.
+        var results = await SearchAsync(query, 1, MaxPageSize);
+        return results.Count;
     }
 
     public async Task<int> GetCountAsync()
@@ -212,29 +219,17 @@ public class SubjectRepository : ISubjectRepository
         subject.UpdatedAt = DateTime.UtcNow;
         PopulateLookupHashes(subject);
         
-        // SQLite Concurrency: Manually rotate the token
-        // Note: The caller must have preserved the Original RowVersion in the subject object.
-        // EF Core 'Update' uses the property value as the concurrency check (OriginalValue).
-        // specific handling might be needed if tracking behavior differs, but generally Update() sets State=Modified.
-        // However, we need to change the RowVersion to a NEW value for the update, while checking the OLD one.
-        
-        // Ensure entity is tracked or attached first to manipulate values properly?
-        // Simple approach: 
-        // 1. Mark modified. 
-        // 2. Set new RowVersion. 
-        // 3. Ensure OriginalValue matches what was passed in.
+        // Bug Fix #55: Handle Tracked vs Detached Entities safely
+        var local = _db.Subjects.Local.FirstOrDefault(entry => entry.Id == subject.Id);
+        if (local != null)
+        {
+             _db.Entry(local).State = EntityState.Detached;
+        }
+
+        var oldVersion = subject.RowVersion; 
+        subject.RowVersion = Guid.NewGuid().ToByteArray(); // Rotate token
         
         var entry = _db.Subjects.Update(subject);
-        
-        // Important: Update() sets the entity properties as "Current". 
-        // We need to ensure the Concurrency Check uses the value passed in 'subject' before we change it to new value?
-        // Actually, if we change it AFTER Update(), the ChangeTracker sees the change.
-        
-        var oldVersion = subject.RowVersion; 
-        subject.RowVersion = Guid.NewGuid().ToByteArray(); // Rotate
-        
-        // If the entity was not tracked, Update() attached it. 
-        // We must ensure the 'OriginalValue' for RowVersion is set to 'oldVersion' for the WHERE clause.
         entry.Property(p => p.RowVersion).OriginalValue = oldVersion;
 
         try 
@@ -243,8 +238,6 @@ public class SubjectRepository : ISubjectRepository
         }
         catch (DbUpdateConcurrencyException)
         {
-            // For now, reload and throw, or just throw.
-            // Upper layers (ViewModel) should handle re-fetching.
             throw; 
         }
     }
@@ -257,20 +250,23 @@ public class SubjectRepository : ISubjectRepository
             
         if (subject != null)
         {
-            var imagesToDelete = subject.DentalImages
-                .Select(img => img.ImagePath)
-                .Where(p => !string.IsNullOrEmpty(p))
-                .ToList();
+            var filesToDelete = new List<string>();
+            foreach (var img in subject.DentalImages)
+            {
+                if (!string.IsNullOrEmpty(img.ImagePath)) filesToDelete.Add(img.ImagePath);
+                // Bug Fix #56: Also cleanup thumbnails
+                var thumbPath = Path.Combine(Path.GetDirectoryName(img.ImagePath) ?? "", "thumbs", Path.GetFileName(img.ImagePath) ?? "");
+                if (File.Exists(thumbPath)) filesToDelete.Add(thumbPath);
+            }
                 
             _db.Subjects.Remove(subject);
             await _db.SaveChangesAsync().ConfigureAwait(false);
 
-            // Bug #15 fix: Prevent orphaned physical files when subject is deleted
-            foreach (var imgPath in imagesToDelete)
+            foreach (var path in filesToDelete)
             {
-                if (System.IO.File.Exists(imgPath))
+                if (System.IO.File.Exists(path))
                 {
-                    try { System.IO.File.Delete(imgPath); } catch { }
+                    try { System.IO.File.Delete(path); } catch { /* Log failure in production */ }
                 }
             }
         }

@@ -251,26 +251,26 @@
              <!-- 3. CENTER: IMMERSIVE CANVAS -->
              <Grid Grid.Column="1" Background="#050505" ClipToBounds="True" Margin="0,16,0,16">
                  <!-- Technical Background Grid -->
-                 <Grid Opacity="0.1">
-                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource BorderSubtleBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
+                 <Grid Opacity="0.05">
+                    <Path Data="M0,0 L40,40 M40,0 L0,40" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1" Stretch="None" HorizontalAlignment="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToLogicalHorizontalAlignmentConverter.Instance}, ConverterParameter=Start}" VerticalAlignment="Top">
                          <Path.RenderTransform>
-                            <ScaleTransform ScaleX="20" ScaleY="20"/>
+                            <ScaleTransform ScaleX="40" ScaleY="40"/>
                         </Path.RenderTransform>
                     </Path>
                  </Grid>
                  
                   <!-- Empty State (Idle) -->
-                  <Border IsVisible="{Binding IsIdle}" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="2" CornerRadius="16" Padding="60,40" Opacity="0.8">
-                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
-                          <Border Width="90" Height="90" CornerRadius="45" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                              <PathIcon Data="{StaticResource IconFolderOpen}" Width="36" Height="36" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Border IsVisible="{Binding IsIdle}" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="20" Padding="80,60" Background="{DynamicResource SurfaceFloatingBrush}" BoxShadow="0 10 30 0 #40000000">
+                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="32">
+                          <Border Width="110" Height="110" CornerRadius="55" Background="#103B82F6" BorderBrush="#303B82F6" BorderThickness="1">
+                              <PathIcon Data="{StaticResource IconImage}" Width="44" Height="44" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                           </Border>
-                          <StackPanel HorizontalAlignment="Center" Spacing="8">
-                              <TextBlock Text="{Binding [Lab_DropZone], Source={x:Static svc:Loc.Instance}}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
-                              <TextBlock Text="{Binding [Lab_UploadHint], Source={x:Static svc:Loc.Instance}}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" TextAlignment="Center"/>
+                          <StackPanel HorizontalAlignment="Center" Spacing="12">
+                              <TextBlock Text="{Binding [Lab_DropZone], Source={x:Static svc:Loc.Instance}}" Classes="h1" HorizontalAlignment="Center"/>
+                              <TextBlock Text="{Binding [Lab_UploadHint], Source={x:Static svc:Loc.Instance}}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" TextAlignment="Center" LineHeight="22"/>
                           </StackPanel>
-                          <Button Command="{Binding BrowseImageCommand}" Classes="primary" Padding="32,12" CornerRadius="8" HorizontalAlignment="Center">
-                              <StackPanel Orientation="Horizontal" Spacing="10">
+                          <Button Command="{Binding BrowseImageCommand}" Classes="primary" Padding="40,16" CornerRadius="10" HorizontalAlignment="Center">
+                              <StackPanel Orientation="Horizontal" Spacing="12">
                                   <PathIcon Data="{StaticResource IconFolderOpen}" Width="16" Height="16"/>
                                   <TextBlock Text="{Binding [Lab_BrowseImage], Source={x:Static svc:Loc.Instance}}" FontSize="14" FontWeight="Bold"/>
                               </StackPanel>
@@ -481,7 +481,7 @@
                                      <!-- Digital Fingerprint Card -->
                                      <Border Classes="card report-section" Padding="0" IsVisible="{Binding IsAnalysisComplete}">
                                          <StackPanel>
-                                             <Border Background="#162F84AE" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="#402F84AE" BorderThickness="0,0,0,1">
+                                             <Border Background="{DynamicResource OverlaySubtleBrush}" Padding="12,9" CornerRadius="10 10 0 0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
                                                  <DockPanel>
                                                      <PathIcon Data="{StaticResource IconFingerprint}" Width="14" Height="14" Margin="{Binding IsRtl, Source={x:Static svc:Loc.Instance}, Converter={x:Static conv:BoolToMirroredThicknessConverter.Instance}, ConverterParameter='0,0,8,0'}" Foreground="{DynamicResource AccentPrimaryBrush}"/>
                                                      <TextBlock Text="{Binding [Lab_Fingerprint_Title], Source={x:Static svc:Loc.Instance}}" Classes="label" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="12"/>

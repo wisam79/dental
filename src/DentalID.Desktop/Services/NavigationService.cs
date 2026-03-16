@@ -34,11 +34,24 @@ public class NavigationService : INavigationService
             {
                 _currentView = value;
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] NavigationService: CurrentView changed to {value?.GetType().Name}");
-                var loggerSvc = _serviceProvider.GetService<ILoggerService>();
-                loggerSvc?.LogInformation($"[NAV] CurrentView changed to {value?.GetType().Name}");
-                if (value != null)
+                
+                void Notify()
                 {
-                    CurrentViewChanged?.Invoke(this, value);
+                    var loggerSvc = _serviceProvider.GetService<ILoggerService>();
+                    loggerSvc?.LogInformation($"[NAV] CurrentView changed to {value?.GetType().Name}");
+                    if (value != null)
+                    {
+                        CurrentViewChanged?.Invoke(this, value);
+                    }
+                }
+
+                if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+                {
+                    Notify();
+                }
+                else
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(Notify);
                 }
             }
         }

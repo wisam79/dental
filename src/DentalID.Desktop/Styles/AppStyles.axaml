@@ -34,56 +34,60 @@
 
     <Style Selector="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="FontSize"   Value="13"/>
-        <Setter Property="LineHeight" Value="20"/>
+        <Setter Property="FontSize"   Value="14"/>
+        <Setter Property="LineHeight" Value="22"/>
     </Style>
 
     <!-- Display / page titles -->
     <Style Selector="TextBlock.display">
-        <Setter Property="FontSize"   Value="32"/>
-        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize"   Value="36"/>
+        <Setter Property="FontWeight" Value="ExtraBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="LetterSpacing" Value="-0.5"/>
     </Style>
 
     <Style Selector="TextBlock.h1">
-        <Setter Property="FontSize"   Value="22"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize"   Value="24"/>
+        <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="LineHeight" Value="30"/>
+        <Setter Property="LineHeight" Value="32"/>
+        <Setter Property="LetterSpacing" Value="-0.25"/>
     </Style>
 
     <Style Selector="TextBlock.h2">
-        <Setter Property="FontSize"   Value="17"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize"   Value="18"/>
+        <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="LineHeight" Value="24"/>
+        <Setter Property="LineHeight" Value="26"/>
     </Style>
 
     <Style Selector="TextBlock.h3">
-        <Setter Property="FontSize"   Value="14"/>
+        <Setter Property="FontSize"   Value="15"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="LineHeight" Value="20"/>
+        <Setter Property="LineHeight" Value="22"/>
     </Style>
 
     <!-- Form labels -->
     <Style Selector="TextBlock.label">
-        <Setter Property="FontSize"   Value="11"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize"   Value="12"/>
+        <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="LetterSpacing" Value="0.5"/>
     </Style>
 
     <!-- Caption / helper text -->
     <Style Selector="TextBlock.caption">
-        <Setter Property="FontSize"   Value="11"/>
+        <Setter Property="FontSize"   Value="12"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="LineHeight" Value="18"/>
     </Style>
 
     <!-- Monospace code / IDs -->
     <Style Selector="TextBlock.mono">
         <Setter Property="FontFamily" Value="{DynamicResource FontMono}"/>
         <Setter Property="FontSize"   Value="12"/>
+        <Setter Property="LetterSpacing" Value="0.25"/>
     </Style>
 
     <!-- Accent-coloured highlight text -->
@@ -273,7 +277,7 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="12,9"/>
         <Setter Property="MinHeight"       Value="38"/>
         <Setter Property="FontSize"        Value="13"/>
@@ -309,7 +313,7 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="12,9"/>
         <Setter Property="MinHeight"       Value="38"/>
         <Setter Property="FontSize"        Value="13"/>
@@ -328,7 +332,7 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="12,8"/>
         <Setter Property="MinHeight"       Value="38"/>
     </Style>
@@ -342,7 +346,7 @@
         <Setter Property="Foreground"      Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderInputBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="CornerRadius"    Value="6"/>
         <Setter Property="Padding"         Value="12,8"/>
         <Setter Property="MinHeight"       Value="38"/>
     </Style>

@@ -90,41 +90,30 @@ public partial class OdontogramViewModel : ViewModelBase, IDisposable
 
     private void InitializeTeeth()
     {
+        // 1. ADULT DENTITION
         // Q1: 18 -> 11
-        for (int i = 18; i >= 11; i--) 
-        {
-            var t = new ToothViewModel(i);
-            Teeth.Add(t);
-            Quadrant1.Add(t);
-            _teethMap[i] = t;
-        }
-
+        for (int i = 18; i >= 11; i--) AddTooth(i, Quadrant1);
         // Q2: 21 -> 28
-        for (int i = 21; i <= 28; i++) 
-        {
-            var t = new ToothViewModel(i);
-            Teeth.Add(t);
-            Quadrant2.Add(t);
-            _teethMap[i] = t;
-        }
-
+        for (int i = 21; i <= 28; i++) AddTooth(i, Quadrant2);
         // Q3: 31 -> 38
-        for (int i = 31; i <= 38; i++) 
-        {
-            var t = new ToothViewModel(i);
-            Teeth.Add(t);
-            Quadrant3.Add(t);
-            _teethMap[i] = t;
-        }
-
+        for (int i = 31; i <= 38; i++) AddTooth(i, Quadrant3);
         // Q4: 48 -> 41
-        for (int i = 48; i >= 41; i--) 
-        {
-            var t = new ToothViewModel(i);
-            Teeth.Add(t);
-            Quadrant4.Add(t);
-            _teethMap[i] = t;
-        }
+        for (int i = 48; i >= 41; i--) AddTooth(i, Quadrant4);
+
+        // 2. DECIDUOUS DENTITION (PEDIATRIC)
+        // Bug Fix #82: Support for pediatric cases in odontogram
+        for (int i = 55; i >= 51; i--) AddTooth(i, Quadrant1);
+        for (int i = 61; i <= 65; i++) AddTooth(i, Quadrant2);
+        for (int i = 71; i <= 75; i++) AddTooth(i, Quadrant3);
+        for (int i = 85; i >= 81; i--) AddTooth(i, Quadrant4);
+    }
+
+    private void AddTooth(int fdi, ObservableCollection<ToothViewModel> quadrant)
+    {
+        var t = new ToothViewModel(fdi);
+        Teeth.Add(t);
+        quadrant.Add(t);
+        _teethMap[fdi] = t;
     }
 
     public void Update(AnalysisResult result)
@@ -132,26 +121,25 @@ public partial class OdontogramViewModel : ViewModelBase, IDisposable
         // 1. Reset all
         foreach (var tooth in Teeth) tooth.Reset();
 
-        // 2. Map detected teeth
-        var pathologyGroups = result.Pathologies
-            .GroupBy(p => p.ToothNumber ?? 0)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        // 2. Identify Present vs Missing (Explicit AI labels)
+        var presentFdi = result.Teeth.Select(t => t.FdiNumber).ToHashSet();
         
-        foreach (var detected in result.Teeth)
+        // 3. Apply Pathologies
+        // Bug Fix #83: Iterate over all pathologies to catch labels for "Missing" teeth
+        foreach (var p in result.Pathologies)
         {
-            if (_teethMap.TryGetValue(detected.FdiNumber, out var vm))
+            if (p.ToothNumber.HasValue && _teethMap.TryGetValue(p.ToothNumber.Value, out var vm))
             {
-                if (pathologyGroups.TryGetValue(detected.FdiNumber, out var pathologies) && pathologies.Count > 0)
-                {
-                    foreach (var p in pathologies)
-                    {
-                        vm.MarkPathology(p.ClassName);
-                    }
-                }
-                else
-                {
-                    vm.MarkHealthy();
-                }
+                vm.MarkPathology(p.ClassName);
+            }
+        }
+
+        // 4. Mark detected teeth without pathologies as healthy
+        foreach (var fdi in presentFdi)
+        {
+            if (_teethMap.TryGetValue(fdi, out var vm) && !vm.HasPathology)
+            {
+                vm.MarkHealthy();
             }
         }
     }

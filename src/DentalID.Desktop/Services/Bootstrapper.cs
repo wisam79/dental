@@ -91,11 +91,14 @@ public class Bootstrapper
         _services.AddSingleton<IFeatureEncoderService, FeatureEncoderService>();
         _services.AddSingleton<ISamSegmentationService, SamSegmentationService>();
         _services.AddSingleton<IAiPipelineService, OnnxInferenceService>();
+        // Perf: forward IBitmapAnalysisPipeline to the same singleton for direct-bitmap analysis (avoids double image decode)
+        _services.AddSingleton<IBitmapAnalysisPipeline>(sp => (IBitmapAnalysisPipeline)sp.GetRequiredService<IAiPipelineService>());
         _services.AddSingleton<IMatchingService, MatchingService>();
         _services.AddSingleton<IFileService, LocalFileService>();
         _services.AddSingleton<IBiometricService, BiometricService>();
         _services.AddTransient<IForensicRulesEngine, ForensicRulesEngine>();
         _services.AddTransient<IForensicAnalysisService, ForensicAnalysisService>();
+        _services.AddSingleton<IComparisonService, ComparisonService>();
         _services.AddSingleton<IReportService, PdfReportService>();
         _services.AddSingleton<IToastService, ToastService>(); // Registered ToastService
         // Must be singleton so all ViewModels share the same navigation state/event stream.
@@ -112,6 +115,8 @@ public class Bootstrapper
         _services.AddTransient<SubjectsViewModel>();
         _services.AddTransient<AnalysisLabViewModel>();
         _services.AddTransient<MatchingViewModel>();
+        _services.AddTransient<ImageComparisonViewModel>();
+        _services.AddTransient<ReportGeneratorViewModel>();
         _services.AddTransient<SettingsViewModel>();
         _services.AddTransient<ImportWizardViewModel>();
         
@@ -446,13 +451,14 @@ public class Bootstrapper
                     }
                     catch
                     {
-                        // Removed insecure fallback to plaintext reading
-                        throw new CryptographicException("Failed to unprotect sealing key. Ensure DPAPI is functioning or delete the corrupted key file.");
+                        throw new CryptographicException("Failed to unprotect sealing key.");
                     }
                 }
                 else
                 {
+                    // Bug Fix #78: Restrictive permissions on Unix
                     persistedKey = Encoding.UTF8.GetString(fileBytes).Trim();
+                    try { File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { }
                 }
 
                 if (!string.IsNullOrWhiteSpace(persistedKey) && !IsDefaultInsecureKey(persistedKey))

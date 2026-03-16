@@ -10,10 +10,12 @@ using SkiaSharp;
 
 namespace DentalID.Application.Services;
 
-public sealed class SamSegmentationService : ISamSegmentationService
+public sealed class SamSegmentationService : ISamSegmentationService, IDisposable
 {
     private readonly IOnnxSessionManager _sessions;
     private readonly ILogger<SamSegmentationService> _logger;
+    private const int MaxTeethToSegment = 24; // Faster processing, usually enough for a jaw
+    private const float MinConfidenceToSegment = 0.45f; 
 
     public SamSegmentationService(IOnnxSessionManager sessions, ILogger<SamSegmentationService> logger)
     {
@@ -21,66 +23,159 @@ public sealed class SamSegmentationService : ISamSegmentationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    private string DiagLog => Path.Combine(Path.GetTempPath(), "sam_diag.log");
+    private void Diag(string msg) { try { File.AppendAllText(DiagLog, $"{DateTime.Now:HH:mm:ss} {msg}\n"); } catch { } }
+
+    // Cached embedding to avoid running encoder twice
+    private DenseTensor<float>? _cachedEmbedding;
+
     public void SegmentTeeth(SKBitmap bitmap, IEnumerable<DetectedTooth> teeth)
     {
+        Diag($"SegmentTeeth called. IsReady={_sessions.IsReady}, Encoder={_sessions.SamEncoder != null}, Decoder={_sessions.SamDecoder != null}");
         if (!_sessions.IsReady || _sessions.SamEncoder == null || _sessions.SamDecoder == null)
+        {
+            Diag("SKIPPED: sessions not ready");
             return;
+        }
 
         try
         {
-            // 1. Prepare image and get embedding
-            // MobileSAM encoder expects 1x3x1024x1024 float tensor
-            var imageEmbedding = GetImageEmbedding(bitmap);
-            if (imageEmbedding == null) return;
-
-            // 2. Decode mask for each tooth using its bounding box as prompt
-            foreach (var tooth in teeth)
+            // Reset cache at start of new image to prevent stale data usage
+            _cachedEmbedding = GetImageEmbedding(bitmap);
+            if (_cachedEmbedding == null)
             {
-                var mask = GetMaskFromBox(imageEmbedding, bitmap.Width, bitmap.Height, tooth.X, tooth.Y, tooth.Width, tooth.Height);
+                Diag("GetImageEmbedding returned null");
+                return;
+            }
+
+            // Limit to top-confidence teeth, prioritized by biometric value (Implants/Crowns first)
+            var teethList = teeth
+                .Where(t => t.Confidence >= MinConfidenceToSegment && t.Width * t.Height >= 0.001f)
+                .OrderByDescending(GetBiometricPriority)
+                .ThenByDescending(t => t.Confidence)
+                .Take(MaxTeethToSegment).ToList();
+            Diag($"Embedding OK. Segmenting {teethList.Count}/{teeth.Count()} teeth...");
+
+            foreach (var tooth in teethList)
+            {
+                var mask = GetMaskFromBox(_cachedEmbedding, bitmap.Width, bitmap.Height, tooth.X, tooth.Y, tooth.Width, tooth.Height);
                 if (mask != null)
                 {
                     tooth.Outline = ExtractContour(mask, tooth.X, tooth.Y, tooth.Width, tooth.Height);
+                    if (tooth.Outline?.Count >= 3)
+                    {
+                        var xs = tooth.Outline.Select(p => p.X).ToList();
+                        var ys = tooth.Outline.Select(p => p.Y).ToList();
+                        tooth.MaskWidth = xs.Max() - xs.Min();
+                        tooth.MaskHeight = ys.Max() - ys.Min();
+
+                        float area = 0;
+                        int n = tooth.Outline.Count;
+                        for (int i = 0; i < n; i++)
+                        {
+                            int j = (i + 1) % n;
+                            area += tooth.Outline[i].X * tooth.Outline[j].Y;
+                            area -= tooth.Outline[j].X * tooth.Outline[i].Y;
+                        }
+                        tooth.MaskArea = Math.Abs(area) / 2.0f;
+                    }
                 }
             }
+            Diag($"Teeth segmentation complete.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to segment teeth using SAM.");
+            Diag($"EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+            _logger.LogError(ex, "Failed to segment teeth using SAM: {Message}", ex.Message);
+            // Ensure cleanup on failure
+            _cachedEmbedding = null;
         }
     }
 
     public void SegmentPathologies(SKBitmap bitmap, IEnumerable<DetectedPathology> pathologies)
     {
-        if (!_sessions.IsReady || _sessions.SamEncoder == null || _sessions.SamDecoder == null)
+        if (!_sessions.IsReady || _sessions.SamDecoder == null)
             return;
 
         try
         {
-            var imageEmbedding = GetImageEmbedding(bitmap);
-            if (imageEmbedding == null) return;
-
-            foreach (var path in pathologies)
+            // If SegmentTeeth wasn't called (or failed), generate embedding here
+            if (_cachedEmbedding == null && _sessions.SamEncoder != null)
             {
-                var mask = GetMaskFromBox(imageEmbedding, bitmap.Width, bitmap.Height, path.X, path.Y, path.Width, path.Height);
+                _cachedEmbedding = GetImageEmbedding(bitmap);
+            }
+
+            if (_cachedEmbedding == null) return;
+
+            // Limit pathologies to top 12 for performance, skip tiny boxes
+            var pathList = pathologies
+                .Where(p => p.Confidence >= MinConfidenceToSegment && p.Width * p.Height >= 0.0005f)
+                .OrderByDescending(p => p.Confidence)
+                .Take(12).ToList();
+            Diag($"Segmenting {pathList.Count}/{pathologies.Count()} pathologies...");
+
+            foreach (var path in pathList)
+            {
+                var mask = GetMaskFromBox(_cachedEmbedding, bitmap.Width, bitmap.Height, path.X, path.Y, path.Width, path.Height);
                 if (mask != null)
                 {
                     path.Outline = ExtractContour(mask, path.X, path.Y, path.Width, path.Height);
+                    if (path.Outline?.Count >= 3)
+                    {
+                        var xs = path.Outline.Select(p => p.X).ToList();
+                        var ys = path.Outline.Select(p => p.Y).ToList();
+                        path.MaskWidth = xs.Max() - xs.Min();
+                        path.MaskHeight = ys.Max() - ys.Min();
+
+                        float area = 0;
+                        int n = path.Outline.Count;
+                        for (int i = 0; i < n; i++)
+                        {
+                            int j = (i + 1) % n;
+                            area += path.Outline[i].X * path.Outline[j].Y;
+                            area -= path.Outline[j].X * path.Outline[i].Y;
+                        }
+                        path.MaskArea = Math.Abs(area) / 2.0f;
+                    }
                 }
             }
+            Diag("Pathology segmentation complete.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to segment pathologies using SAM.");
         }
+        finally
+        {
+            // Clear cached embedding to free memory and prevent cross-image corruption
+            _cachedEmbedding = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cachedEmbedding = null;
+    }
+
+
+    private static int GetBiometricPriority(DetectedTooth tooth)
+    {
+        // Future: Check for Implants/Crowns if pathology data is available here.
+        // For now, prioritize larger teeth (molars) as they carry more unique surface geometry.
+        float area = tooth.Width * tooth.Height;
+        if (area > 0.04f) return 10; // Molars
+        if (area > 0.02f) return 5;  // Premolars/Canines
+        return 1; // Incisors
     }
 
     private DenseTensor<float>? GetImageEmbedding(SKBitmap original)
     {
-        // Resize to 1024x1024
-        using var resized = new SKBitmap(1024, 1024);
+        // Resize to 1024x1024 - Explicitly use Rgba8888 to ensure consistent channel order across platforms
+        using var resized = new SKBitmap(1024, 1024, SKColorType.Rgba8888, SKAlphaType.Opaque);
         original.ScalePixels(resized, SKFilterQuality.Medium);
 
-        var tensor = new DenseTensor<float>(new[] { 1, 3, 1024, 1024 });
+        // SAM encoder expects HWC format: [1024, 1024, 3]
+        var tensor = new DenseTensor<float>(new[] { 1024, 1024, 3 });
         
         // Normalize (Standard ImageNet means/stds)
         float[] mean = { 0.485f, 0.456f, 0.406f };
@@ -98,13 +193,14 @@ public sealed class SamSegmentationService : ISamSegmentationService
                 byte* row = ptr + y * rowBytes;
                 for (int x = 0; x < width; x++)
                 {
-                    int b = row[x * 4 + 0];
-                    int g = row[x * 4 + 1];
-                    int r = row[x * 4 + 2];
+                    // Rgba8888: R=0, G=1, B=2, A=3
+                    float r = row[x * 4 + 0] / 255f;
+                    float g = row[x * 4 + 1] / 255f;
+                    float b = row[x * 4 + 2] / 255f;
 
-                    tensor[0, 0, y, x] = ((r / 255f) - mean[0]) / std[0];
-                    tensor[0, 1, y, x] = ((g / 255f) - mean[1]) / std[1];
-                    tensor[0, 2, y, x] = ((b / 255f) - mean[2]) / std[2];
+                    tensor[y, x, 0] = (r - mean[0]) / std[0];
+                    tensor[y, x, 1] = (g - mean[1]) / std[1];
+                    tensor[y, x, 2] = (b - mean[2]) / std[2];
                 }
             }
         }
@@ -131,18 +227,23 @@ public sealed class SamSegmentationService : ISamSegmentationService
         float y1 = normY * 1024;
         float x2 = (normX + normW) * 1024;
         float y2 = (normY + normH) * 1024;
+        float cx = (normX + normW / 2) * 1024;
+        float cy = (normY + normH / 2) * 1024;
 
-        // Box prompt expected format: 1xNx2 point coords, 1xN point labels
-        // top-left (label 2), bottom-right (label 3)
-        var pointCoords = new DenseTensor<float>(new[] { 1, 2, 2 });
+        // Box prompt + Center point prompt to help SAM find the organ's boundary
+        // top-left (label 2), bottom-right (label 3), center (label 1)
+        var pointCoords = new DenseTensor<float>(new[] { 1, 3, 2 });
         pointCoords[0, 0, 0] = x1;
         pointCoords[0, 0, 1] = y1;
         pointCoords[0, 1, 0] = x2;
         pointCoords[0, 1, 1] = y2;
+        pointCoords[0, 2, 0] = cx;
+        pointCoords[0, 2, 1] = cy;
 
-        var pointLabels = new DenseTensor<float>(new[] { 1, 2 });
-        pointLabels[0, 0] = 2; // top left wrapper
-        pointLabels[0, 1] = 3; // bottom right wrapper
+        var pointLabels = new DenseTensor<float>(new[] { 1, 3 });
+        pointLabels[0, 0] = 2; // top left corner
+        pointLabels[0, 1] = 3; // bottom right corner
+        pointLabels[0, 2] = 1; // foreground point (center)
 
         var maskInput = new DenseTensor<float>(new[] { 1, 1, 256, 256 }); // Zeros
         var hasMaskInput = new DenseTensor<float>(new[] { 1 });
@@ -166,9 +267,11 @@ public sealed class SamSegmentationService : ISamSegmentationService
         try
         {
             using var results = _sessions.SamDecoder!.Run(inputs);
-            // Outputs: masks (1x1xH_origxW_orig), iou_predictions, low_res_masks
-            // The decoder usually scales the output mask to orig_im_size automatically.
-            var maskTensor = results.FirstOrDefault(r => r.Name == "masks")?.AsTensor<float>();
+            // Get first output tensor (masks) — name varies by ONNX export version
+            var firstResult = results.FirstOrDefault();
+            if (firstResult == null) return null;
+            
+            var maskTensor = firstResult.AsTensor<float>();
             if (maskTensor == null) return null;
 
             int h = maskTensor.Dimensions[2];
@@ -194,54 +297,53 @@ public sealed class SamSegmentationService : ISamSegmentationService
 
     private List<(float X, float Y)> ExtractContour(float[,] mask, float boxNormX, float boxNormY, float boxNormW, float boxNormH)
     {
-        // Simple bounding edge extractor along the mask
-        // Returns coordinates normalized to 0..1 (relative to the full image)
         int h = mask.GetLength(0);
         int w = mask.GetLength(1);
 
-        var topPoints = new List<(int x, int y)>();
-        var bottomPoints = new List<(int x, int y)>();
-        
-        // Scan each column for top and bottom edge
-        for (int x = 0; x < w; x++)
-        {
-            int topY = -1;
-            int bottomY = -1;
+        // Clip scanning region to bounding box + medium margin (10%)
+        float margin = 0.10f;
+        int startX = Math.Max(0, (int)((boxNormX - margin) * w));
+        int endX   = Math.Min(w - 1, (int)((boxNormX + boxNormW + margin) * w));
+        int startY = Math.Max(0, (int)((boxNormY - margin) * h));
+        int endY   = Math.Min(h - 1, (int)((boxNormY + boxNormH + margin) * h));
 
-            for (int y = 0; y < h; y++)
+        // Dual-pass scan (Columns + Rows) to handle impacted/horizontal teeth
+        var points = new HashSet<(int x, int y)>();
+
+        // 1. Column-wise scan (Top/Bottom edges) - Higher density scan (80 steps)
+        int xStep = Math.Max(1, (endX - startX) / 80);
+        for (int x = startX; x <= endX; x += xStep)
+        {
+            int firstY = -1, lastY = -1;
+            for (int y = startY; y <= endY; y++)
             {
-                if (mask[y, x] > 0.5f)
+                if (mask[y, x] > 0.1f) // Lower threshold for sensitivity
                 {
-                    if (topY == -1) topY = y;
-                    bottomY = y;
+                    if (firstY == -1) firstY = y;
+                    lastY = y;
                 }
             }
+            if (firstY != -1) { points.Add((x, firstY)); points.Add((x, lastY)); }
+        }
 
-            if (topY != -1)
+        // 2. Row-wise scan (Left/Right edges) - Higher density scan (80 steps)
+        int yStep = Math.Max(1, (endY - startY) / 80);
+        for (int y = startY; y <= endY; y += yStep)
+        {
+            int firstX = -1, lastX = -1;
+            for (int x = startX; x <= endX; x++)
             {
-                topPoints.Add((x, topY));
-                if (bottomY != topY) bottomPoints.Add((x, bottomY));
+                if (mask[y, x] > 0.1f) // Lower threshold for sensitivity
+                {
+                    if (firstX == -1) firstX = x;
+                    lastX = x;
+                }
             }
+            if (firstX != -1) { points.Add((firstX, y)); points.Add((lastX, y)); }
         }
 
-        // Combine to form a rough polygon
-        var outline = new List<(float X, float Y)>();
-        
-        // Top edge left to right
-        foreach (var pt in topPoints)
-        {
-            outline.Add(((float)pt.x / w, (float)pt.y / h));
-        }
-
-        // Bottom edge right to left
-        bottomPoints.Reverse();
-        foreach (var pt in bottomPoints)
-        {
-            outline.Add(((float)pt.x / w, (float)pt.y / h));
-        }
-
-        // Safety: If extraction completely fails, return the bounding box
-        if (outline.Count < 3)
+        // If the mask yielded no outline points (e.g. low confidence mask), fallback to bounding box
+        if (points.Count == 0)
         {
             return new List<(float X, float Y)>
             {
@@ -252,6 +354,27 @@ public sealed class SamSegmentationService : ISamSegmentationService
             };
         }
 
-        return outline;
+        // Sort points to form a convex-ish hull or simple clockwise outline
+        float cx = (float)points.Average(p => p.x);
+        float cy = (float)points.Average(p => p.y);
+        
+        var sorted = points
+            .Select(p => new { p.x, p.y, Angle = Math.Atan2(p.y - cy, p.x - cx) })
+            .OrderBy(p => p.Angle)
+            .Select(p => ((float)p.x / w, (float)p.y / h))
+            .ToList();
+
+        if (sorted.Count < 3)
+        {
+            return new List<(float X, float Y)>
+            {
+                (boxNormX, boxNormY),
+                (boxNormX + boxNormW, boxNormY),
+                (boxNormX + boxNormW, boxNormY + boxNormH),
+                (boxNormX, boxNormY + boxNormH)
+            };
+        }
+
+        return sorted;
     }
 }

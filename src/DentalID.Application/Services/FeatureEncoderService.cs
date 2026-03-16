@@ -42,7 +42,8 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
         if (_session.Encoder == null) return (null, "Encoder model not loaded");
         try
         {
-            var tensor = _tensorPrep.PrepareEncoderTensor(bitmap, 1024, _session.EncoderBuffer);
+            // Bug #28 Fix: Apply ImageNet normalization as expected by SAM ViT encoder
+            var tensor = _tensorPrep.PrepareEncoderTensor(bitmap, 1024, _session.EncoderBuffer, applyNormalization: true);
             var inputs = new List<NamedOnnxValue>
                 { NamedOnnxValue.CreateFromTensor(_session.EncoderInputName, tensor) };
             using var results = _session.Encoder.Run(inputs);
@@ -50,18 +51,36 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
 
             // Bug #27 Fix: validate output rank before indexing dimensions
             if (output.Dimensions.Length < 4)
-                return (null, $"Unexpected encoder output rank {output.Dimensions.Length}, expected [1,C,H,W].");
+                return (null, $"Unexpected encoder output rank {output.Dimensions.Length}.");
 
-            int channels     = output.Dimensions[1];
-            int h            = output.Dimensions[2];
-            int w            = output.Dimensions[3];
+            int channels, h, w;
+            bool isNhwc = false;
+
+            // Detect layout: SAM ViT-B typically has 256 channels.
+            // NCHW: [1, 256, 64, 64] | NHWC: [1, 64, 64, 256]
+            if (output.Dimensions[3] > output.Dimensions[1] && output.Dimensions[1] < 128)
+            {
+                isNhwc = true;
+                h = output.Dimensions[1];
+                w = output.Dimensions[2];
+                channels = output.Dimensions[3];
+            }
+            else
+            {
+                channels = output.Dimensions[1];
+                h = output.Dimensions[2];
+                w = output.Dimensions[3];
+            }
+
             int quadH = h / 2;
             int quadW = w / 2;
-            int quadSpatialCount = quadH * quadW;
+            int quadSpatialCount = Math.Max(1, quadH * quadW);
             
-            // 1024 floats for SAM Deep Features + 160 floats for Spatial Geometry (32 teeth * 5 floats: conf,x,y,w,h)
+            // SAM Deep Features: 4 quadrants * channels
             int expectedDeepFeatures = channels * 4;
-            int totalFeatures = expectedDeepFeatures + 160; 
+            int spatialFeatureCount = 160;
+            int samDimensionCount = 96;
+            int totalFeatures = expectedDeepFeatures + spatialFeatureCount + samDimensionCount; 
             var vector = new float[totalFeatures];
 
             unsafe
@@ -76,13 +95,23 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
                     for (int c = 0; c < channels; c++)
                     {
                         float sumTL = 0f, sumTR = 0f, sumBL = 0f, sumBR = 0f;
-                        float* pCurrentCh = pOutput + (c * h * w);
 
                         for (int y = 0; y < h; y++)
                         {
                             for (int x = 0; x < w; x++)
                             {
-                                float val = *(pCurrentCh + (y * w) + x);
+                                float val;
+                                if (isNhwc)
+                                {
+                                    // NHWC indexing: (y * W * C) + (x * C) + c
+                                    val = *(pOutput + (y * w * channels) + (x * channels) + c);
+                                }
+                                else
+                                {
+                                    // NCHW indexing: (c * H * W) + (y * W) + x
+                                    val = *(pOutput + (c * h * w) + (y * w) + x);
+                                }
+
                                 if (y < quadH)
                                 {
                                     if (x < quadW) sumTL += val;
@@ -105,10 +134,11 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
                 }
             }
 
-            // Append Spatial Features
+            // Append Spatial Features + SAM Dimensions
             if (detections != null)
             {
                 AppendSpatialGeometry(vector, expectedDeepFeatures, detections);
+                AppendSamDimensions(vector, expectedDeepFeatures + spatialFeatureCount, detections);
             }
 
             return (vector, null);
@@ -122,7 +152,7 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
 
     private static void AppendSpatialGeometry(float[] vector, int offset, IEnumerable<DetectedTooth> detections)
     {
-        // Standard 32 adult teeth
+        // Standard 32 adult teeth slots
         int[] fdiKeys = {
             18, 17, 16, 15, 14, 13, 12, 11,
             21, 22, 23, 24, 25, 26, 27, 28,
@@ -134,8 +164,17 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
 
         for (int i = 0; i < fdiKeys.Length; i++)
         {
+            int adultFdi = fdiKeys[i];
             int baseIndex = offset + (i * 5);
-            if (toothDict.TryGetValue(fdiKeys[i], out var tooth))
+            
+            // Try to find adult tooth first, then fall back to mapped deciduous tooth
+            if (!toothDict.TryGetValue(adultFdi, out var tooth))
+            {
+                int deciduousFdi = MapAdultToDeciduous(adultFdi);
+                if (deciduousFdi != 0) toothDict.TryGetValue(deciduousFdi, out tooth);
+            }
+
+            if (tooth != null)
             {
                 vector[baseIndex + 0] = tooth.Confidence;
                 vector[baseIndex + 1] = tooth.X;
@@ -155,6 +194,56 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
         }
     }
 
+    /// <summary>
+    /// Appends SAM segmentation measurements (MaskWidth, MaskHeight, MaskArea) for each of the 32 FDI teeth.
+    /// These dimensions encode actual tooth shape/size for highly precise biometric matching.
+    /// </summary>
+    private static void AppendSamDimensions(float[] vector, int offset, IEnumerable<DetectedTooth> detections)
+    {
+        int[] fdiKeys = {
+            18, 17, 16, 15, 14, 13, 12, 11,
+            21, 22, 23, 24, 25, 26, 27, 28,
+            48, 47, 46, 45, 44, 43, 42, 41,
+            31, 32, 33, 34, 35, 36, 37, 38
+        };
+
+        var toothDict = detections.Where(t => t.FdiNumber > 0).GroupBy(t => t.FdiNumber).ToDictionary(g => g.Key, g => g.First());
+
+        for (int i = 0; i < fdiKeys.Length; i++)
+        {
+            int adultFdi = fdiKeys[i];
+            int baseIndex = offset + (i * 3);
+
+            if (!toothDict.TryGetValue(adultFdi, out var tooth))
+            {
+                int deciduousFdi = MapAdultToDeciduous(adultFdi);
+                if (deciduousFdi != 0) toothDict.TryGetValue(deciduousFdi, out tooth);
+            }
+
+            if (tooth != null)
+            {
+                vector[baseIndex + 0] = tooth.MaskWidth;
+                vector[baseIndex + 1] = tooth.MaskHeight;
+                vector[baseIndex + 2] = tooth.MaskArea;
+            }
+            // else: zeros by default (undetected tooth)
+        }
+    }
+
+    private static int MapAdultToDeciduous(int adultFdi)
+    {
+        // FDI Mapping: Primary Q5 maps to Adult Q1, Primary Q6 -> Adult Q2, etc.
+        // Successor mapping: 54 (Primary 1st molar) -> 14 (Adult 1st premolar)
+        int quad = adultFdi / 10;
+        int unit = adultFdi % 10;
+        
+        // Deciduous only exist for units 1-5 (Incisiors, Canines, Molars)
+        if (unit > 5) return 0;
+        
+        int pQuad = quad + 4;
+        return (pQuad * 10) + unit;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Age/gender: InsightFace model — BGR 0-255, NCHW [-1,3,96,96] → [1,3]
     // ─────────────────────────────────────────────────────────────────────────
@@ -165,7 +254,7 @@ public sealed class FeatureEncoderService : IFeatureEncoderService
         
         // InsightFace facial recognition removed - gender cannot be
         // reliably mathematically deduced from wide panoramic dental x-rays.
-        var gender = "Unknown";
+        var gender = "Indeterminate";
         
         return await Task.FromResult<(string Gender, string AgeRange, int? MedianAge, Exception? Error)>((gender, ageRange, medianAge, null));
     }

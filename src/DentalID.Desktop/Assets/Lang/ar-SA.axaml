@@ -21,6 +21,7 @@
     <!-- Navigation -->
     <system:String x:Key="Str_Nav_Dashboard">لوحة القيادة</system:String>
     <system:String x:Key="Str_Nav_Analysis">مختبر التحليل</system:String>
+    <system:String x:Key="Str_Nav_Comparison">المقارنة</system:String>
     
     <!-- Control Text -->
     <system:String x:Key="Str_Control_NoImage">لا توجد صورة</system:String>

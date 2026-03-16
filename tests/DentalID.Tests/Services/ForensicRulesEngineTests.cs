@@ -40,15 +40,16 @@ public class ForensicRulesEngineTests
         {
             Pathologies = new List<DetectedPathology>
             {
-                new() { ClassName = "Implant", ToothNumber = 21 },
-                new() { ClassName = "Caries", ToothNumber = 21 } // Impossible!
+                // Both low confidence (0) -> should trigger an alert instead of silent removal
+                new() { ClassName = "Implant", ToothNumber = 21, Confidence = 0.5f },
+                new() { ClassName = "Caries", ToothNumber = 21, Confidence = 0.5f } 
             }
         };
 
         _engine.ApplyRules(result);
 
         Assert.Single(result.Flags);
-        Assert.Contains("Conflict", result.Flags[0]);
+        Assert.Contains("Forensic Alert", result.Flags[0]);
         Assert.Contains("Implant", result.Flags[0]);
     }
 
@@ -59,17 +60,18 @@ public class ForensicRulesEngineTests
         {
             Pathologies = new List<DetectedPathology>
             {
-                new() { ClassName = "Implant", ToothNumber = 27 },
-                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.9f, X = 0.20f, Y = 0.20f, Width = 0.10f, Height = 0.10f },
-                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.7f, X = 0.21f, Y = 0.21f, Width = 0.10f, Height = 0.10f }
+                new() { ClassName = "Implant", ToothNumber = 27, Confidence = 0.9f }, // High confidence implant
+                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.4f, X = 0.20f, Y = 0.20f, Width = 0.10f, Height = 0.10f },
+                new() { ClassName = "Caries", ToothNumber = 27, Confidence = 0.3f, X = 0.21f, Y = 0.21f, Width = 0.10f, Height = 0.10f }
             }
         };
 
         _engine.ApplyRules(result);
 
+        // Should suppress both low-confidence caries. Since flags are de-duplicated at the end, 
+        // we should see exactly 1 unique suppression flag for this tooth.
         Assert.Single(result.Flags);
-        Assert.Contains("Conflict", result.Flags[0]);
-        Assert.Contains("overlapping detections", result.Flags[0]);
+        Assert.Contains("suppressed", result.Flags[0]);
     }
 
     [Fact]
@@ -142,7 +144,7 @@ public class ForensicRulesEngineTests
         _engine.ApplyRules(result);
 
         Assert.NotEmpty(result.Flags);
-        Assert.Contains("Conflict", result.Flags[0]);
+        Assert.Contains("conflict", result.Flags[0], StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

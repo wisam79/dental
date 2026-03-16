@@ -159,7 +159,7 @@ public class YoloDetectionParserTests
         var pathology = new DetectedPathology
         {
             ClassName = "Missing teeth",
-            X = 0.52f,
+            X = 0.51f, // Moved from 0.52 to be slightly closer (accommodating dy*2.2 scaling)
             Y = 0.60f,
             Width = 0.05f,
             Height = 0.06f

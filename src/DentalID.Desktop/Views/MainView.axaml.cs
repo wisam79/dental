@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using DentalID.Desktop.ViewModels;
 using DentalID.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,7 @@ public partial class MainView : UserControl
     private MainWindowViewModel? _boundVm;
     private ContentControl? _mainContentHost;
     private ContentControl? _bootContentHost;
+    private Window? _trackedWindow;
 
     public MainView()
     {
@@ -24,6 +27,8 @@ public partial class MainView : UserControl
         _bootContentHost = this.FindControl<ContentControl>("BootContentHost");
 
         DataContextChanged += OnDataContextChanged;
+        AttachedToVisualTree += OnAttachedToVisualTree;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
 
         // Add SelectionChanged event handler for debugging
         var navListBox = this.FindControl<ListBox>("NavListBox");
@@ -53,6 +58,7 @@ public partial class MainView : UserControl
             _boundVm = vm;
             _boundVm.PropertyChanged += OnVmPropertyChanged;
             PushContent(vm.CurrentContent);
+            PushWindowState(_trackedWindow?.WindowState);
             LogInfo($"[VIEW] MainView bound to VM. CurrentContent={vm.CurrentContent?.GetType().Name ?? "null"}");
         }
         else
@@ -60,6 +66,8 @@ public partial class MainView : UserControl
             PushContent(null);
             LogInfo("[VIEW] MainView DataContext is not MainWindowViewModel.");
         }
+
+        AttachWindowStateTracking();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -110,10 +118,63 @@ public partial class MainView : UserControl
                 window.WindowState = window.WindowState == WindowState.Maximized
                     ? WindowState.Normal
                     : WindowState.Maximized;
+                PushWindowState(window.WindowState);
                 return;
             }
 
             window.BeginMoveDrag(e);
+        }
+    }
+
+    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        AttachWindowStateTracking();
+    }
+
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        DetachWindowStateTracking();
+    }
+
+    private void AttachWindowStateTracking()
+    {
+        if (VisualRoot is not Window window)
+            return;
+
+        if (ReferenceEquals(_trackedWindow, window))
+        {
+            PushWindowState(window.WindowState);
+            return;
+        }
+
+        DetachWindowStateTracking();
+        _trackedWindow = window;
+        _trackedWindow.PropertyChanged += OnTrackedWindowPropertyChanged;
+        PushWindowState(window.WindowState);
+    }
+
+    private void DetachWindowStateTracking()
+    {
+        if (_trackedWindow == null)
+            return;
+
+        _trackedWindow.PropertyChanged -= OnTrackedWindowPropertyChanged;
+        _trackedWindow = null;
+    }
+
+    private void OnTrackedWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Window.WindowStateProperty && sender is Window window)
+        {
+            PushWindowState(window.WindowState);
+        }
+    }
+
+    private void PushWindowState(WindowState? state)
+    {
+        if (state.HasValue)
+        {
+            _boundVm?.UpdateWindowState(state.Value);
         }
     }
 

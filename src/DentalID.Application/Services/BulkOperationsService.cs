@@ -55,9 +55,22 @@ public class BulkOperationsService : IBulkOperationsService
 
             result.TotalRecords = records.Count;
             var subjectsToAdd = new List<Subject>();
+            var seenNationalIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var record in records)
             {
+                // Bug #45: Prevent crashes from duplicate National IDs in the same CSV batch
+                if (!string.IsNullOrEmpty(record.NationalId))
+                {
+                    if (seenNationalIds.Contains(record.NationalId))
+                    {
+                        result.FailedRecords++;
+                        result.Errors.Add($"Duplicate National ID '{record.NationalId}' found in batch.");
+                        continue;
+                    }
+                    seenNationalIds.Add(record.NationalId);
+                }
+
                 var validationResult = await _subjectValidator.ValidateAsync(record);
 
                 if (validationResult.IsValid)
@@ -313,8 +326,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(s => subjectIds.Contains(s.Id));
             }
 
-            // Bug #41: Offload synchronous EF materialization to a thread-pool thread to avoid blocking the UI/async context
-            var subjects = await Task.Run(() => query
+            // Bug #41 Fix: Use EF Core's native ToListAsync()
+            var subjects = await query
                 .Select(s => new SubjectDto
                 {
                     Id = s.Id,
@@ -331,7 +344,7 @@ public class BulkOperationsService : IBulkOperationsService
                     UpdatedAt = s.UpdatedAt,
                     CreatedById = s.CreatedById
                 })
-                .ToList()).ConfigureAwait(false);
+                .ToListAsync();
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -362,8 +375,8 @@ public class BulkOperationsService : IBulkOperationsService
                 query = query.Where(d => imageIds.Contains(d.Id));
             }
 
-            // Bug #41: Offload synchronous EF materialization to a thread-pool thread
-            var images = await Task.Run(() => query
+            // Bug #41 Fix: Use EF Core's native ToListAsync()
+            var images = await query
                 .Select(d => new DentalImageDto
                 {
                     Id = d.Id,
@@ -381,7 +394,7 @@ public class BulkOperationsService : IBulkOperationsService
                     IsProcessed = d.IsProcessed,
                     CreatedAt = d.CreatedAt
                 })
-                .ToList()).ConfigureAwait(false);
+                .ToListAsync();
 
             using var writer = new StreamWriter(filePath);
             using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
@@ -513,6 +526,24 @@ public class BulkOperationsService : IBulkOperationsService
 
                 if (subject != null)
                 {
+                    // Bug #46: Explicit cleanup of related entities to prevent orphans 
+                    // if cascade delete is not supported by the underlying repository implementation.
+                    
+                    // 1. Delete associated images
+                    var images = await _unitOfWork.GetRepository<DentalImage>()
+                        .AsQueryable()
+                        .Where(i => i.SubjectId == subject.Id)
+                        .ToListAsync();
+                    foreach (var img in images) _unitOfWork.GetRepository<DentalImage>().Remove(img);
+
+                    // 2. Delete associated matches where this subject was the result
+                    var matches = await _unitOfWork.GetRepository<Match>()
+                        .AsQueryable()
+                        .Where(m => m.MatchedSubjectId == subject.Id)
+                        .ToListAsync();
+                    foreach (var m in matches) _unitOfWork.GetRepository<Match>().Remove(m);
+
+                    // 3. Delete the subject itself
                     _unitOfWork.GetRepository<Subject>().Remove(subject);
                     result.SuccessfulRecords++;
                 }

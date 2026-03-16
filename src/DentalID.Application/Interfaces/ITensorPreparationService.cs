@@ -11,12 +11,11 @@ public interface ITensorPreparationService
     (DenseTensor<float> Tensor, float Scale, float PadX, float PadY) PrepareDetectionTensor(SKBitmap bitmap, int targetSize, float[]? buffer = null);
 
     /// <summary>
-    /// Prepares a tensor for SAM Encoder (HWC? No, standard checks say specific format).
+    /// Prepares a tensor for SAM Encoder (HWC [targetSize, targetSize, 3]).
     /// </summary>
-    DenseTensor<float> PrepareEncoderTensor(SKBitmap bitmap, int targetSize, float[]? buffer = null);
+    DenseTensor<float> PrepareEncoderTensor(SKBitmap bitmap, int targetSize, float[]? buffer = null, bool applyNormalization = false);
 
     /// <summary>
     /// Prepares a tensor for Age/Gender estimation (NCHW, BGR, 0-255).
     /// </summary>
-    DenseTensor<float> PrepareAgeGenderTensor(SKBitmap bitmap, int targetSize);
 }

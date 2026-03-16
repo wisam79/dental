@@ -2,20 +2,19 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ═══════════════════════════════════════════════════════
-         DentalID — GitHub Light Theme Override
-         Overrides the default Fluent-gray palette in App.axaml
-         with a clean GitHub-inspired light aesthetic.
+         DentalID — Modern Zinc Light Theme Override
+         A clean, high-contrast Vercel/Tailwind-inspired light aesthetic.
     ═══════════════════════════════════════════════════════ -->
 
     <!-- ── Backgrounds ───────────────────────────────────── -->
-    <SolidColorBrush x:Key="SurfaceDeepBrush"     Color="#F6F8FA"/>  <!-- Page root -->
-    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#FFFFFF"/>  <!-- Cards / panels -->
-    <SolidColorBrush x:Key="SurfaceFloatingBrush" Color="#EEF1F5"/>  <!-- Dropdowns / overlays -->
-    <SolidColorBrush x:Key="SurfaceBgBrush"       Color="#F0F2F5"/>
+    <SolidColorBrush x:Key="SurfaceDeepBrush"     Color="#F4F4F5"/>  <!-- Zinc 100 -->
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#FFFFFF"/>  <!-- White -->
+    <SolidColorBrush x:Key="SurfaceFloatingBrush" Color="#FFFFFF"/>  
+    <SolidColorBrush x:Key="SurfaceBgBrush"       Color="#FAFAFA"/>  <!-- Zinc 50 -->
     <SolidColorBrush x:Key="CardBgBrush"          Color="#FFFFFF"/>
     <SolidColorBrush x:Key="InputBgBrush"         Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="PageBgBrush"          Color="#F6F8FA"/>
-    <SolidColorBrush x:Key="SidebarBgBrush"       Color="#E8FFFFFF"/> <!-- 91% opacity white -->
+    <SolidColorBrush x:Key="PageBgBrush"          Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="SidebarBgBrush"       Color="#E6FFFFFF"/> <!-- Translucent White -->
 
     <!-- ── Overlays & Shadows ────────────────────────────── -->
     <SolidColorBrush x:Key="OverlayHoverBrush"    Color="#0F000000"/>
@@ -23,49 +22,49 @@
     <SolidColorBrush x:Key="OverlaySubtleBrush"   Color="#08000000"/>
     <SolidColorBrush x:Key="OverlayStrongBrush"   Color="#80000000"/>
     <SolidColorBrush x:Key="OverlayModerateBrush" Color="#66000000"/>
-    <SolidColorBrush x:Key="ShadowBrush"          Color="#20000000"/>
-    <SolidColorBrush x:Key="NeonGlowBrush"        Color="#400969DA"/>
+    <SolidColorBrush x:Key="ShadowBrush"          Color="#1A000000"/>
+    <SolidColorBrush x:Key="NeonGlowBrush"        Color="#403B82F6"/>
 
     <!-- ── Accent Colors ─────────────────────────────────── -->
-    <Color x:Key="AccentPrimaryColor">#0969DA</Color>
-    <SolidColorBrush x:Key="AccentPrimaryBrush"        Color="#0969DA"/> <!-- GitHub Blue -->
-    <SolidColorBrush x:Key="AccentPrimaryHoverBrush"   Color="#0860CA"/>
-    <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="#0550AE"/>
-    <SolidColorBrush x:Key="AccentSecondaryBrush"      Color="#0550AE"/> <!-- Dark blue -->
-    <SolidColorBrush x:Key="AccentTertiaryBrush"       Color="#8250DF"/> <!-- Purple -->
-    <SolidColorBrush x:Key="AccentBlueBrush"           Color="#0969DA"/>
-    <SolidColorBrush x:Key="AccentBlueDarkBrush"       Color="#0550AE"/>
-    <SolidColorBrush x:Key="AccentRedBrush"            Color="#CF222E"/>
-    <SolidColorBrush x:Key="AccentOrangeBrush"         Color="#BF8700"/>
-    <SolidColorBrush x:Key="AccentPurpleBrush"         Color="#8250DF"/>
-    <SolidColorBrush x:Key="AccentGreenBrush"          Color="#1A7F37"/>
+    <Color x:Key="AccentPrimaryColor">#2563EB</Color> <!-- Blue 600 -->
+    <SolidColorBrush x:Key="AccentPrimaryBrush"        Color="#2563EB"/> 
+    <SolidColorBrush x:Key="AccentPrimaryHoverBrush"   Color="#1D4ED8"/> <!-- Blue 700 -->
+    <SolidColorBrush x:Key="AccentPrimaryPressedBrush" Color="#1E40AF"/> <!-- Blue 800 -->
+    <SolidColorBrush x:Key="AccentSecondaryBrush"      Color="#1D4ED8"/> 
+    <SolidColorBrush x:Key="AccentTertiaryBrush"       Color="#9333EA"/> <!-- Purple 600 -->
+    <SolidColorBrush x:Key="AccentBlueBrush"           Color="#2563EB"/>
+    <SolidColorBrush x:Key="AccentBlueDarkBrush"       Color="#1E40AF"/>
+    <SolidColorBrush x:Key="AccentRedBrush"            Color="#DC2626"/> <!-- Red 600 -->
+    <SolidColorBrush x:Key="AccentOrangeBrush"         Color="#D97706"/> <!-- Amber 600 -->
+    <SolidColorBrush x:Key="AccentPurpleBrush"         Color="#9333EA"/>
+    <SolidColorBrush x:Key="AccentGreenBrush"          Color="#059669"/> <!-- Emerald 600 -->
 
     <!-- ── Functional Status ─────────────────────────────── -->
-    <SolidColorBrush x:Key="SuccessBrush"         Color="#1A7F37"/>
-    <SolidColorBrush x:Key="WarningBrush"         Color="#BF8700"/>
-    <SolidColorBrush x:Key="ErrorBrush"           Color="#CF222E"/>
-    <SolidColorBrush x:Key="ForensicWarningBrush" Color="#CF222E"/>
-    <SolidColorBrush x:Key="ForensicSuccessBrush" Color="#1A7F37"/>
+    <SolidColorBrush x:Key="SuccessBrush"         Color="#059669"/>
+    <SolidColorBrush x:Key="WarningBrush"         Color="#D97706"/>
+    <SolidColorBrush x:Key="ErrorBrush"           Color="#DC2626"/>
+    <SolidColorBrush x:Key="ForensicWarningBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="ForensicSuccessBrush" Color="#059669"/>
 
     <!-- ── Text ──────────────────────────────────────────── -->
-    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#1F2328"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#424A53"/>
-    <SolidColorBrush x:Key="TextMutedBrush"     Color="#656D76"/>
-    <SolidColorBrush x:Key="TextDisabledBrush"  Color="#8C959F"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#09090B"/> <!-- Zinc 950 -->
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#52525B"/> <!-- Zinc 600 -->
+    <SolidColorBrush x:Key="TextMutedBrush"     Color="#71717A"/> <!-- Zinc 500 -->
+    <SolidColorBrush x:Key="TextDisabledBrush"  Color="#A1A1AA"/> <!-- Zinc 400 -->
     <SolidColorBrush x:Key="TextOnAccentBrush"  Color="#FFFFFF"/>
 
     <!-- ── Borders ───────────────────────────────────────── -->
-    <SolidColorBrush x:Key="BorderPrimaryBrush"   Color="#D0D7DE"/>
-    <SolidColorBrush x:Key="BorderSubtleBrush"    Color="#E1E4E8"/>
-    <SolidColorBrush x:Key="BorderSecondaryBrush" Color="#E1E4E8"/>
-    <SolidColorBrush x:Key="BorderFocusBrush"     Color="#0969DA"/>
-    <SolidColorBrush x:Key="BorderInputBrush"     Color="#D0D7DE"/>
+    <SolidColorBrush x:Key="BorderPrimaryBrush"   Color="#E4E4E7"/> <!-- Zinc 200 -->
+    <SolidColorBrush x:Key="BorderSubtleBrush"    Color="#F4F4F5"/> <!-- Zinc 100 -->
+    <SolidColorBrush x:Key="BorderSecondaryBrush" Color="#E4E4E7"/>
+    <SolidColorBrush x:Key="BorderFocusBrush"     Color="#2563EB"/>
+    <SolidColorBrush x:Key="BorderInputBrush"     Color="#E4E4E7"/>
 
     <!-- ── Navigation ───────────────────────────────────── -->
-    <SolidColorBrush x:Key="NavItemHoverBrush"        Color="#EEF1F5"/>
-    <SolidColorBrush x:Key="NavItemSelectedBrush"     Color="#0969DA"/>
+    <SolidColorBrush x:Key="NavItemHoverBrush"        Color="#F4F4F5"/>
+    <SolidColorBrush x:Key="NavItemSelectedBrush"     Color="#2563EB"/>
     <SolidColorBrush x:Key="NavItemSelectedTextBrush" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="NavItemTextBrush"         Color="#656D76"/>
-    <SolidColorBrush x:Key="NavItemHoverTextBrush"    Color="#1F2328"/>
+    <SolidColorBrush x:Key="NavItemTextBrush"         Color="#52525B"/>
+    <SolidColorBrush x:Key="NavItemHoverTextBrush"    Color="#09090B"/>
 
 </ResourceDictionary>

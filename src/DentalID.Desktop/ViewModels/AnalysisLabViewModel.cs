@@ -125,6 +125,48 @@ private string? _loadedImagePath;
     [ObservableProperty] private bool _hasFeatureVector;
 
     [ObservableProperty] private string _searchQuery = "";
+    
+    partial void OnSearchQueryChanged(string value)
+    {
+        // Bug Fix #57: Debounced search for subject linking
+        _searchDebounceTimer?.Stop();
+        _searchDebounceTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(350)
+        };
+        _searchDebounceTimer.Tick += async (s, e) =>
+        {
+            _searchDebounceTimer.Stop();
+            await PerformSubjectSearchAsync(value);
+        };
+        _searchDebounceTimer.Start();
+    }
+
+    private DispatcherTimer? _searchDebounceTimer;
+
+    private async Task PerformSubjectSearchAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            await LoadRecentSubjectsAsync();
+            return;
+        }
+
+        try
+        {
+            var results = await _subjectRepo.SearchAsync(query, page: 1, pageSize: 20);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Subjects.Clear();
+                foreach (var s in results) Subjects.Add(s);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Search failed in AnalysisLab");
+        }
+    }
+
     [ObservableProperty] private bool _showTeethOverlay = true;
     [ObservableProperty] private bool _showPathosOverlay = false;
     [ObservableProperty] private double _windowCenter = 0.5;
@@ -435,15 +477,21 @@ private string? _loadedImagePath;
         if (CurrentState == AnalysisState.Saving)
             CurrentState = previousState;
 
-        if (!saveSucceeded && newlyCreatedSubjectId.HasValue)
+        if (!saveSucceeded)
         {
-            try
+            // Bug Fix #58: Robust rollback. Clear selection if it failed.
+            SelectedSubject = null;
+
+            if (newlyCreatedSubjectId.HasValue)
             {
-                await _subjectRepo.DeleteAsync(newlyCreatedSubjectId.Value);
-            }
-            catch (Exception cleanupEx)
-            {
-                _logger.LogError(cleanupEx, $"Failed to rollback newly created subject {newlyCreatedSubjectId.Value} after evidence save failure.");
+                try
+                {
+                    await _subjectRepo.DeleteAsync(newlyCreatedSubjectId.Value);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogError(cleanupEx, $"Failed to rollback newly created subject {newlyCreatedSubjectId.Value} after evidence save failure.");
+                }
             }
         }
 
@@ -502,20 +550,17 @@ private string? _loadedImagePath;
     {
         ClearResults();
 
-        var normalizedTeeth = new List<DetectedTooth>();
+        // Bug Fix #59: Show ALL detections, even if they have duplicate FDI numbers.
+        // Hiding detections is forensically unsound.
         foreach (var tooth in result.Teeth)
         {
             if (TryNormalizeToothForDisplay(tooth, out var normalized))
-                normalizedTeeth.Add(normalized);
+            {
+                DetectedTeeth.Add(normalized);
+            }
         }
 
-        var displayTeeth = normalizedTeeth
-            .GroupBy(t => t.FdiNumber)
-            .Select(g => g.OrderByDescending(t => t.Confidence).First())
-            .OrderBy(t => t.FdiNumber)
-            .ToList();
-
-        TeethDetectedCount = displayTeeth.Count;
+        TeethDetectedCount = result.Teeth.GroupBy(t => t.FdiNumber).Count();
         PathologiesCount = result.Pathologies.Count;
         EstimatedAge = result.EstimatedAge;
         EstimatedGender = result.EstimatedGender;
@@ -528,15 +573,20 @@ private string? _loadedImagePath;
             HasFeatureVector = result.FeatureVector is { Length: > 0 };
         }
 
-        foreach (var t in displayTeeth)
-        {
-            DetectedTeeth.Add(t);
-        }
         foreach (var t in result.RawTeeth)
         {
             RawTeeth.Add(t);
         }
-        foreach (var p in result.Pathologies) DetectedPathologies.Add(p);
+
+        // Bug Fix #60: Normalize pathologies for display to prevent rendering artifacts
+        foreach (var p in result.Pathologies)
+        {
+            if (TryNormalizePathologyForDisplay(p, out var normalized))
+            {
+                DetectedPathologies.Add(normalized);
+            }
+        }
+
         foreach (var f in result.Flags) ForensicFlags.Add(f);
         // 4. Insights
         foreach (var insight in result.SmartInsights)
@@ -627,8 +677,38 @@ private string? _loadedImagePath;
 
     public void Dispose()
     {
+        _searchDebounceTimer?.Stop();
         StopAnalysisFeedback();
         _currentBitmap?.Dispose();
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
+    private static bool TryNormalizePathologyForDisplay(DetectedPathology p, out DetectedPathology normalized)
+    {
+        normalized = null!;
+        if (p == null) return false;
+
+        var left = Math.Clamp(p.X, 0f, 1f);
+        var top = Math.Clamp(p.Y, 0f, 1f);
+        var right = Math.Clamp(p.X + p.Width, 0f, 1f);
+        var bottom = Math.Clamp(p.Y + p.Height, 0f, 1f);
+        var width = right - left;
+        var height = bottom - top;
+
+        if (width <= 0f || height <= 0f) return false;
+
+        normalized = new DetectedPathology
+        {
+            ClassName = p.ClassName,
+            Confidence = p.Confidence,
+            ToothNumber = p.ToothNumber,
+            X = left,
+            Y = top,
+            Width = width,
+            Height = height,
+            Outline = p.Outline?.Select(pt => (X: Math.Clamp(pt.X, 0f, 1f), Y: Math.Clamp(pt.Y, 0f, 1f))).ToList()
+        };
+        return true;
     }
 
     private static bool TryNormalizeToothForDisplay(DetectedTooth tooth, out DetectedTooth normalized)

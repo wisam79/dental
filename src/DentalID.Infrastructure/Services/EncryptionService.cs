@@ -16,74 +16,85 @@ namespace DentalID.Infrastructure.Services;
 public class EncryptionService : IEncryptionService
 {
     private readonly byte[] _key;
-    private readonly byte[] _aesKey;
-    private readonly byte[] _hmacKey;
+    private byte[] _aesKey = Array.Empty<byte>();
+    private byte[] _hmacKey = Array.Empty<byte>();
     private const int IvSize = 16;     // AES block size
     private const int HmacSize = 32;   // SHA-256 digest size
 
 
     public EncryptionService(IConfiguration configuration)
     {
-        // 1. Try environment variable first (highest priority, best practice for production)
-        var envKey = Environment.GetEnvironmentVariable("DENTALID_ENCRYPTION_KEY");
-        if (!string.IsNullOrWhiteSpace(envKey))
+        // Bug Fix #74: Use a Global Mutex to prevent race conditions during first-run key generation
+        using var mutex = new Mutex(false, "Global\\DentalID_KeyInit_Mutex");
+        try
         {
-            try
+            mutex.WaitOne(TimeSpan.FromSeconds(10));
+            
+            // 1. Try environment variable first
+            var envKey = Environment.GetEnvironmentVariable("DENTALID_ENCRYPTION_KEY");
+            if (!string.IsNullOrWhiteSpace(envKey))
             {
-                var keyBytes = Convert.FromBase64String(envKey);
-                if (keyBytes.Length == 32)
+                var keyBytes = TryParseKey(envKey);
+                if (keyBytes != null)
                 {
                     _key = keyBytes;
-                    _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
-                    _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
+                    DeriveOperationalKeys();
                     return;
                 }
             }
-            catch { /* Invalid base64, fall through */ }
-        }
 
-        // 2. Try to load OS-protected key from local storage
-        if (TryLoadKeyFromStorage(out _key))
-        {
-            _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
-            _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
-            return;
-        }
-
-        // 3. Migration: Check appsettings.json for legacy key
-        var configKey = configuration["Security:EncryptionKey"];
-        if (!string.IsNullOrEmpty(configKey) &&
-            !configKey.Contains("CHANGE-THIS") &&
-            !configKey.Contains("DO-NOT-USE"))
-        {
-            try
+            // 2. Try to load OS-protected key
+            if (TryLoadKeyFromStorage(out _key))
             {
-                var legacyKeyBytes = Convert.FromBase64String(configKey);
-                if (legacyKeyBytes.Length == 32)
+                DeriveOperationalKeys();
+                return;
+            }
+
+            // 3. Migration: Check appsettings.json
+            var configKey = configuration["Security:EncryptionKey"];
+            if (!string.IsNullOrEmpty(configKey) && !configKey.Contains("CHANGE-THIS"))
+            {
+                var legacyKeyBytes = TryParseKey(configKey);
+                if (legacyKeyBytes != null)
                 {
                     _key = legacyKeyBytes;
-                    // Migrate to OS-protected storage and stop using appsettings
                     SaveKeyToStorage(_key);
-                    
-                    _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
-                    _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
+                    DeriveOperationalKeys();
                     return;
                 }
             }
-            catch { /* If invalid, ignore and generate new */ }
-        }
 
-        // 4. Generate New Key (Secure Default for first run)
-        _key = new byte[32];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(_key);
+            // 4. Generate New Key
+            _key = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(_key);
+            }
+            SaveKeyToStorage(_key);
+            DeriveOperationalKeys();
         }
-        SaveKeyToStorage(_key);
-        
-        // Derive specific operational keys from the master key
-        _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_AES"));
-        _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, Encoding.UTF8.GetBytes("DentalID_HMAC"));
+        finally
+        {
+            try { mutex.ReleaseMutex(); } catch { /* Ignore */ }
+        }
+    }
+
+    private void DeriveOperationalKeys()
+    {
+        // Bug Fix #75: Add static salt for forensic-grade key isolation
+        byte[] salt = Encoding.UTF8.GetBytes("DentalID_Forensic_v1_Salt");
+        _aesKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, salt, Encoding.UTF8.GetBytes("DentalID_AES"));
+        _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32, salt, Encoding.UTF8.GetBytes("DentalID_HMAC"));
+    }
+
+    private byte[]? TryParseKey(string base64)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(base64);
+            return bytes.Length == 32 ? bytes : null;
+        }
+        catch { return null; }
     }
 
     private bool TryLoadKeyFromStorage(out byte[] key)
@@ -363,7 +374,13 @@ public class EncryptionService : IEncryptionService
             using var ms = new MemoryStream(cipherBytes);
             using var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
             using var sr = new StreamReader(cs, Encoding.UTF8);
-            return sr.ReadToEnd();
+            var plain = sr.ReadToEnd();
+            
+            // Bug Fix #77: Log forensic warning for legacy data. 
+            // This data should be re-encrypted in the modern format upon next save.
+            Console.WriteLine("[FORENSIC WARNING] Legacy encryption format detected and decrypted. Data should be migrated.");
+            
+            return plain;
         }
         catch
         {

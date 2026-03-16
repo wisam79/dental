@@ -25,8 +25,12 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         // Bug #49 fix: Adult permanent dentition max is 32; >32 is already anatomically impossible
         if (rawToothCount > 32)
         {
-            result.Flags.Add($"Forensic Alert: Unusual tooth count detected (>{rawToothCount}). Possible image manipulation or composite.");
+            result.Flags.Add($"Forensic Alert: Unusual tooth count detected (32 max permanent vs {rawToothCount} detected). Possible image manipulation or mixed dentition.");
         }
+
+        // Detect Duplicate FDIs (Conflict where same tooth is in two non-overlapping places)
+        DetectDuplicateFdis(result, rawTeeth);
+        // ...
 
         // 2. Anatomical Conflict Check: Bilateral Asymmetry
         AnalyzeBilateralAsymmetry(result, rawTeeth);
@@ -62,10 +66,51 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         CheckRetainedDeciduous(result, rawTeeth);
     }
 
+    private void DetectDuplicateFdis(AnalysisResult result, List<DetectedTooth> rawTeeth)
+    {
+        var groups = rawTeeth
+            .Where(t => t.FdiNumber > 0)
+            .GroupBy(t => t.FdiNumber)
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        foreach (var g in groups)
+        {
+            var sorted = g.OrderByDescending(t => t.Confidence).ToList();
+            var primary = sorted[0];
+            
+            for (int i = 1; i < sorted.Count; i++)
+            {
+                var secondary = sorted[i];
+                float iou = CalculateIoU(primary.X, primary.Y, primary.Width, primary.Height,
+                                         secondary.X, secondary.Y, secondary.Width, secondary.Height);
+                
+                // If they don't overlap significantly, they are physically distinct boxes 
+                // claiming to be the same tooth — a critical forensic conflict.
+                if (iou < 0.20f)
+                {
+                    result.Flags.Add($"CRITICAL CONFLICT: Multiple distinct locations detected for FDI {g.Key}. Possible AI classification failure or image duplication.");
+                    break;
+                }
+            }
+        }
+    }
+
     private void AnalyzeBilateralAsymmetry(AnalysisResult result, List<DetectedTooth> rawTeeth)
     {
-        // Bug #47 fix: FdiNumber/10 == 2 matches FDI 20 (invalid tooth) and 21-29 (valid Q2)
-        // Correct filter: quadrant 2 is FDI 21-28, quadrant 3 is FDI 31-38
+        if (rawTeeth == null || rawTeeth.Count < 4) return;
+
+        // Check for tooth-by-tooth correspondence across the midline (1x vs 2x, 4x vs 3x)
+        var toothMap = rawTeeth.Where(t => t != null).GroupBy(t => t.FdiNumber).ToDictionary(g => g.Key, g => g.First());
+        
+        // Permanent teeth units 1-8
+        for (int unit = 1; unit <= 8; unit++)
+        {
+            CheckSymmetry(10 + unit, 20 + unit, toothMap, result);
+            CheckSymmetry(40 + unit, 30 + unit, toothMap, result);
+        }
+
+        // Keep the macro-level check for severe asymmetry
         var leftCount = rawTeeth.Count(t =>
             t != null &&
             ((t.FdiNumber >= 21 && t.FdiNumber <= 28) ||
@@ -82,6 +127,24 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
         }
     }
 
+    private void CheckSymmetry(int fdi1, int fdi2, Dictionary<int, DetectedTooth> map, AnalysisResult result)
+    {
+        bool has1 = map.ContainsKey(fdi1);
+        bool has2 = map.ContainsKey(fdi2);
+
+        if (has1 != has2)
+        {
+            // Significant asymmetry: tooth present on one side but not the other
+            // Only flag if it's a "reliable" tooth (molars/canines) and not marked as missing in a hypothetical pathology list
+            int unit = fdi1 % 10;
+            if (unit >= 6 || unit == 3) // Canines (3) and Molars (6,7,8)
+            {
+                int missingFdi = has1 ? fdi2 : fdi1;
+                result.SmartInsights.Add($"Anatomical Alert: Bilateral asymmetry detected at unit {unit}. Tooth {missingFdi} is absent while its counterpart exists.");
+            }
+        }
+    }
+
     private void CheckSupernumerary(AnalysisResult result, List<DetectedTooth> rawTeeth)
     {
         // Check for more than 8 permanent teeth in any quadrant
@@ -90,7 +153,7 @@ public class ForensicHeuristicsService : IForensicHeuristicsService
             .GroupBy(t => t.FdiNumber / 10)
             .Select(g => new { 
                 Quadrant = g.Key, 
-                Count = g.Count(),
+                Count = g.Select(t => t.FdiNumber).Distinct().Count(),
                 HasWisdomTooth = g.Any(t => t.FdiNumber % 10 == 8)
             })
             .ToList();

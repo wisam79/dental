@@ -13,8 +13,8 @@ public interface IFeatureEncoderService
 {
     /// <summary>
     /// Runs the SAM encoder and mean-pools the spatial output.
-    /// Appends 160 floats representing standard FDI tooth bounding boxes for spatial biometric matching.
-    /// Returns a vector of length 1184 (1024 Deep Features + 160 Spatial Features).
+    /// Appends 160 floats for spatial geometry and 96 floats for SAM morphological dimensions.
+    /// Returns a vector of length 1280 (1024 Deep Features + 160 Spatial Features + 96 SAM Dimensions).
     /// </summary>
     (float[]? vector, string? error) ExtractFeatures(SKBitmap bitmap, IEnumerable<DetectedTooth>? detections = null);
 

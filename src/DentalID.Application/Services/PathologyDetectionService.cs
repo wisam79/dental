@@ -38,7 +38,7 @@ public sealed class PathologyDetectionService : IPathologyDetectionService
         if (_session.PathologyDetector == null) return [];
 
         var (tensor, scale, padX, padY) = _tensorPrep.PrepareDetectionTensor(
-            bitmap, _config.Model.DetectionInputSize, _session.DetectionBuffer);
+            bitmap, _config.Model.DetectionInputSize, _session.PathologyBuffer);
 
         var inputs = new List<NamedOnnxValue>
             { NamedOnnxValue.CreateFromTensor(_session.PathologyInputName, tensor) };

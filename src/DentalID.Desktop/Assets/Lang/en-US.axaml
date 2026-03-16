@@ -126,6 +126,7 @@
     <system:String x:Key="Str_Match_StudioTitle">Comparison Studio</system:String>
     <system:String x:Key="Str_Match_VectorExtracted">Vector Extracted ✓</system:String>
     <system:String x:Key="Str_Nav_Analysis">Analysis Lab</system:String>
+    <system:String x:Key="Str_Nav_Comparison">Comparison</system:String>
     <system:String x:Key="Str_Nav_Dashboard">Dashboard</system:String>
     <system:String x:Key="Str_Nav_Matching">Matching</system:String>
     <system:String x:Key="Str_Nav_Reports">Reports</system:String>

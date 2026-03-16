@@ -53,12 +53,48 @@ public class MatchingService : IMatchingService
             double deepSim = ComputeRawCosineSimilarity(vectorA.Slice(0, 1024), vectorB.Slice(0, 1024));
             double spatialSim = ComputeRawCosineSimilarity(vectorA.Slice(1024, 160), vectorB.Slice(1024, 160));
             
-            // Blend: 75% Deep Visual Identity + 25% Precise Geographic Match
-            // If the spatial similarity is very low, it drags down the score significantly.
-            return (deepSim * 0.75) + (Math.Max(0, spatialSim) * 0.25);
+            // Bug Fix #3: Edentulous matching guard.
+            // If either vector has NO spatial features (completely edentulous), 
+            // the match is forensically weak and should be heavily penalized.
+            bool hasSpatialA = IsVectorNonZero(vectorA.Slice(1024, 160));
+            bool hasSpatialB = IsVectorNonZero(vectorB.Slice(1024, 160));
+            double spatialWeight = (hasSpatialA && hasSpatialB) ? 0.25 : 0.05;
+
+            // Blend: Visual Identity + Precise Geographic Match
+            return (deepSim * (1.0 - spatialWeight)) + (Math.Max(0, spatialSim) * spatialWeight);
+        }
+
+        // Advanced Hybrid Matching (1280 length = 1024 Deep + 160 Spatial + 96 SAM Dimensions)
+        if (vectorA.Length == 1280)
+        {
+            double deepSim = ComputeRawCosineSimilarity(vectorA.Slice(0, 1024), vectorB.Slice(0, 1024));
+            double spatialSim = ComputeRawCosineSimilarity(vectorA.Slice(1024, 160), vectorB.Slice(1024, 160));
+            double samSim = ComputeRawCosineSimilarity(vectorA.Slice(1184, 96), vectorB.Slice(1184, 96));
+
+            // Bug Fix #3: Edentulous matching guard for advanced vectors.
+            bool hasSpatialA = IsVectorNonZero(vectorA.Slice(1024, 160));
+            bool hasSpatialB = IsVectorNonZero(vectorB.Slice(1024, 160));
+            bool hasSamA = IsVectorNonZero(vectorA.Slice(1184, 96));
+            bool hasSamB = IsVectorNonZero(vectorB.Slice(1184, 96));
+
+            double spatialWeight = (hasSpatialA && hasSpatialB) ? 0.20 : 0.02;
+            double samWeight = (hasSamA && hasSamB) ? 0.10 : 0.01;
+            double deepWeight = 1.0 - (spatialWeight + samWeight);
+
+            // Weighted blend: 70% Visual Identity, 20% Spatial Geometry, 10% SAM Morphology
+            return (deepSim * deepWeight) + (Math.Max(0, spatialSim) * spatialWeight) + (Math.Max(0, samSim) * samWeight);
         }
 
         return ComputeRawCosineSimilarity(vectorA, vectorB);
+    }
+
+    private static bool IsVectorNonZero(ReadOnlySpan<float> vector)
+    {
+        foreach (float val in vector)
+        {
+            if (val != 0) return true;
+        }
+        return false;
     }
 
     private static double ComputeRawCosineSimilarity(ReadOnlySpan<float> vectorA, ReadOnlySpan<float> vectorB)
@@ -302,13 +338,65 @@ public class MatchingService : IMatchingService
         double raw = CalculateCosineSimilarity(probeVector, candidateVector);
         double score = CalibrateVectorScore(raw);
 
-        if (centeringContext != null &&
-            TryCalculateCenteredCosineSimilarity(probeVector, candidateVector, centeringContext.Centroid, out var centeredRaw))
+        if (centeringContext != null)
         {
-            // Blend absolute cosine with centered cosine to suppress inflated near-perfect scores.
-            double centeredScore = CalibrateCenteredScore(centeredRaw);
-            score = Math.Sqrt(Math.Max(0.0, score * centeredScore));
-            return (score, raw, centeredRaw);
+            double centeredRaw = 0;
+            bool success = false;
+
+            if (probeVector.Length == 1280)
+            {
+                // Segmented Centering for Advanced Hybrid Vectors
+                // Apply centering independently to each functional block
+                double centeredDeep = 0, centeredSpatial = 0, centeredSam = 0;
+                success = 
+                    TryCalculateCenteredCosineSimilarity(probeVector.AsSpan(0, 1024), candidateVector.AsSpan(0, 1024), centeringContext.Centroid.AsSpan(0, 1024), out centeredDeep) &&
+                    TryCalculateCenteredCosineSimilarity(probeVector.AsSpan(1024, 160), candidateVector.AsSpan(1024, 160), centeringContext.Centroid.AsSpan(1024, 160), out centeredSpatial) &&
+                    TryCalculateCenteredCosineSimilarity(probeVector.AsSpan(1184, 96), candidateVector.AsSpan(1184, 96), centeringContext.Centroid.AsSpan(1184, 96), out centeredSam);
+
+                if (success)
+                {
+                    bool hasSpatialP = IsVectorNonZero(probeVector.AsSpan(1024, 160));
+                    bool hasSpatialC = IsVectorNonZero(candidateVector.AsSpan(1024, 160));
+                    bool hasSamP = IsVectorNonZero(probeVector.AsSpan(1184, 96));
+                    bool hasSamC = IsVectorNonZero(candidateVector.AsSpan(1184, 96));
+
+                    double spatialWeight = (hasSpatialP && hasSpatialC) ? 0.20 : 0.02;
+                    double samWeight = (hasSamP && hasSamC) ? 0.10 : 0.01;
+                    double deepWeight = 1.0 - (spatialWeight + samWeight);
+
+                    centeredRaw = (centeredDeep * deepWeight) + (Math.Max(0, centeredSpatial) * spatialWeight) + (Math.Max(0, centeredSam) * samWeight);
+                }
+            }
+            else if (probeVector.Length == 1184)
+            {
+                // Segmented Centering for Spatial Hybrid Vectors
+                double centeredDeep = 0, centeredSpatial = 0;
+                success = 
+                    TryCalculateCenteredCosineSimilarity(probeVector.AsSpan(0, 1024), candidateVector.AsSpan(0, 1024), centeringContext.Centroid.AsSpan(0, 1024), out centeredDeep) &&
+                    TryCalculateCenteredCosineSimilarity(probeVector.AsSpan(1024, 160), candidateVector.AsSpan(1024, 160), centeringContext.Centroid.AsSpan(1024, 160), out centeredSpatial);
+
+                if (success)
+                {
+                    bool hasSpatialP = IsVectorNonZero(probeVector.AsSpan(1024, 160));
+                    bool hasSpatialC = IsVectorNonZero(candidateVector.AsSpan(1024, 160));
+                    double spatialWeight = (hasSpatialP && hasSpatialC) ? 0.25 : 0.05;
+                    
+                    centeredRaw = (centeredDeep * (1.0 - spatialWeight)) + (Math.Max(0, centeredSpatial) * spatialWeight);
+                }
+            }
+            else
+            {
+                // Standard block centering for generic vectors
+                success = TryCalculateCenteredCosineSimilarity(probeVector, candidateVector, centeringContext.Centroid, out centeredRaw);
+            }
+
+            if (success)
+            {
+                // Blend absolute calibrated score with centered score to suppress inflated matches.
+                double centeredScore = CalibrateCenteredScore(centeredRaw);
+                score = Math.Sqrt(Math.Max(0.0, score * centeredScore));
+                return (score, raw, centeredRaw);
+            }
         }
 
         return (score, raw, null);

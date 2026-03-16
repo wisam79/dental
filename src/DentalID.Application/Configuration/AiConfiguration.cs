@@ -44,7 +44,6 @@ public class ModelSettings
     /// Input size for the age/gender estimation model.
     /// Default: 96x96 pixels
     /// </summary>
-    public int GenderAgeInputSize { get; set; } = 96;
 
     /// <summary>
     /// Ordered list of pathology classes as expected by the pathology detection model.

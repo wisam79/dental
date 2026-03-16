@@ -69,6 +69,8 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
 
             if (files.Any())
             {
+                // Bug Fix #68: Reset state when new file is selected
+                ResetInternal();
                 SelectedFilePath = files[0].Path.LocalPath;
                 await ParseFile();
             }
@@ -87,7 +89,8 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
 
             _allRecords = await Task.Run(async () => 
             {
-                using var stream = File.OpenRead(SelectedFilePath);
+                // Bug Fix #69: Use FileShare.Read to avoid access errors if file is open elsewhere (e.g. Excel)
+                using var stream = new FileStream(SelectedFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 return await _importService.ParseCsvAsync(stream);
             });
             
@@ -154,9 +157,10 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
                     ImportStatus = p.Message;
                 });
 
-                var subjects = await Task.Run(() =>
+                var (subjects, preValidationErrors) = await Task.Run(() =>
                 {
                     var built = new List<Subject>();
+                    var errors = new List<string>();
                     int totalRecords = _allRecords.Count;
 
                     for (int i = 0; i < totalRecords; i++)
@@ -164,24 +168,41 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
                         var row = _allRecords[i];
                         var s = new Subject();
                         bool isValid = true;
+                        var rowErrors = new List<string>();
 
                         foreach (var map in Mappings.Where(m => !string.IsNullOrEmpty(m.SelectedSourceColumn)))
                         {
                             if (row.TryGetValue(map.SelectedSourceColumn, out var val))
                             {
+                                val = val?.Trim();
                                 if (map.TargetProperty == "FullName")
                                 {
-                                    if (string.IsNullOrWhiteSpace(val)) isValid = false;
-                                    s.FullName = val;
+                                    if (string.IsNullOrWhiteSpace(val)) 
+                                    {
+                                        isValid = false;
+                                        rowErrors.Add("Missing required Full Name.");
+                                    }
+                                    s.FullName = val ?? "";
                                 }
                                 else if (map.TargetProperty == "Gender")
                                 {
-                                    s.Gender = val.StartsWith("M", StringComparison.OrdinalIgnoreCase) ? "Male" : 
-                                                   val.StartsWith("F", StringComparison.OrdinalIgnoreCase) ? "Female" : "Unknown";
+                                    s.Gender = Subject.NormalizeGenderCode(val);
                                 }
                                 else if (map.TargetProperty == "DateOfBirth")
                                 {
-                                    if (DateTime.TryParse(val, out var dob)) s.DateOfBirth = dob;
+                                    // Bug Fix #66: Culture-invariant date parsing with fallback
+                                    if (DateTime.TryParse(val, System.Globalization.CultureInfo.InvariantCulture, out var dob))
+                                    {
+                                        s.DateOfBirth = dob;
+                                    }
+                                    else if (DateTime.TryParse(val, out var dobLocal))
+                                    {
+                                        s.DateOfBirth = dobLocal;
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(val))
+                                    {
+                                        rowErrors.Add($"Invalid Date format: '{val}'.");
+                                    }
                                 }
                                 else if (map.TargetProperty == "ContactInfo") s.ContactInfo = val;
                                 else if (map.TargetProperty == "NationalId") s.NationalId = val;
@@ -189,13 +210,24 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
                             }
                         }
 
-                        if (isValid) built.Add(s);
+                        if (isValid) 
+                        {
+                            built.Add(s);
+                        }
+                        else
+                        {
+                            errors.Add($"Row {i + 1}: {string.Join(" ", rowErrors)}");
+                        }
 
-                        int percent = (int)((i + 1) / (double)totalRecords * 80);
-                        progress.Report((percent, $"Processing record {i + 1} of {totalRecords}..."));
+                        // Bug Fix #67: Throttled progress reporting to avoid UI saturation
+                        if (i % 25 == 0 || i == totalRecords - 1)
+                        {
+                            int percent = (int)((i + 1) / (double)totalRecords * 80);
+                            progress.Report((percent, $"Processing record {i + 1} of {totalRecords}..."));
+                        }
                     }
 
-                    return built;
+                    return (built, errors);
                 });
 
                 ImportStatus = "Importing to database...";
@@ -206,7 +238,10 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
                 ImportProgress = 100;
                 ImportStatus = "Import completed";
 
-                ImportLog = $"Import Completed.\nSuccess: {result.SuccessCount}\nErrors: {result.ErrorCount}\n\nErrors:\n{string.Join("\n", result.Errors)}";
+                var finalErrors = preValidationErrors.Concat(result.Errors).ToList();
+                ImportLog = $"Import Completed.\nSuccess: {result.SuccessCount}\nSkipped/Failed: {finalErrors.Count}\n\nLog:\n{string.Join("\n", finalErrors.Take(100))}";
+                if (finalErrors.Count > 100) ImportLog += "\n... (truncated)";
+                
                 CurrentStep = 3;
                 // Additional specific success message
             }, successMessage: "Data Import Completed Successfully");
@@ -217,16 +252,24 @@ public partial class ImportWizardViewModel : ViewModelBase, IDisposable
         }
     }
     
-     [RelayCommand]
+    [RelayCommand]
      private void Reset()
      {
-         CurrentStep = 1;
+         ResetInternal();
          SelectedFilePath = null;
-         Mappings = new ObservableCollection<ColumnMappingViewModel>();
-         PreviewData = new ObservableCollection<Dictionary<string, string>>();
-         StatusMessage = "Select a CSV file to begin.";
-         ImportLog = string.Empty;
      }
+
+    private void ResetInternal()
+    {
+        CurrentStep = 1;
+        Mappings = new ObservableCollection<ColumnMappingViewModel>();
+        PreviewData = new ObservableCollection<Dictionary<string, string>>();
+        StatusMessage = "Select a CSV file to begin.";
+        ImportLog = string.Empty;
+        ImportProgress = 0;
+        ImportStatus = string.Empty;
+        IsImporting = false;
+    }
 
     public void Dispose()
     {

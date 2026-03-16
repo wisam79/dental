@@ -67,7 +67,7 @@ public class TensorPreparationService : ITensorPreparationService
         return (tensor, scale, padX, padY);
     }
 
-    public unsafe DenseTensor<float> PrepareEncoderTensor(SKBitmap bitmap, int targetSize, float[]? buffer = null)
+    public unsafe DenseTensor<float> PrepareEncoderTensor(SKBitmap bitmap, int targetSize, float[]? buffer = null, bool applyNormalization = false)
     {
         // Encoder model expects HWC [1024, 1024, 3] (Channels Last)
         // Previous error: "index: 2 Got: 1024 Expected: 3" confirms expected shape is [H, W, C]
@@ -90,6 +90,10 @@ public class TensorPreparationService : ITensorPreparationService
         int requiredSize = targetSize * targetSize * 3;
         DenseTensor<float> tensor;
 
+        // ImageNet normalization constants
+        float[] mean = { 0.485f, 0.456f, 0.406f };
+        float[] std = { 0.229f, 0.224f, 0.225f };
+
         if (buffer != null && buffer.Length >= requiredSize)
         {
             // Use provided buffer
@@ -101,14 +105,26 @@ public class TensorPreparationService : ITensorPreparationService
                 int pixelCount = targetSize * targetSize;
                 
                 // Interleaved RGB (HWC)
-                // Pixel i: [R, G, B]
                 float* ptr = tPtr;
 
                 for (int i = 0; i < pixelCount; i++)
                 {
-                    ptr[i * 3]     = srcPtr[i * 4] / 255f;     // R
-                    ptr[i * 3 + 1] = srcPtr[i * 4 + 1] / 255f; // G
-                    ptr[i * 3 + 2] = srcPtr[i * 4 + 2] / 255f; // B
+                    float r = srcPtr[i * 4] / 255f;
+                    float g = srcPtr[i * 4 + 1] / 255f;
+                    float b = srcPtr[i * 4 + 2] / 255f;
+
+                    if (applyNormalization)
+                    {
+                        ptr[i * 3]     = (r - mean[0]) / std[0];
+                        ptr[i * 3 + 1] = (g - mean[1]) / std[1];
+                        ptr[i * 3 + 2] = (b - mean[2]) / std[2];
+                    }
+                    else
+                    {
+                        ptr[i * 3]     = r;
+                        ptr[i * 3 + 1] = g;
+                        ptr[i * 3 + 2] = b;
+                    }
                 }
             }
         }
@@ -118,52 +134,31 @@ public class TensorPreparationService : ITensorPreparationService
             tensor = new DenseTensor<float>(new[] { targetSize, targetSize, 3 });
             byte* srcPtr = (byte*)finalBitmap.GetPixels().ToPointer();
             
-            // DenseTensor storage is linear, so we can just write linearly if we match the shape
-            // However, using the indexer is safer for clarity, though slower.
-            // But since DenseTensor is backed by a linear array in row-major order:
-            // [y, x, c] -> y*W*C + x*C + c
-            // This matches exactly the interleaved format.
-            // So we can optimize by writing directly to the buffer if accessible, 
-            // but DenseTensor<T> doesn't expose the pointer easily without unsafe or Memory.
-            
             for (int y = 0; y < targetSize; y++)
             {
                 byte* row = srcPtr + (y * targetSize * 4);
                 for (int x = 0; x < targetSize; x++)
                 {
-                    tensor[y, x, 0] = row[x * 4] / 255f;     // R
-                    tensor[y, x, 1] = row[x * 4 + 1] / 255f; // G
-                    tensor[y, x, 2] = row[x * 4 + 2] / 255f; // B
+                    float r = row[x * 4] / 255f;
+                    float g = row[x * 4 + 1] / 255f;
+                    float b = row[x * 4 + 2] / 255f;
+
+                    if (applyNormalization)
+                    {
+                        tensor[y, x, 0] = (r - mean[0]) / std[0];
+                        tensor[y, x, 1] = (g - mean[1]) / std[1];
+                        tensor[y, x, 2] = (b - mean[2]) / std[2];
+                    }
+                    else
+                    {
+                        tensor[y, x, 0] = r;
+                        tensor[y, x, 1] = g;
+                        tensor[y, x, 2] = b;
+                    }
                 }
             }
         }
         return tensor;
     }
 
-    public unsafe DenseTensor<float> PrepareAgeGenderTensor(SKBitmap bitmap, int targetSize)
-    {
-        // InsightFace: BGR, NCHW [-1, 3, 96, 96], 0-255 raw
-        using var resized = new SKBitmap(targetSize, targetSize, SKColorType.Rgba8888, SKAlphaType.Opaque);
-        using (var canvas = new SKCanvas(resized))
-        {
-            canvas.Clear(SKColors.Black);
-            using var paint = new SKPaint { FilterQuality = SKFilterQuality.High };
-            canvas.DrawBitmap(bitmap, new SKRect(0, 0, targetSize, targetSize), paint);
-        }
-
-        var tensor = new DenseTensor<float>(new[] { 1, 3, targetSize, targetSize });
-        byte* ptr = (byte*)resized.GetPixels().ToPointer();
-        for (int y = 0; y < targetSize; y++)
-        {
-            byte* row = ptr + (y * targetSize * 4);
-            for (int x = 0; x < targetSize; x++)
-            {
-                // SkiaSharp RGBA → flip to BGR
-                tensor[0, 0, y, x] = row[x * 4 + 2]; // B
-                tensor[0, 1, y, x] = row[x * 4 + 1]; // G
-                tensor[0, 2, y, x] = row[x * 4];     // R
-            }
-        }
-        return tensor;
-    }
 }

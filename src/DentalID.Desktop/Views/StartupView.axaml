@@ -10,28 +10,14 @@
              x:Class="DentalID.Desktop.Views.StartupView"
              x:DataType="vm:StartupViewModel">
     <Grid>
-        <Border Background="{DynamicResource SurfaceDeepBrush}" />
-
-        <Border>
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                    <GradientStop Color="#FF111821" Offset="0" />
-                    <GradientStop Color="#FF1A1F2A" Offset="0.45" />
-                    <GradientStop Color="#FF0F141C" Offset="1" />
-                </LinearGradientBrush>
-            </Border.Background>
-        </Border>
+        <Border Background="{DynamicResource SurfaceBgBrush}" />
 
         <Border Margin="30"
                 CornerRadius="22"
+                Background="{DynamicResource SurfaceElevatedBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="1">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                    <GradientStop Color="#C0181E28" Offset="0" />
-                    <GradientStop Color="#C0141A24" Offset="1" />
-                </LinearGradientBrush>
-            </Border.Background>
+                BorderThickness="1"
+                BoxShadow="0 10 30 0 #40000000">
 
             <Grid ColumnDefinitions="320,*">
                 <Border Grid.Column="0"

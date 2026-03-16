@@ -103,16 +103,19 @@ public class DentalIntelligenceService : IDentalIntelligenceService
         
         // Caries - most common oral disease (WHO priority)
         // DMFT index basis: Each carious tooth = 1 point
-        int caries = result.Pathologies.Count(p => p.ClassName.Contains("Caries"));
-        if (caries > 0)
+        int cariesCount = result.Pathologies.Count(p => p.ClassName.Contains("Caries"));
+        if (cariesCount > 0)
         {
-            // Weighted by confidence
+            double cariesPenalty = 0;
             foreach (var c in result.Pathologies.Where(p => p.ClassName.Contains("Caries")))
             {
-                var penalty = 4.0 * c.Confidence; // 0-4 points per caries
-                score -= penalty;
-                penalties.Add(new HealthPenalty("Active Caries", penalty, c.Confidence));
+                cariesPenalty += 4.0 * c.Confidence;
             }
+            
+            // Forensic Fix: Cap caries penalty at 30 points to preserve score relativity.
+            cariesPenalty = Math.Min(30.0, cariesPenalty);
+            score -= cariesPenalty;
+            penalties.Add(new HealthPenalty($"Active Caries ({cariesCount})", cariesPenalty, 0.9));
         }
         
         // Periapical lesions/abscesses - serious infection
@@ -261,21 +264,15 @@ public class DentalIntelligenceService : IDentalIntelligenceService
             int age = result.EstimatedAge.Value;
             string reason = "";
 
-            // Fallacy #1 Fix: Do NOT force-correct the age to 12 for mixed dentition.
-            // Mixed dentition in an adult may indicate retained deciduous teeth (a real clinical condition),
-            // not necessarily that the subject IS 12 years old. Silently correcting the model's age
-            // estimate with a hardcoded value destroys the AI's measured output and is medically unsound.
-            // Instead, flag the conflict for manual review.
             if (hasMixed && age > 18) 
             {
                 result.SmartInsights.Add("⚠️ Age Conflict: AI estimated adult age but mixed/deciduous dentition detected. Possible retained deciduous teeth or model error. Manual age verification required.");
                 reason = "(Conflict detected - see insights)";
-                // Do NOT update 'age' here — preserve the model's estimate
             }
             else if (hasImplants && age < 25)
             {
-                age = 30; // Implants rare in < 25
-                reason = "(Adjusted due to Implants)";
+                // Forensic Alert instead of hardcoding 30.
+                result.SmartInsights.Add("📊 Forensic Note: Implants detected in a subject estimated < 25 years. This is statistically unusual and carries high evidentiary value for identification.");
             }
             else if (hasWisdom && age < 16)
             {
@@ -382,10 +379,9 @@ public class DentalIntelligenceService : IDentalIntelligenceService
              // For this "Genius" feature, let's look at the Text description if available, or re-run a quick spatial check.
              
             // Re-finding pathologies for this tooth:
-             var toothPathologies = result.Pathologies
-                .Where(p => GetIntersectionOverPathology(tooth, p) > 0.3f) // > 30% of pathology is inside tooth
-                .ToList();
-             
+            var toothPathologies = result.Pathologies
+               .Where(p => p.ToothNumber == tooth.FdiNumber || GetIntersectionOverPathology(tooth, p) > 0.3f) 
+               .ToList();             
              // Bug #15 Fix: Use modulo arithmetic instead of string.EndsWith("8").
              // EndsWith("8") is fragile and locale-sensitive; FDI wisdom teeth always have units digit == 8.
              if (toothPathologies.Count == 0)
@@ -557,11 +553,11 @@ public class DentalIntelligenceService : IDentalIntelligenceService
                 }
             }
             
-            // Special case for midline gap (missing 11, but 21 and 12 present)
-            if (q == 1 && !teeth.Contains(11) && teeth.Contains(21) && teeth.Contains(12)) gaps.Add(11);
-            if (q == 2 && !teeth.Contains(21) && teeth.Contains(11) && teeth.Contains(22)) gaps.Add(21);
-            if (q == 3 && !teeth.Contains(31) && teeth.Contains(41) && teeth.Contains(32)) gaps.Add(31);
-            if (q == 4 && !teeth.Contains(41) && teeth.Contains(31) && teeth.Contains(42)) gaps.Add(41);
+            // Special case for midline gap (missing 11/21)
+            if (q == 1 && !teeth.Contains(11) && teeth.Contains(12) && (teeth.Contains(21) || teeth.Contains(22))) gaps.Add(11);
+            if (q == 2 && !teeth.Contains(21) && teeth.Contains(22) && (teeth.Contains(11) || teeth.Contains(12))) gaps.Add(21);
+            if (q == 3 && !teeth.Contains(31) && teeth.Contains(32) && (teeth.Contains(41) || teeth.Contains(42))) gaps.Add(31);
+            if (q == 4 && !teeth.Contains(41) && teeth.Contains(42) && (teeth.Contains(31) || teeth.Contains(32))) gaps.Add(41);
         }
 
         if (gaps.Count > 0)
@@ -857,15 +853,36 @@ public class DentalIntelligenceService : IDentalIntelligenceService
         
         var adultFdi = result.Teeth.Where(t => t.FdiNumber % 10 >= 1 && t.FdiNumber % 10 <= 7).Select(t => t.FdiNumber).ToHashSet();
         
-        // D (Decayed): Teeth with active Aries
+        // D (Decayed): Teeth with active Caries
         int decayed = result.Pathologies
             .Where(p => p.ClassName.Contains("Caries", StringComparison.OrdinalIgnoreCase) && p.ToothNumber.HasValue && p.ToothNumber.GetValueOrDefault() % 10 >= 1 && p.ToothNumber.GetValueOrDefault() % 10 <= 7)
             .Select(p => p.ToothNumber)
             .Distinct()
             .Count();
 
-        // M (Missing): 28 - Present
-        int missing = Math.Max(0, 28 - adultFdi.Count);
+        // M (Missing): Forensic Fix — Only count if explicitly detected as "Missing" or if there's a "Bounded Gap".
+        // Simply subtracting (28 - detected) is inaccurate as it counts "under-detections" as clinical tooth loss.
+        int missingExplicit = result.Pathologies
+            .Where(p => (p.ClassName.Contains("Missing", StringComparison.OrdinalIgnoreCase) || p.ClassName.Contains("Gap", StringComparison.OrdinalIgnoreCase)) 
+                        && p.ToothNumber.HasValue && p.ToothNumber.GetValueOrDefault() % 10 >= 1 && p.ToothNumber.GetValueOrDefault() % 10 <= 7)
+            .Select(p => p.ToothNumber)
+            .Distinct()
+            .Count();
+        
+        // Also include gaps detected by spatial logic in SmartInsights
+        int missingFromGaps = 0;
+        var gapsInsight = result.SmartInsights.FirstOrDefault(s => s.StartsWith("Gaps: Bounded edentulous spaces detected at positions:"));
+        if (gapsInsight != null)
+        {
+            int startIdx = gapsInsight.IndexOf("positions: ") + "positions: ".Length;
+            int endIdx = gapsInsight.IndexOf(".", startIdx);
+            if (startIdx >= "positions: ".Length && endIdx > startIdx)
+            {
+                var numbersStr = gapsInsight.Substring(startIdx, endIdx - startIdx);
+                missingFromGaps = numbersStr.Split(',').Length;
+            }
+        }
+        int missing = Math.Max(missingExplicit, missingFromGaps);
 
         // F (Filled): Teeth with Fillings or Crowns
         int filled = result.Pathologies
@@ -904,7 +921,8 @@ public class DentalIntelligenceService : IDentalIntelligenceService
                 // < 0.274 leans Female
                 string sexEstimate = mci > 0.274f ? "Male (MCI > 0.274)" : "Female (MCI < 0.274)";
                 
-                result.SmartInsights.Add($"⚧ Biometric Sex Estimate (MCI): {sexEstimate}. Calculated MCI Ratio: {mci:F3}. (Triangulate with AI Network Output).");
+                result.SmartInsights.Add($"⚧ Biometric Sex Estimate (MCI): {sexEstimate}. Calculated MCI Ratio: {mci:F3}.");
+                result.SmartInsights.Add("⚠️ Forensic Note: MCI reliability is limited by non-linear panoramic magnification. Use only for corroboration.");
             }
         }
     }

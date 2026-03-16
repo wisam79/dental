@@ -54,28 +54,12 @@ public static class SeedData
                 },
                 new AIModel
                 {
-                    Name = "Feature Decoder",
-                    Type = "FeatureExtraction",
-                    Version = "1.0",
-                    FilePath = "models/decoder.onnx",
-                    IsActive = true
-                },
-                new AIModel
-                {
                     Name = "Age/Gender Estimation",
                     Type = "Classification",
                     Version = "1.0",
                     FilePath = "models/genderage.onnx",
                     IsActive = true,
                     Parameters = "{\"inputSize\":96}"
-                },
-                new AIModel
-                {
-                    Name = "Matching Pipeline",
-                    Type = "Matching",
-                    Version = "1.0",
-                    FilePath = "models/matching_pipeline.onnx",
-                    IsActive = true
                 }
             );
         }

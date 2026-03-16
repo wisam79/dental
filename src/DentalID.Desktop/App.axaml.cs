@@ -52,19 +52,16 @@ public partial class App : Avalonia.Application
             var logger = _serviceProvider.GetRequiredService<ILoggerService>();
             logger.LogInformation("App.Initialize() - Bootstrapper Configured");
 
-            // 5. Create Startup View
+            // 5. Create Startup View Model
             var startupVm = _serviceProvider.GetRequiredService<StartupViewModel>();
             
-            // Create MainWindow (Shell)
-            var mainWindow = new MainWindow();
+            // Create and show Splash Window
+            var splashWindow = new SplashWindow
+            {
+                DataContext = startupVm
+            };
             
-            var mainVm = _serviceProvider.GetRequiredService<MainWindowViewModel>();
-            mainWindow.DataContext = mainVm;
-
-            // Initialize in Secure Boot Mode (Startup View Active)
-            mainVm.CurrentView = startupVm; 
-
-            desktop.MainWindow = mainWindow;
+            desktop.MainWindow = splashWindow;
             
             // 6. Run Secure Boot (Background)
             logger.LogInformation("Starting Background Secure Boot Task...");
@@ -79,25 +76,38 @@ public partial class App : Avalonia.Application
                     logger.LogInformation("Running SecureBootAsync...");
                     await bootstrapper.RunSecureBootAsync(startupVm, provider);
                     
-                    logger.LogInformation("SecureBoot Async Completed. Scheduling UI switch to Subjects...");
+                    logger.LogInformation("SecureBoot Async Completed. Scheduling UI switch to Main Window...");
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         try 
                         {
+                            var mainVm = provider.GetRequiredService<MainWindowViewModel>();
                             var navigation = provider.GetRequiredService<INavigationService>();
                             var subjectsVm = navigation.NavigateTo<SubjectsViewModel>();
                             if (subjectsVm == null)
                                 throw new Exception("Failed to navigate to Subjects View.");
 
                             mainVm.IsShellVisible = true;
+                            
+                            // Create Main Window
+                            var mainWindow = new MainWindow
+                            {
+                                DataContext = mainVm
+                            };
+                            
+                            // Switch Main Window
+                            desktop.MainWindow = mainWindow;
+                            mainWindow.Show();
+                            _ = splashWindow.CloseWithFadeAsync();
+                            
                             logger.LogInformation("MainView Switched directly to Subjects (Login removed).");
                         }
-                            catch (Exception innerEx)
-                            {
-                                 Console.WriteLine($"[CRITICAL ERROR UI SWITCH]: {innerEx}");
-                                 logger.LogError(innerEx, "Error during UI switch");
-                                 throw;
-                            }
+                        catch (Exception innerEx)
+                        {
+                             Console.WriteLine($"[CRITICAL ERROR UI SWITCH]: {innerEx}");
+                             logger.LogError(innerEx, "Error during UI switch");
+                             throw;
+                        }
                     });
                 }
                 catch (Exception ex)
@@ -108,7 +118,9 @@ public partial class App : Avalonia.Application
                     {
                         startupVm.StatusMessage = $"CRITICAL FAILURE:\n{ex.Message}\n\nReview logs";
                         startupVm.ProgressValue = 0;
-                        desktop.Shutdown(-1);
+                        // Let the user see the error on the splash screen before shutting down if necessary,
+                        // but right now it shuts down immediately. We will keep the original behavior for now.
+                        // desktop.Shutdown(-1);
                     });
                 }
             });

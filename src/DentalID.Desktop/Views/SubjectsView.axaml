@@ -17,44 +17,51 @@
 
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
-        <!-- ══════ PAGE HEADER ══════ -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+        <!-- ══════ PAGE HEADER & METRICS ══════ -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,24">
             <StackPanel>
-                <TextBlock Classes="h1"
+                <TextBlock Classes="display"
                            Text="{DynamicResource Str_Nav_Subjects}"
-                           Margin="0,0,0,4"/>
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Border Classes="badge badge-info">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource IconSubjects}"
-                                      Width="12" Height="12"
-                                      Foreground="{DynamicResource AccentSecondaryBrush}"/>
-                            <TextBlock Classes="caption">
-                                <Run Text="{Binding TotalCount}" FontWeight="SemiBold"/>
-                                <Run Text=" "/>
-                                <Run Text="{DynamicResource Str_Subj_Registered}"/>
-                            </TextBlock>
+                           Margin="0,0,0,16"/>
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <!-- Stat Card 1 -->
+                    <Border Classes="card-compact" MinWidth="160" Background="{DynamicResource SurfaceFloatingBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                <Border Width="28" Height="28" CornerRadius="8" Background="#153B82F6">
+                                    <PathIcon Data="{StaticResource IconSubjects}" Width="14" Height="14" Foreground="{DynamicResource AccentPrimaryBrush}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Subj_Registered}" Classes="caption" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding TotalCount}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </StackPanel>
                     </Border>
-                    <Border Classes="badge"
-                            Background="{DynamicResource OverlayHoverBrush}"
-                            BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            BorderThickness="1">
-                        <TextBlock Classes="caption">
-                            <Run Text="{DynamicResource Str_Subj_Selected}"/>
-                            <Run Text="{Binding SelectedSubject.SubjectId, TargetNullValue='-'}" FontWeight="SemiBold"/>
-                        </TextBlock>
+
+                    <!-- Stat Card 2 -->
+                    <Border Classes="card-compact" MinWidth="160" Background="{DynamicResource SurfaceFloatingBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                <Border Width="28" Height="28" CornerRadius="8" Background="#1510B981">
+                                    <PathIcon Data="{StaticResource IconCheckCircle}" Width="14" Height="14" Foreground="{DynamicResource SuccessBrush}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Subj_Selected}" Classes="caption" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SelectedSubject.SubjectId, TargetNullValue='--'}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,8,0,0"/>
+                        </StackPanel>
                     </Border>
-                    <StackPanel Orientation="Horizontal" Spacing="6"
-                                IsVisible="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <PathIcon Data="{StaticResource IconSubjects}"
-                                  Width="12" Height="12"
-                                  Foreground="{DynamicResource AccentPrimaryBrush}"/>
-                        <TextBlock Classes="caption">
-                            <Run Text="{DynamicResource Str_Subj_History_Count}"/>
-                            <Run Text="{Binding SelectedSubjectAnalysisCount}" FontWeight="SemiBold"/>
-                        </TextBlock>
-                    </StackPanel>
+                    
+                    <!-- Stat Card 3 -->
+                    <Border Classes="card-compact" MinWidth="160" Background="{DynamicResource SurfaceFloatingBrush}" IsVisible="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                <Border Width="28" Height="28" CornerRadius="8" Background="#15A855F7">
+                                    <PathIcon Data="{StaticResource IconAnalysis}" Width="14" Height="14" Foreground="{DynamicResource AccentTertiaryBrush}"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Subj_History_Count}" Classes="caption" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SelectedSubjectAnalysisCount}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </StackPanel>
 
@@ -62,10 +69,12 @@
             <Button Grid.Column="1"
                     Command="{Binding OpenAddDialogCommand}"
                     Classes="primary"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Top"
+                    Margin="0,8,0,0"
+                    Padding="20,12">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <PathIcon Data="{StaticResource IconUser}" Width="14" Height="14"/>
-                    <TextBlock Text="{DynamicResource Str_Subj_Add}"/>
+                    <PathIcon Data="{StaticResource IconPlus}" Width="14" Height="14"/>
+                    <TextBlock Text="{DynamicResource Str_Subj_Add}" FontWeight="Bold"/>
                 </StackPanel>
             </Button>
         </Grid>
@@ -147,12 +156,14 @@
                         </DataGrid>
 
                         <Border IsVisible="{Binding Subjects.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
-                                Background="{DynamicResource OverlayStrongBrush}"
+                                Background="{DynamicResource SurfaceBgBrush}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                                <PathIcon Data="{StaticResource IconSubjects}" Width="26" Height="26" Foreground="{DynamicResource TextDisabledBrush}"/>
-                                <TextBlock Text="{DynamicResource Str_Subj_Empty_List}" Foreground="{DynamicResource TextMutedBrush}" FontSize="12"/>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                                <Border Width="64" Height="64" CornerRadius="32" Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                    <PathIcon Data="{StaticResource IconSubjects}" Width="28" Height="28" Foreground="{DynamicResource TextDisabledBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Str_Subj_Empty_List}" Foreground="{DynamicResource TextMutedBrush}" FontSize="13" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -284,15 +295,18 @@
                         </DataGrid>
 
                         <Border IsVisible="{Binding ShowAnalysesEmptyState}"
-                                Background="{DynamicResource OverlayModerateBrush}"
+                                Background="{DynamicResource SurfaceBgBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
                                 CornerRadius="8"
-                                Margin="2">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-                                <PathIcon Data="{StaticResource IconAnalysis}" Width="20" Height="20"
-                                          Foreground="{DynamicResource TextDisabledBrush}"/>
+                                Margin="4">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                                <Border Width="48" Height="48" CornerRadius="24" Background="{DynamicResource SurfaceFloatingBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                    <PathIcon Data="{StaticResource IconAnalysis}" Width="20" Height="20" Foreground="{DynamicResource TextDisabledBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
                                 <TextBlock Text="{DynamicResource Str_Subj_History_Empty}"
                                            Foreground="{DynamicResource TextMutedBrush}"
-                                           FontSize="12"/>
+                                           FontSize="12" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
                     </Grid>

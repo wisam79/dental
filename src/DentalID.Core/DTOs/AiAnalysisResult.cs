@@ -69,6 +69,15 @@ public class DetectedTooth
     public float Width { get; set; }
     public float Height { get; set; }
     public List<(float X, float Y)>? Outline { get; set; }
+
+    /// <summary>Actual mask width in normalized image coordinates.</summary>
+    public float MaskWidth { get; set; }
+    
+    /// <summary>Actual mask height in normalized image coordinates.</summary>
+    public float MaskHeight { get; set; }
+    
+    /// <summary>Approximate mask area (polygon area) normalized.</summary>
+    public float MaskArea { get; set; }
 }
 
 /// <summary>
@@ -84,4 +93,13 @@ public class DetectedPathology
     public float Width { get; set; }
     public float Height { get; set; }
     public List<(float X, float Y)>? Outline { get; set; }
+
+    /// <summary>Actual mask width in normalized image coordinates.</summary>
+    public float MaskWidth { get; set; }
+    
+    /// <summary>Actual mask height in normalized image coordinates.</summary>
+    public float MaskHeight { get; set; }
+    
+    /// <summary>Approximate mask area (polygon area) normalized.</summary>
+    public float MaskArea { get; set; }
 }

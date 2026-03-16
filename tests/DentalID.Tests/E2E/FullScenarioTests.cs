@@ -284,7 +284,7 @@ public class MockAiService : IAiPipelineService
 
     public Task InitializeAsync(string modelsDirectory) => Task.CompletedTask;
 
-    public Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null)
+    public Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null, CancellationToken ct = default)
     {
         // Return deterministic "Perfect" results
         var result = new AnalysisResult

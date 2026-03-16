@@ -1,9 +1,6 @@
-namespace DentalID.Core.Interfaces;
-
-/// <summary>
-/// Analysis result from the AI pipeline for a single dental image.
-/// </summary>
 using DentalID.Core.DTOs;
+
+namespace DentalID.Core.Interfaces;
 
 /// <summary>
 /// Service for running AI analysis on dental images.
@@ -17,7 +14,7 @@ public interface IAiPipelineService : IDisposable
     Task InitializeAsync(string modelsDirectory);
 
     /// <summary>Runs the full analysis pipeline on an image stream.</summary>
-    Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null);
+    Task<AnalysisResult> AnalyzeImageAsync(Stream imageStream, string? fileName = null, CancellationToken ct = default);
 
     /// <summary>Runs only teeth detection.</summary>
     Task<List<DetectedTooth>> DetectTeethAsync(Stream imageStream);

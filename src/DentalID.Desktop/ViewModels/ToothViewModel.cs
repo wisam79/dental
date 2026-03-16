@@ -68,6 +68,8 @@ public partial class ToothViewModel : ViewModelBase
         {
             if (_geometry == null)
             {
+                if (string.IsNullOrWhiteSpace(_pathData)) return null;
+
                 if (_geometryCache.TryGetValue(FdiNumber, out var cached))
                 {
                     _geometry = cached;
@@ -79,9 +81,10 @@ public partial class ToothViewModel : ViewModelBase
                         _geometry = Avalonia.Media.Geometry.Parse(_pathData); 
                         _geometryCache[FdiNumber] = _geometry;
                     }
-                    catch (System.Exception ex)
+                    catch
                     { 
-                        throw new System.FormatException($"Failed to parse geometry for tooth {FdiNumber}: {ex.Message}", ex);
+                        // Bug Fix #79: Return null instead of throwing to prevent Avalonia render loop crash
+                        return null; 
                     }
                 }
             }
@@ -106,23 +109,30 @@ public partial class ToothViewModel : ViewModelBase
 
     public void MarkPathology(string pathology)
     {
+        if (string.IsNullOrWhiteSpace(pathology)) return;
+        
+        // Bug Fix #80: Deduplicate pathology strings per tooth
+        if (Pathologies.Contains(pathology)) return;
+
         HasPathology = true;
         Pathologies.Add(pathology);
         
-        // Forensic Color Coding — premium, more subtle colors
+        // Forensic Color Coding
         var (fill, stroke, icon) = pathology switch
         {
-            "Caries" => ("#FFEBEE", "#EF5350", "⚠"),               // Soft red
-            "Crown" => ("#FFF8E1", "#FFC107", "♛"),                 // Soft gold
-            "Filling" => ("#E3F2FD", "#42A5F5", "●"),               // Soft blue
-            "Implant" => ("#ECEFF1", "#607D8B", "⬡"),               // Slate
-            "Periapical lesion" => ("#FFF3E0", "#FF9800", "◉"),     // Soft orange
-            "Root Piece" => ("#EFEBE9", "#795548", "△"),             // Brown
-            "Root canal obturation" => ("#E8F5E9", "#66BB6A", "⊕"), // Green
-            "Missing teeth" => ("#FAFAFA", "#BDBDBD", "✕"),         // Gray
-            "Deep Caries" => ("#FFCDD2", "#E53935", "⚠"),           // Deep red
+            "Caries" => ("#FFEBEE", "#EF5350", "⚠"),
+            "Crown" => ("#FFF8E1", "#FFC107", "♛"),
+            "Filling" => ("#E3F2FD", "#42A5F5", "●"),
+            "Implant" => ("#ECEFF1", "#607D8B", "⬡"),
+            "Periapical lesion" => ("#FFF3E0", "#FF9800", "◉"),
+            "Root Piece" => ("#EFEBE9", "#795548", "△"),
+            "Root canal obturation" => ("#E8F5E9", "#66BB6A", "⊕"),
+            "Missing teeth" => ("#FAFAFA", "#BDBDBD", "✕"),
+            "Deep Caries" => ("#FFCDD2", "#E53935", "⚠"),
             _ => ("#FFEBEE", "#EF5350", "⚠")
         };
+
+        if (pathology == "Missing teeth") IsPresent = false;
 
         FillColor = new SolidColorBrush(Color.Parse(fill));
         StrokeColor = new SolidColorBrush(Color.Parse(stroke));
@@ -148,7 +158,11 @@ public partial class ToothViewModel : ViewModelBase
     {
         try
         {
-            FillColor = Brush.Parse(treatment.Color);
+            // Bug Fix #81: Safe Color Parsing
+            if (treatment.Color.StartsWith("#"))
+                FillColor = new SolidColorBrush(Color.Parse(treatment.Color));
+            else
+                FillColor = Brush.Parse(treatment.Color);
         }
         catch
         {

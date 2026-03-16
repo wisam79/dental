@@ -10,10 +10,16 @@ Unicode true
 !ifndef APP_VERSION_FILE
 !define APP_VERSION_FILE "1.0.0.0"
 !endif
+!ifndef APP_PUBLISH_DIR
 !define APP_PUBLISH_DIR "..\..\publish\win-x64"
-!define OUTPUT_FILE "..\..\publish\DentalID-Setup.exe"
+!endif
+!ifndef OUTPUT_FILE
+!define OUTPUT_FILE "..\..\publish\DentalID-Setup-${APP_VERSION}.exe"
+!endif
 !define UNINSTALL_REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+!ifndef APP_EXE
 !define APP_EXE "DentalID.Desktop.exe"
+!endif
 
 !if /FileExists "${APP_PUBLISH_DIR}\${APP_EXE}"
 !else
@@ -72,12 +78,38 @@ setremove:
 done:
 FunctionEnd
 
+Function EnsureAppClosed
+    IfFileExists "$INSTDIR\${APP_EXE}" 0 done
+retry:
+    ClearErrors
+    Delete "$INSTDIR\${APP_EXE}"
+    IfErrors 0 done
+    MessageBox MB_ICONEXCLAMATION|MB_RETRYCANCEL "${APP_NAME} appears to be running. Close it and click Retry." IDRETRY retry IDCANCEL cancel
+cancel:
+    Abort
+done:
+FunctionEnd
+
+Function un.EnsureAppClosed
+    IfFileExists "$INSTDIR\${APP_EXE}" 0 done
+retry:
+    ClearErrors
+    Delete "$INSTDIR\${APP_EXE}"
+    IfErrors 0 done
+    MessageBox MB_ICONEXCLAMATION|MB_RETRYCANCEL "${APP_NAME} appears to be running. Close it and click Retry." IDRETRY retry IDCANCEL cancel
+cancel:
+    Abort
+done:
+FunctionEnd
+
 Section "Install" SecInstall
     SetShellVarContext current
     SetOutPath "$INSTDIR"
 
     IfFileExists "$INSTDIR\Uninstall.exe" 0 +3
     DetailPrint "Existing installation detected. Replacing in-place."
+
+    Call EnsureAppClosed
 
     File /r "${APP_PUBLISH_DIR}\*"
 
@@ -101,6 +133,8 @@ SectionEnd
 
 Section "Uninstall"
     SetShellVarContext current
+
+    Call un.EnsureAppClosed
 
     StrCpy $DataBackupPath "$TEMP\${APP_NAME}_data_backup"
     RMDir /r "$DataBackupPath"
